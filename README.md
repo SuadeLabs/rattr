@@ -1,4 +1,4 @@
-# **Ratter (V2)**
+# **Ratter**
 
 Ratter is a tool to determine attribute usage in Python functions.
 
