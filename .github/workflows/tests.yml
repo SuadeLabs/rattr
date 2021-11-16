@@ -18,7 +18,7 @@ on:
 #       stdlib modules can be resolved -- which is the case with pypy but not
 #       with CPython
 jobs:
-  lint:
+  unittests:
     runs-on: ubuntu-latest
 
     steps:

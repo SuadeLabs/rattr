@@ -588,6 +588,10 @@ def is_stdlib_module(module: str) -> bool:
         "/(usr|opt)/(local/)?lib/(pypy|python).?/dist-packages.*",
         "/(usr|opt)/(pypy|python)/lib-python.*",
         "/(usr|opt)/pypy/lib_pypy.*",
+
+        # GitHub `setup-python` locations
+        "/opt/.+/PyPy/.+/lib-python.*",
+        "/opt/.+/PyPy/.+/lib_pypy.*",
     )
 
     try:
