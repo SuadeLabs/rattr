@@ -14,6 +14,9 @@ on:
 
 
 # Run unit tests
+# NOTE: Some unit tests regarding imports and import resolution assume that
+#       stdlib modules can be resolved -- which is the case with pypy but not
+#       with CPython
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -24,7 +27,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.7"
+          python-version: "pypy-3.7"
 
       - name: Install dependencies
         run: |
