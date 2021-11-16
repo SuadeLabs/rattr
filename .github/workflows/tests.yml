@@ -17,6 +17,8 @@ on:
 # NOTE: Some unit tests regarding imports and import resolution assume that
 #       stdlib modules can be resolved -- which is the case with pypy but not
 #       with CPython
+# NOTE: Some unit tests assume the flask and dateutil modules have been pip
+#       installed -- thus they are included as a "faux"-dependency
 jobs:
   unittests:
     runs-on: ubuntu-latest
@@ -34,6 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade pytest
           python -m pip install --upgrade mock
+          python -m pip install --upgrade flask
 
       - name: Run unit tests
         run: pytest tests/

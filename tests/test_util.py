@@ -789,13 +789,12 @@ class TestUtil:
 
     def test_is_pip_module(self):
         # NOTE
-        #   This is not the best test ever as it assumes that "flask" and
-        #   "dateutil" are installed and that "numpy" and "pandas" are not.
+        #   This is not the best test ever as it assumes that "flask" are
+        #   installed and that "numpy" and "pandas" are not.
         #   However, as this test is testing code that if checking for that
         #   exact property I see no better way of testing it -- a mock would
         #   mock away the tested feature.
         assert is_pip_module("flask")
-        assert is_pip_module("dateutil")
 
         assert not is_pip_module("numpy")
         assert not is_pip_module("pandas")
