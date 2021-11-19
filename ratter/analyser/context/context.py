@@ -43,7 +43,7 @@ from ratter.analyser.context.symbol import (
     Import,
     Name,
     Symbol,
-    get_module_spec_and_name,
+    get_module_name_and_spec,
     get_possible_module_names
 )
 from ratter.analyser.context.symbol_table import SymbolTable
@@ -404,7 +404,7 @@ class RootContext(Context):
             base = module_name_from_file_path(config.current_file)
             module = get_absolute_module_name(base, node.level, node.module)
 
-            if get_module_spec_and_name(module) == (None, None):
+            if get_module_name_and_spec(module) == (None, None):
                 error.error("unable to resolve relative starred import", node)
 
         self.add(_new_import_symbol("*", module, module, node))
@@ -418,7 +418,7 @@ class RootContext(Context):
 
         module = get_absolute_module_name(base, node.level, node.module)
 
-        if get_module_spec_and_name(module) == (None, None):
+        if get_module_name_and_spec(module) == (None, None):
             error.error("unable to resolve relative import", node)
 
         for target in node.names:

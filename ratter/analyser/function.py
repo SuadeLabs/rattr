@@ -2,6 +2,7 @@
 
 import ast
 
+from itertools import accumulate
 from typing import List, Optional, Tuple
 
 from ratter import error
@@ -168,6 +169,13 @@ class FunctionAnalyser(NodeVisitor):
         else:
             error.warning(f"'{target.name}' initialised but not stored", node)
             args = get_function_call_args(node, LOCAL_VALUE_PREFIX+target.name)
+
+        # NOTE
+        #   If this is a call to a method on an attribute, then it necessarily
+        #   "gets" the attribute
+        parts = remove_call_brackets(fullname).split(".")[:-1]
+        for attr in list(accumulate(parts, lambda a, b: f"{a}.{b}"))[1:]:
+            self.func_ir["gets"].add(Name(attr, parts[0]))
 
         self.func_ir["calls"].add(Call(fullname, *args, target))
 

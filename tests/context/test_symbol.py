@@ -8,7 +8,7 @@ from ratter.analyser.context.symbol import (
     get_possible_module_names,
     parse_name,
     parse_call,
-    get_module_spec_and_name,
+    get_module_name_and_spec,
     find_spec,
 )
 
@@ -181,26 +181,26 @@ class TestSymbolUtils:
         expected = ["a_name_without_dots"]
         assert get_possible_module_names("a_name_without_dots") == expected
 
-    def test_get_module_spec_and_name(self):
-        assert get_module_spec_and_name("i.am.not.a.module") == (None, None)
+    def test_get_module_name_and_spec(self):
+        assert get_module_name_and_spec("i.am.not.a.module") == (None, None)
 
         expected = ("math", find_spec("math"))
-        assert get_module_spec_and_name("math") == expected
-        assert get_module_spec_and_name("math.pi") == expected
+        assert get_module_name_and_spec("math") == expected
+        assert get_module_name_and_spec("math.pi") == expected
 
         expected = ("os", find_spec("os"))
-        assert get_module_spec_and_name("os") == expected
+        assert get_module_name_and_spec("os") == expected
 
         expected = ("os.path", find_spec("os.path"))
-        assert get_module_spec_and_name("os.path") == expected
+        assert get_module_name_and_spec("os.path") == expected
 
-        assert get_module_spec_and_name("os") \
-            != get_module_spec_and_name("os.path")
+        assert get_module_name_and_spec("os") \
+            != get_module_name_and_spec("os.path")
 
         m = "ratter.analyser"
         expected = (m, find_spec(m))
-        assert get_module_spec_and_name(m) == expected
+        assert get_module_name_and_spec(m) == expected
 
         m = "ratter.analyser.util"
         expected = (m, find_spec(m))
-        assert get_module_spec_and_name(f"{m}.get_module_spec") == expected
+        assert get_module_name_and_spec(f"{m}.get_module_spec") == expected

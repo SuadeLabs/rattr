@@ -16,7 +16,7 @@ class ResultsEncoder(json.JSONEncoder):
         if isinstance(obj, Symbol):
             return repr(obj)
 
-        return super().default(self, obj)
+        return super().default(obj)
 
 
 def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResults: # noqa

@@ -49,9 +49,12 @@ class Config:
     # File info
     file: str = "<no_file>"
 
-    # HACK State, cleaner than passing [str | None] to dozens of arguments
+    # HACK State, cleaner than passing [str | None] to dozens of functions
     # NOTE See `util.py::enter_file`
     current_file: Optional[str] = None
+
+    # Cache file
+    cache: str = ""
 
 
 config = Config()

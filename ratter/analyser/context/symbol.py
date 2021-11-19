@@ -58,7 +58,7 @@ class Import(Symbol):
             self.qualified_name = self.name
 
         self.module_name, self.module_spec = \
-            get_module_spec_and_name(self.qualified_name)
+            get_module_name_and_spec(self.qualified_name)
 
     def __hash__(self) -> int:
         return hash(repr(self))
@@ -165,20 +165,20 @@ def get_possible_module_names(name: str) -> List[str]:
 
     return list(ordered)
 
-def get_module_spec_and_name(name: str) -> Union[Tuple[str, ModuleSpec], Tuple[None, None]]:  # noqa
+def get_module_name_and_spec(name: str) -> Union[Tuple[str, ModuleSpec], Tuple[None, None]]:  # noqa
     """Return the `ModuleSpec` for an imported name.
 
     If `name` is a module (e.g. `math`) then the spec of the module will be
     returned.
 
-    >>> get_module_spec_and_name("math")
+    >>> get_module_name_and_spec("math")
     "math", ModuleSpec(name='math', loader=... origin='built-in')
 
     If `name` is the fully qualified name of a name within a module then the
     spec of the containing module will be given (e.g. spec of "math" for
     the name "math.pi").
 
-    >>> get_module_spec_and_name("os.path.join")
+    >>> get_module_name_and_spec("os.path.join")
     "os.path", ModuleSpec(name='posixpath', loader=..., origin=...)
 
     """

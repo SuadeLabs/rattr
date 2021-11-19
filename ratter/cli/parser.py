@@ -40,7 +40,7 @@ def parse_arguments() -> Namespace:
             Uses Python's regular expression syntax.
         """),
         epilog=multi_paragraph_wrap("""\
-            This is the epilogue, put a Suade thing here.
+            Made with ❤️ by Suade Labs.
         """),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -64,6 +64,7 @@ def parse_arguments() -> Namespace:
         Output,
         FilterString,
         File,
+        Cache,
     )
 
     for argument_group_parser in ARGUMENT_GROUP_PARSERS:
@@ -377,5 +378,33 @@ class File(ArgumentGroupParser):
 
         if ext != ".py":
             error.ratter(f"expects extension '.py', got '{ext}'")
+
+        return arguments
+
+
+class Cache(ArgumentGroupParser):
+
+    def register(parser: ArgumentParser) -> ArgumentParser:
+        cache_group = parser.add_argument_group()
+        cache_group.add_argument(
+            "--cache",
+            default="",
+            type=str,
+            help=multi_paragraph_wrap("""\
+                the file to cache the results to, if successful
+            """),
+        )
+
+        return parser
+
+    def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
+        f = arguments.cache
+        _, ext = splitext(f)
+
+        if isfile(f):
+            error.ratter(f"'{f}' already exists and will be overwritten on success")    # noqa
+
+        if f != "" and ext != ".json":
+            error.ratter(f"cache expects extension '.json', got '{ext}'")
 
         return arguments

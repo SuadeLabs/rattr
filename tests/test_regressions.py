@@ -444,3 +444,94 @@ class TestRegression:
 
         print(results)
         assert results == expected
+
+    def test_regression_gets_in_method_call(self, parse):
+        # ALWAYS WORKED
+        _ast = parse("""
+            def fn(arg):
+                return arg.attr
+        """)
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        expected = {
+            Func("fn", ["arg"], None, None): {
+                "sets": set(),
+                "gets": {
+                    Name("arg.attr", "arg"),
+                },
+                "dels": set(),
+                "calls": set(),
+            }
+        }
+
+        assert results == expected
+
+        # ALWAYS WORKED
+        _ast = parse("""
+            def fn(arg):
+                return arg.method()
+        """)
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        expected = {
+            Func("fn", ["arg"], None, None): {
+                "sets": set(),
+                "gets": set(),
+                "dels": set(),
+                "calls": {
+                    Call("arg.method()", [], {}, Name("arg")),
+                },
+            }
+        }
+
+        print(results)
+        assert results == expected
+
+        # REGRESSION 1
+        _ast = parse("""
+            def fn(arg):
+                return arg.attr.method()
+        """)
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        expected = {
+            Func("fn", ["arg"], None, None): {
+                "sets": set(),
+                "gets": {
+                    Name("arg.attr", "arg"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("arg.attr.method()", [], {}, Name("arg")),
+                },
+            }
+        }
+
+        print(results)
+        assert results == expected
+
+        # REGRESSION 2
+        _ast = parse("""
+            def fn(arg):
+                return arg.a.b.c.d.method()
+        """)
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        expected = {
+            Func("fn", ["arg"], None, None): {
+                "sets": set(),
+                "gets": {
+                    Name("arg.a", "arg"),
+                    Name("arg.a.b", "arg"),
+                    Name("arg.a.b.c", "arg"),
+                    Name("arg.a.b.c.d", "arg"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("arg.a.b.c.d.method()", [], {}, Name("arg")),
+                },
+            }
+        }
+
+        print(results)
+        assert results == expected

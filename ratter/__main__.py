@@ -3,18 +3,26 @@
 import json
 
 from math import log10
+from typing import Iterable, Set
 
 from ratter import config, error
+from ratter.analyser.context import Import, Symbol
 from ratter.analyser.file import RatterStats, parse_and_analyse_file
 from ratter.analyser.results import generate_results_from_ir, ResultsEncoder
 from ratter.analyser.types import FileIR, FileResults, ImportsIR
-from ratter.analyser.util import re_filter_ir, re_filter_results
+from ratter.analyser.util import (
+    cache_is_valid,
+    create_cache,
+    is_blacklisted_module,
+    re_filter_ir,
+    re_filter_results,
+)
 from ratter.cli import Namespace, parse_arguments
 
 
-def main() -> None:
+def main(arguments: Namespace) -> None:
     """Ratter entry point."""
-    load_config(parse_arguments())
+    load_config(arguments)
 
     file_ir, imports_ir, stats = parse_and_analyse_file()
 
@@ -33,6 +41,9 @@ def main() -> None:
 
     if config.show_stats:
         show_stats(stats)
+
+    if config.cache:
+        write_cache(results, file_ir, imports_ir)
 
 
 def show_ir(file: str, file_ir: FileIR, imports_ir: ImportsIR) -> None:
@@ -170,6 +181,33 @@ def show_stats(stats: RatterStats) -> None:
     print(end="\n\n")
 
 
+def write_cache(results: FileResults, file_ir: FileIR, imports_ir: ImportsIR) -> None:  # noqa
+    """Save the file results to the file cache."""
+    if cache_is_valid(config.file, config.cache):
+        return error.ratter(f"cache for '{config.file}' is already up to date")
+
+    imports: Set[str] = set()
+
+    for ctx in [file_ir.context, *[i.context for i in imports_ir.values()]]:
+        symbols: Iterable[Symbol] = ctx.symbol_table.symbols()
+        for sym in symbols:
+            if not isinstance(sym, Import):
+                continue
+
+            if is_blacklisted_module(sym.module_name):
+                continue
+
+            if sym.module_spec is None or sym.module_spec.origin is None:
+                continue
+
+            if sym.module_spec.origin == "built-in":
+                continue
+
+            imports.add(sym.module_spec.origin)
+
+    create_cache(results, imports, ResultsEncoder)
+
+
 def load_config(arguments: Namespace) -> None:
     """Populate the config with the given arguments."""
     config.follow_imports = arguments.follow_imports
@@ -198,6 +236,8 @@ def load_config(arguments: Namespace) -> None:
     config.filter_string = arguments.filter_string
     config.file = arguments.file
 
+    config.cache = arguments.cache
+
 
 if __name__ == "__main__":
-    main()
+    main(parse_arguments())

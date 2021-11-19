@@ -2,11 +2,15 @@
 
 import ast
 import builtins
+from copy import deepcopy
+import hashlib
+import json
 import re
 
 from contextlib import contextmanager
 from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
+from os.path import isfile
 from string import ascii_lowercase
 from time import perf_counter
 from typing import (
@@ -16,6 +20,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Set,
     Tuple,
     Type,
     Union,
@@ -34,6 +39,7 @@ from ratter.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
     Constant,
+    FileResults,
     FuncOrAsyncFunc,
     FunctionIR,
     Literal,
@@ -1016,3 +1022,97 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
         .replace("()", "")
 
     return Name(pattern.format(first=first, second=second), basename)
+
+
+def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:
+    """Return the hash of the given file, with a default blocksize of 1MiB."""
+    _hash = hashlib.md5()
+
+    if not isfile(filepath):
+        return _hash
+
+    with open(filepath, "rb") as f:
+        while True:
+            buffer = f.read(blocksize)
+
+            if not buffer:
+                break
+
+            _hash.update(buffer)
+
+    return _hash.hexdigest()
+
+
+def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
+    """Return `True` if the cache has the correct hash."""
+    if not isfile(filepath):
+        return False
+
+    if isfile(cache_filepath):
+        with open(cache_filepath, "r") as f:
+            cache: Dict[str, Any] = json.load(f)
+    else:
+        return False
+
+    received_hash = cache.get("filehash", None)
+    expected_hash = get_file_hash(filepath)
+
+    if filepath != cache.get("filepath", None):
+        return False
+
+    if received_hash != expected_hash:
+        return False
+
+    # Check imports
+    for _import in cache.get("imports", dict()):
+        file, hash = _import["filepath"], _import["filehash"]
+        if hash != get_file_hash(file):
+            return False
+
+    return True
+
+
+def create_cache(results: FileResults, imports: Set[str], encoder: json.JSONEncoder) -> None: # noqa
+    """Create a the cache and write it to the cache file.
+
+    NOTE:
+        The attribute `imports` should hold the file name of every directly and
+        indirectly imported source code file.
+
+    Cache file format (JSON):
+    {
+        "filepath": ...,    # the file the results belong to
+        "filehash": ...,    # the MD5 hash of the file when it was cached
+
+        "imports": [
+            {"filename": ..., "filehash": ...,},
+        ]
+
+        "results":
+            # For each function in the file:
+            "function_name": {
+                "sets"  : ["obj.attr", ...],
+                "gets"  : ["obj.attr", ...],
+                "dels"  : ["obj.attr", ...],
+                "calls" : ["obj.attr", ...],
+            },
+            ...
+        }
+    }
+
+    """
+    to_cache = dict()
+
+    to_cache["filepath"] = config.file
+    to_cache["filehash"] = get_file_hash(config.file)
+    to_cache["imports"] = [
+        {
+            "filepath": file,
+            "filehash": get_file_hash(file)
+        }
+        for file in imports
+    ]
+    to_cache["results"] = deepcopy(results)
+
+    with open(config.cache, "w") as f:
+        json.dump(to_cache, f, cls=encoder, indent=4)
