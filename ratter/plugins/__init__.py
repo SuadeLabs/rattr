@@ -42,7 +42,9 @@ class Plugins:
             raise TypeError
 
         if isinstance(module_or_modules, str):
-            modules = {module_or_modules, }
+            modules = {
+                module_or_modules,
+            }
 
         if isinstance(module_or_modules, set):
             modules = module_or_modules

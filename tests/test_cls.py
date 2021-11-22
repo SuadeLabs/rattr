@@ -78,7 +78,7 @@ class TestClassAnalyser:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("SomeClass()", ["@ReturnValue", "arg"], {}, target=cls)    # noqa
+                    Call("SomeClass()", ["@ReturnValue", "arg"], {}, target=cls)
                 },
             },
             cls: {

@@ -9,7 +9,6 @@ from ratter.analyser.util import get_dynamic_name
 
 
 class GetattrAnalyser(CustomFunctionAnalyser):
-
     @property
     def name(self) -> str:
         return "getattr"
@@ -18,7 +17,7 @@ class GetattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "getattr"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
@@ -33,7 +32,6 @@ class GetattrAnalyser(CustomFunctionAnalyser):
 
 
 class SetattrAnalyser(CustomFunctionAnalyser):
-
     @property
     def name(self) -> str:
         return "setattr"
@@ -42,7 +40,7 @@ class SetattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "setattr"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
@@ -57,7 +55,6 @@ class SetattrAnalyser(CustomFunctionAnalyser):
 
 
 class HasattrAnalyser(CustomFunctionAnalyser):
-
     @property
     def name(self) -> str:
         return "hasattr"
@@ -66,7 +63,7 @@ class HasattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "hasattr"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
@@ -81,7 +78,6 @@ class HasattrAnalyser(CustomFunctionAnalyser):
 
 
 class DelattrAnalyser(CustomFunctionAnalyser):
-
     @property
     def name(self) -> str:
         return "delattr"
@@ -90,7 +86,7 @@ class DelattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "delattr"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:

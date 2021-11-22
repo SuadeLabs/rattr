@@ -95,8 +95,7 @@ PYTHON_LITERAL_BUILTINS = {"None", "True", "False", "Ellipsis"}
 PYTHON_ATTR_BUILTINS = {"delattr", "getattr", "hasattr", "setattr"}
 
 # All Python builtins that are present in the `RootContext`
-PYTHON_BUILTINS = set(
-    filter(lambda b: b not in PYTHON_LITERAL_BUILTINS, dir(builtins)))
+PYTHON_BUILTINS = set(filter(lambda b: b not in PYTHON_LITERAL_BUILTINS, dir(builtins)))
 
 
 def get_basename_fullname_pair(
@@ -165,8 +164,10 @@ def get_basename_fullname_pair(
     # Error case
     # node ⊂ Nameable ^ node ⊄ StrictlyNameable
     if safe:
-        return f"{LOCAL_VALUE_PREFIX}{node.__class__.__name__}", \
-               f"{LOCAL_VALUE_PREFIX}{node.__class__.__name__}"
+        return (
+            f"{LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
+            f"{LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
+        )
 
     _error_class: Type[TypeError] = TypeError
     if isinstance(node, ast.UnaryOp):
@@ -264,7 +265,9 @@ def has_affect(builtin: str) -> bool:
     return builtin in PYTHON_ATTR_BUILTINS
 
 
-def get_xattr_obj_name_pair(xattr: str, node: ast.Call, warn: bool = False) -> Tuple[str, str]: # noqa
+def get_xattr_obj_name_pair(
+    xattr: str, node: ast.Call, warn: bool = False
+) -> Tuple[str, str]:
     """Return the object-name pair for a call to getattr, setattr, etc."""
     if len(node.args) < 2:
         error.fatal(f"invalid call to '{xattr}', not enough args", node)
@@ -301,7 +304,7 @@ def get_xattr_obj_name_pair(xattr: str, node: ast.Call, warn: bool = False) -> T
 def get_decorator_name(decorator: ast.expr) -> str:
     """Return name of the given decorator.."""
     if not isinstance(decorator, (ast.Name, ast.Attribute, ast.Call)):
-        raise TypeError("Decorator must be an ast.Name, ast.Attribute, or ast.Call") # noqa
+        raise TypeError("Decorator must be an ast.Name, ast.Attribute, or ast.Call")
 
     return get_basename(decorator)
 
@@ -393,8 +396,7 @@ def safe_eval(expr: ast.expr, culprit: ast.AST) -> Optional[Any]:
 
 
 def parse_annotation(
-    name: str,
-    fn_def: FuncOrAsyncFunc
+    name: str, fn_def: FuncOrAsyncFunc
 ) -> Tuple[List[Any], Dict[str, Any]]:
     """Return the positional and keyword arguments of the annotation."""
     annotation = get_annotation(name, fn_def)
@@ -471,7 +473,7 @@ def is_args(args: Any) -> bool:
     return True
 
 
-def parse_ratter_results_from_annotation(fn_def: AnyFunctionDef, context) -> FunctionIR:  # noqa
+def parse_ratter_results_from_annotation(fn_def: AnyFunctionDef, context) -> FunctionIR:
     """Return the IR for the given function, assuming it is annotated."""
     # Check arguments
     expected = {"sets": set(), "gets": set(), "calls": list(), "dels": set()}
@@ -481,7 +483,7 @@ def parse_ratter_results_from_annotation(fn_def: AnyFunctionDef, context) -> Fun
         error.fatal(
             f"unexpected positional arguments to 'ratter_results'; expected "
             f"none, got {pos_args}",
-            fn_def
+            fn_def,
         )
 
     for name, default in expected.items():
@@ -493,7 +495,7 @@ def parse_ratter_results_from_annotation(fn_def: AnyFunctionDef, context) -> Fun
         error.fatal(
             f"'ratter_results' expects one-or-many of the arguments "
             f"{set(expected.keys())}, found {set(named_args.keys())}",
-            fn_def
+            fn_def,
         )
 
     # Check argument types
@@ -520,19 +522,13 @@ def parse_ratter_results_from_annotation(fn_def: AnyFunctionDef, context) -> Fun
 
     # Parse arguments as IR
     return {
-        "sets": {
-            parse_name(n) for n in named_args.get("sets")
-        },
-        "gets": {
-            parse_name(n) for n in named_args.get("gets")
-        },
-        "dels": {
-            parse_name(n) for n in named_args.get("dels")
-        },
+        "sets": {parse_name(n) for n in named_args.get("sets")},
+        "gets": {parse_name(n) for n in named_args.get("gets")},
+        "dels": {parse_name(n) for n in named_args.get("dels")},
         "calls": {
             parse_call(n, a, context.get_call_target(n, fn_def))
             for n, a in named_args.get("calls")
-        }
+        },
     }
 
 
@@ -550,9 +546,7 @@ def is_blacklisted_module(module: str) -> bool:
 
 def is_pip_module(module: str) -> bool:
     """Return `True` if the given module is pip installed."""
-    pip_install_locations = (
-        ".+/site-packages.*",
-    )
+    pip_install_locations = (".+/site-packages.*",)
 
     try:
         spec = find_spec(module)
@@ -579,13 +573,11 @@ def is_stdlib_module(module: str) -> bool:
     stdlib_patterns = (
         # "math", etc -- not the same builtins as "print", etc
         "built-in",
-
         # Standard install locations
         "/(usr|opt)/(local/)?lib/(pypy|python).*",
         "/(usr|opt)/(local/)?lib/(pypy|python).?/dist-packages.*",
         "/(usr|opt)/(pypy|python)/lib-python.*",
         "/(usr|opt)/pypy/lib_pypy.*",
-
         # GitHub `setup-python` locations
         "/opt/.+/PyPy/.+/lib-python.*",
         "/opt/.+/PyPy/.+/lib_pypy.*",
@@ -626,7 +618,7 @@ def is_in_builtins(name_or_qualified_name: str) -> bool:
 
 
 def get_function_def_args(
-    fn_def: AnyFunctionDef
+    fn_def: AnyFunctionDef,
 ) -> Tuple[List[str], Optional[str], Optional[str]]:
     """Return the arguments in the given function definition."""
     args = list()
@@ -671,7 +663,7 @@ def get_function_call_args(
 
         if expected is None:
             error.fatal(_unsupported.format("dictionary unpacking"), fn_call)
-            return list(), dict()   # Make mypy happy
+            return list(), dict()  # Make mypy happy
 
         kwargs[expected] = get_fullname(got, safe=True)
 
@@ -857,16 +849,11 @@ def module_name_from_file_path(file: str) -> Optional[str]:
 
     # Get possible module names in relevancy order
     parts = module.split(".")
-    dotted_parts = list(
-        chain.from_iterable(zip(parts, ["."] * len(parts))))
-    possible = list(
-        accumulate(reversed(dotted_parts), lambda p0, p1: f"{p1}{p0}"))
-    well_formed = list(
-        filterfalse(lambda p: p.startswith("."), possible))
-    well_formed = list(
-        wf[:-1] for wf in well_formed if len(wf) >= 1)
-    ordered = list(
-        reversed(well_formed))
+    dotted_parts = list(chain.from_iterable(zip(parts, ["."] * len(parts))))
+    possible = list(accumulate(reversed(dotted_parts), lambda p0, p1: f"{p1}{p0}"))
+    well_formed = list(filterfalse(lambda p: p.startswith("."), possible))
+    well_formed = list(wf[:-1] for wf in well_formed if len(wf) >= 1)
+    ordered = list(reversed(well_formed))
 
     for p in [*ordered, None]:
         try:
@@ -920,7 +907,7 @@ def re_filter_ir(d: Dict[Symbol, Any], filter_by: str) -> Dict[str, Any]:
     if not filter_by:
         return d
 
-    return {f: d[f] for f in filter(lambda f: re.fullmatch(filter_by, f.name), d)}  # noqa
+    return {f: d[f] for f in filter(lambda f: re.fullmatch(filter_by, f.name), d)}
 
 
 def re_filter_results(d: Dict[str, Any], filter_by: str) -> Dict[str, Any]:
@@ -938,26 +925,34 @@ def is_excluded_name(name: str) -> bool:
 
 def is_method_on_constant(name: str) -> bool:
     """Return `True` if the name is a call to method on a constant."""
-    return name.startswith(("@Num.", "@Str.", "@Bytes.", "@NameConstant.", ))
+    return name.startswith(
+        (
+            "@Num.",
+            "@Str.",
+            "@Bytes.",
+            "@NameConstant.",
+        )
+    )
 
 
 def is_method_on_cast(name: str) -> bool:
     """Return `True` if the name is a call to a method on a cast."""
     # NOTE All builtin functions return primitives (often `None`), ...
-    builtins = {
-        b for b in PYTHON_BUILTINS if b.startswith((*ascii_lowercase, ))}
+    builtins = {b for b in PYTHON_BUILTINS if b.startswith((*ascii_lowercase,))}
 
     # NOTE ... with the following exceptions
-    builtins = builtins.difference({
-        "eval",
-        "exec",
-        "getattr",
-        "iter",
-        "next",
-        "slice",
-        "super",
-        "type",
-    })
+    builtins = builtins.difference(
+        {
+            "eval",
+            "exec",
+            "getattr",
+            "iter",
+            "next",
+            "slice",
+            "super",
+            "type",
+        }
+    )
 
     # NOTE
     #   Direct call to `<primitive_returner>.method_name()`, do not allow call
@@ -1014,18 +1009,14 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
     Name("obj.sub", "obj")
 
     """
-    first, second = \
-        get_xattr_obj_name_pair(fn_name, node, warn=True)
+    first, second = get_xattr_obj_name_pair(fn_name, node, warn=True)
 
-    basename = first.split(".")[0]\
-        .replace("*",  "")\
-        .replace("[]", "")\
-        .replace("()", "")
+    basename = first.split(".")[0].replace("*", "").replace("[]", "").replace("()", "")
 
     return Name(pattern.format(first=first, second=second), basename)
 
 
-def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:
+def get_file_hash(filepath: str, blocksize: int = 2 ** 20) -> str:
     """Return the hash of the given file, with a default blocksize of 1MiB."""
     _hash = hashlib.md5()
 
@@ -1073,7 +1064,9 @@ def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
     return True
 
 
-def create_cache(results: FileResults, imports: Set[str], encoder: json.JSONEncoder) -> None: # noqa
+def create_cache(
+    results: FileResults, imports: Set[str], encoder: json.JSONEncoder
+) -> None:
     """Create a the cache and write it to the cache file.
 
     NOTE:
@@ -1107,11 +1100,7 @@ def create_cache(results: FileResults, imports: Set[str], encoder: json.JSONEnco
     to_cache["filepath"] = config.file
     to_cache["filehash"] = get_file_hash(config.file)
     to_cache["imports"] = [
-        {
-            "filepath": file,
-            "filehash": get_file_hash(file)
-        }
-        for file in imports
+        {"filepath": file, "filehash": get_file_hash(file)} for file in imports
     ]
     to_cache["results"] = deepcopy(results)
 

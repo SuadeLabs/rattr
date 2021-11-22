@@ -70,8 +70,7 @@ def resolve_function(
     imports_ir: ImportsIR,
     caller: Optional[Func] = None,
 ) -> Union[Tuple[None, None], Tuple[Func, FunctionIR]]:
-    _msg = f"{__prefix(caller)} unable to resolve call to " \
-           f"'{callee.target.name}'"
+    _msg = f"{__prefix(caller)} unable to resolve call to " f"'{callee.target.name}'"
 
     if caller is not None:
         _msg = f"{_msg} in '{caller.name}'"
@@ -101,8 +100,7 @@ def resolve_class(
     try:
         cls, ir = __resolve_target_and_ir(callee, file_ir, imports_ir)
     except ImportError:
-        error.error(
-            f"{_where} unable to resolve initialiser for '{callee.name}'")
+        error.error(f"{_where} unable to resolve initialiser for '{callee.name}'")
         return None, None
 
     return cls, ir
@@ -126,20 +124,21 @@ def resolve_import(
         return None, None
 
     if not config.follow_imports:
-        error.info(
-            f"{_where} ignoring call to imported function '{target.name}'")
+        error.info(f"{_where} ignoring call to imported function '{target.name}'")
         return None, None
 
     if not config.follow_pip_imports and is_pip_module(module):
         error.info(
             f"{_where} ignoring call to function '{target.name}' imported "
-            f"from pip installed module '{module}'")
+            f"from pip installed module '{module}'"
+        )
         return None, None
 
     if not config.follow_stdlib_imports and is_stdlib_module(module):
         error.info(
             f"{_where} ignoring call to function '{target.name}' imported "
-            f"from stdlib module '{module}'")
+            f"from stdlib module '{module}'"
+        )
         return None, None
 
     if module is None:
@@ -148,9 +147,7 @@ def resolve_import(
     if module_ir is None:
         raise ImportError(f"Import '{module}' not found")
 
-    local_name = name \
-        .replace(as_name, qualified_name) \
-        .replace(f"{module}.", "")
+    local_name = name.replace(as_name, qualified_name).replace(f"{module}.", "")
     local_name = remove_call_brackets(local_name)
 
     new_target: Optional[Symbol] = module_ir.context.get(local_name)
@@ -174,8 +171,7 @@ def resolve_import(
     #   When reaching here the target may be a call to a method on an imported
     #   instance
 
-    error.error(
-        f"{__prefix(caller)} unable to resolve call to import '{local_name}'")
+    error.error(f"{__prefix(caller)} unable to resolve call to import '{local_name}'")
     return None, None
 
 
@@ -216,8 +212,7 @@ def partially_unbind_name(symbol: Name, new_basename: str) -> Name:
 
     new_name = symbol.name
     if symbol.name.startswith("*"):
-        new_name = \
-            symbol.name.replace(f"*{symbol.basename}", f"*{new_basename}", 1)
+        new_name = symbol.name.replace(f"*{symbol.basename}", f"*{new_basename}", 1)
     else:
         new_name = symbol.name.replace(symbol.basename, new_basename, 1)
 
@@ -257,7 +252,7 @@ def construct_swap(func: Func, call: Call) -> Dict[str, str]:
 
     for target, replacement in zip(f_args, c_args):
         swaps[target] = replacement
-    f_args = f_args[len(c_args):]
+    f_args = f_args[len(c_args) :]
 
     # Ensure no ambiguities
     for target in swaps.keys():
@@ -284,6 +279,7 @@ def construct_swap(func: Func, call: Call) -> Dict[str, str]:
 @dataclass
 class IrDagNode:
     """Represent a function call for simplification."""
+
     call: Call
     func: Func
     func_ir: FunctionIR
@@ -311,14 +307,16 @@ class IrDagNode:
                 continue
 
             _foc, _foc_ir = get_callee_target(
-                callee, self.file_ir, self.imports_ir, self.func)
+                callee, self.file_ir, self.imports_ir, self.func
+            )
 
             # NOTE Could not find func/init (undef'd, <str>.join(), etc)
             if _foc is None or _foc_ir is None:
                 continue
 
-            self.children.append(IrDagNode(
-                callee, _foc, _foc_ir, self.file_ir, self.imports_ir))
+            self.children.append(
+                IrDagNode(callee, _foc, _foc_ir, self.file_ir, self.imports_ir)
+            )
 
             seen.add(callee)
 
@@ -349,13 +347,10 @@ class IrDagNode:
             swaps = construct_swap(child.func, child.call)
             unbound_child = partially_unbind(child_ir, swaps)
 
-            simplified["sets"] = \
-                simplified["sets"].union(unbound_child["sets"])
+            simplified["sets"] = simplified["sets"].union(unbound_child["sets"])
 
-            simplified["gets"] = \
-                simplified["gets"].union(unbound_child["gets"])
+            simplified["gets"] = simplified["gets"].union(unbound_child["gets"])
 
-            simplified["dels"] = \
-                simplified["dels"].union(unbound_child["dels"])
+            simplified["dels"] = simplified["dels"].union(unbound_child["dels"])
 
         return simplified

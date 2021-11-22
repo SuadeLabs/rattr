@@ -17,13 +17,12 @@ from ratter.analyser.context.symbol import Class, Func, Symbol
 
 Constant = Union[
     ast.Constant,
-
     # Deprecated in Python 3.8, replaced with ast.Constant(..., kind=?)
     ast.Num,
     ast.Str,
     ast.Bytes,
     ast.NameConstant,
-    ast.Ellipsis
+    ast.Ellipsis,
 ]
 
 Literal = Union[
@@ -78,10 +77,7 @@ PythonLiteral = Union[
     bytes,
 ]
 
-FuncOrAsyncFunc = Union[
-    ast.FunctionDef,
-    ast.AsyncFunctionDef
-]
+FuncOrAsyncFunc = Union[ast.FunctionDef, ast.AsyncFunctionDef]
 
 AnyFunctionDef = Union[
     ast.FunctionDef,
@@ -127,11 +123,7 @@ class FileIR:
             return other == self._file_ir
 
         if isinstance(other, FileIR):
-            return (
-                other.context == self.context
-                and
-                other._file_ir == self._file_ir
-            )
+            return other.context == self.context and other._file_ir == self._file_ir
 
         raise TypeError(f"Cannot compare 'FileIR' and '{type(other)}'")
 
@@ -163,6 +155,7 @@ class FileIR:
 
     class JsonEncoder(json.JSONEncoder):
         """JSON encoder for FileIR."""
+
         def default(self, obj):
             if isinstance(obj, set):
                 return list(obj)

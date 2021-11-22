@@ -603,7 +603,7 @@ class TestFunctionAnalyser:
                 "gets": set(),
                 "dels": set(),
                 "calls": {
-                    Call("MyEnum()", ["@ReturnValue", "@Str"], {}, target=MyEnum),  # noqa
+                    Call("MyEnum()", ["@ReturnValue", "@Str"], {}, target=MyEnum),
                 },
             },
             MyEnum: {
@@ -640,7 +640,7 @@ class TestFunctionAnalyser:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("MyEnum()", ["@ReturnValue", "@Str"], {}, target=MyEnum),  # noqa
+                    Call("MyEnum()", ["@ReturnValue", "@Str"], {}, target=MyEnum),
                 },
             },
             MyEnum: {

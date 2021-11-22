@@ -28,23 +28,29 @@ from ratter.analyser.util import (
 )
 from ratter.plugins import plugins
 
-RatterStats = namedtuple("RatterStats", [
-    "parse_time",
-    "root_context_time",
-    "assert_time",
-    "analyse_imports_time",
-    "analyse_file_time",
-    "file_lines",
-    "import_lines",
-    "number_of_imports",
-    "number_of_unique_imports",
-])
+RatterStats = namedtuple(
+    "RatterStats",
+    [
+        "parse_time",
+        "root_context_time",
+        "assert_time",
+        "analyse_imports_time",
+        "analyse_file_time",
+        "file_lines",
+        "import_lines",
+        "number_of_imports",
+        "number_of_unique_imports",
+    ],
+)
 
-ImportStats = namedtuple("ImportStats", [
-    "import_lines",
-    "number_of_imports",
-    "number_of_unique_imports",
-])
+ImportStats = namedtuple(
+    "ImportStats",
+    [
+        "import_lines",
+        "number_of_imports",
+        "number_of_unique_imports",
+    ],
+)
 
 
 def parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
@@ -93,9 +99,7 @@ def __parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
     return file_ir, imports_ir, stats
 
 
-def parse_and_analyse_imports(
-    imports: List[Import]
-) -> Tuple[ImportsIR, ImportStats]:
+def parse_and_analyse_imports(imports: List[Import]) -> Tuple[ImportsIR, ImportStats]:
     """Return the mapping from file name to IR for each import.
 
     Imports are a directed cyclic graph, however, previously analysed files can
@@ -116,8 +120,8 @@ def parse_and_analyse_imports(
             # HACK Can't use isinstance, TODO Resolve BuiltinImporter modules
             if "BuiltinImporter" in str(_i.module_spec.loader):
                 error.error(
-                    f"unable to resolve builtin module '{module_name}'",
-                    badness=0)
+                    f"unable to resolve builtin module '{module_name}'", badness=0
+                )
                 continue
 
             error.fatal(f"unable to resolve import '{_i.qualified_name}'")
@@ -145,8 +149,9 @@ def parse_and_analyse_imports(
         imports_ir[module_name] = _i_ir
 
         # Add the import's imports to the queue
-        _i_imports = list(filter(
-            lambda s: s._is(Import), _i_ctx.symbol_table.symbols()))
+        _i_imports = list(
+            filter(lambda s: s._is(Import), _i_ctx.symbol_table.symbols())
+        )
         imports += _i_imports
 
         n_lines += file_lines
@@ -182,14 +187,13 @@ class FileAnalyser(NodeVisitor):
         fn: Func = self.context.get(node.name)
 
         if has_annotation("ratter_results", node):
-            self.file_ir[fn] = \
-                parse_ratter_results_from_annotation(node, self.context)
+            self.file_ir[fn] = parse_ratter_results_from_annotation(node, self.context)
             return
 
-        if plugins.custom_function_handler.has_analyser(node.name, self.context):   # noqa
-            self.file_ir[fn] = plugins.custom_function_handler \
-                .get(node.name, self.context) \
-                .on_def(node.name, node, self.context)
+        if plugins.custom_function_handler.has_analyser(node.name, self.context):
+            self.file_ir[fn] = plugins.custom_function_handler.get(
+                node.name, self.context
+            ).on_def(node.name, node, self.context)
             return
 
         self.file_ir[fn] = FunctionAnalyser(node, self.context).analyse()

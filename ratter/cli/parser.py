@@ -28,7 +28,8 @@ def parse_arguments() -> Namespace:
     """
     parser: ArgumentParser = argparse.ArgumentParser(
         prog="ratter",
-        description=multi_paragraph_wrap("""\
+        description=multi_paragraph_wrap(
+            """\
             Parse a given Python 3 file to find the attributes used in each
             function.
 
@@ -37,17 +38,21 @@ def parse_arguments() -> Namespace:
             regular expression.
 
             Uses Python's regular expression syntax.
-        """),
-        epilog=multi_paragraph_wrap("""\
+            """
+        ),
+        epilog=multi_paragraph_wrap(
+            """\
             Made with ❤️ by Suade Labs.
-        """),
+            """
+        ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
     # Version
     version_group = parser.add_argument_group()
     version_group.add_argument(
-        "-v", "--version",
+        "-v",
+        "--version",
         action="version",
         version="%(prog)s 1.0.0",
     )
@@ -86,7 +91,6 @@ def parse_arguments() -> Namespace:
 
 
 class ArgumentGroupParser(ABC):
-
     @abstractstaticmethod
     def register(parser: ArgumentParser) -> ArgumentParser:
         return parser
@@ -97,22 +101,24 @@ class ArgumentGroupParser(ABC):
 
 
 class FollowImports(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         follow_imports_group = parser.add_argument_group()
         follow_imports_group.add_argument(
-            "-f", "--follow-imports",
+            "-f",
+            "--follow-imports",
             default=1,
             type=int,
             choices=[0, 1, 2, 3],
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 >follow imports level meanings:
                 >    0 - do not follow imports
-                >    1 - follow imports to local modules \033[1m(default)\033[0m        # noqa
+                >    1 - follow imports to local modules \033[1m(default)\033[0m
                 >    2 - follow imports to local and pip installed modules
-                >    3 - follow imports to local, pip installed, and stdlib modules     # noqa
-                >NB: following stdlib imports when using CPython will cause issues      # noqa
-            """),
+                >    3 - follow imports to local, pip installed, and stdlib modules
+                >NB: following stdlib imports when using CPython will cause issues
+                """
+            ),
         )
 
         return parser
@@ -125,17 +131,19 @@ class FollowImports(ArgumentGroupParser):
 
 
 class ExcludeImports(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         exclude_imports_group = parser.add_argument_group()
         exclude_imports_group.add_argument(
-            "-F", "--exclude-import",
+            "-F",
+            "--exclude-import",
             action="append",
             type=str,
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 do not follow imports to modules matching the given pattern,
                 regardless of the level of \033[1m-f\033[0m
-            """),
+                """
+            ),
             metavar="PATTERN",
         )
 
@@ -149,17 +157,19 @@ class ExcludeImports(ArgumentGroupParser):
 
 
 class ExcludePatterns(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         exclude_patterns_group = parser.add_argument_group()
         exclude_patterns_group.add_argument(
-            "-x", "--exclude",
+            "-x",
+            "--exclude",
             action="append",
             type=str,
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 exclude functions and classes matching the given regular
                 expression from being analysed
-            """),
+                """
+            ),
             metavar="PATTERN",
         )
 
@@ -173,23 +183,25 @@ class ExcludePatterns(ArgumentGroupParser):
 
 
 class ShowWarnings(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         # TODO rename: all -> default, ALL -> all
         show_warnings_group = parser.add_argument_group()
         show_warnings_group.add_argument(
-            "-w", "--show-warnings",
+            "-w",
+            "--show-warnings",
             default="all",
             type=str,
             choices=["none", "file", "all", "ALL"],
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 >show warnings level meaning:
                 >    none - do not show warnings
                 >    file - show warnings for <file>
                 >    all  - show warnings for all files \033[1m(default)\033[0m
                 >    All  - show warnings for all files, including low-priority
                 >NB: errors and fatal errors are always shown
-            """),
+                """
+            ),
         )
 
         return parser
@@ -199,21 +211,23 @@ class ShowWarnings(ArgumentGroupParser):
 
 
 class ShowPath(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         show_path_group = parser.add_argument_group()
         show_path_group.add_argument(
-            "-p", "--show-path",
+            "-p",
+            "--show-path",
             default="short",
             type=str,
             choices=["none", "short", "full"],
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 >show path level meaning:
                 >    none  - do not show the file path in errors/warnings
                 >    short - show an abbreviated path \033[1m(default)\033[0m
                 >    full  - show the full path
-                >E.g.: "/home/user/very/deep/dir/path/file" becomes "~/.../dir/path/file"   # noqa
-            """),
+                >E.g.: "/home/user/very/deep/dir/path/file" becomes "~/.../dir/path/file"  # noqa
+                """
+            ),
         )
 
         return parser
@@ -223,24 +237,27 @@ class ShowPath(ArgumentGroupParser):
 
 
 class StrictOrPermissive(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         strict_or_permissive_group = parser.add_argument_group()
-        strict_or_permissive_mutex_group = \
+        strict_or_permissive_mutex_group = (
             strict_or_permissive_group.add_mutually_exclusive_group()
+        )
 
         strict_or_permissive_mutex_group.add_argument(
             "--strict",
             action="store_true",
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 run ratter in strict mode, i.e. fail on any error
-            """),
+                """
+            ),
         )
         strict_or_permissive_mutex_group.add_argument(
             "--permissive",
             default=0,
             type=int,
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 run ratter in permissive mode, with the given badness threshold
                 (when threshold is zero or omitted, it is taken as infinite)
                 \033[1m(default: --permissive 0 when group omitted)\033[0m
@@ -253,7 +270,8 @@ class StrictOrPermissive(ArgumentGroupParser):
 
                 NB: badness is only contributed to by the target <file> and by
                 the simplification stage (e.g. resolving function calls, etc).
-            """),
+                """
+            ),
             metavar="THRESHOLD",
         )
 
@@ -268,49 +286,61 @@ class StrictOrPermissive(ArgumentGroupParser):
             arguments.permissive = False
 
         if arguments.threshold < 0:
-            raise ArgumentError(None, "--permissive THRESHOLD must be positive")    # noqa
+            raise ArgumentError(None, "--permissive THRESHOLD must be positive")
 
         return arguments
 
 
 class Output(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         output_group = parser.add_argument_group()
         output_group.add_argument(
-            "-i", "--show-ir",
-            action='store_true',
-            help=multi_paragraph_wrap("""\
+            "-i",
+            "--show-ir",
+            action="store_true",
+            help=multi_paragraph_wrap(
+                """\
                 show the IR for the file and imports
-            """),
+                """
+            ),
         )
         output_group.add_argument(
-            "-r", "--show-results",
-            action='store_true',
-            help=multi_paragraph_wrap("""\
+            "-r",
+            "--show-results",
+            action="store_true",
+            help=multi_paragraph_wrap(
+                """\
                 show the results of analysis
-            """),
+                """
+            ),
         )
         output_group.add_argument(
-            "-s", "--show-stats",
-            action='store_true',
-            help=multi_paragraph_wrap("""\
+            "-s",
+            "--show-stats",
+            action="store_true",
+            help=multi_paragraph_wrap(
+                """\
                 show stats Ratter statisitics
-            """),
+                """
+            ),
         )
         output_group.add_argument(
-            "-S", "--silent",
-            action='store_true',
-            help=multi_paragraph_wrap("""\
+            "-S",
+            "--silent",
+            action="store_true",
+            help=multi_paragraph_wrap(
+                """\
                 show only errors and warnings
-            """),
+                """
+            ),
         )
 
         return parser
 
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
-        has_output = any((
-            arguments.show_ir, arguments.show_results, arguments.show_stats))
+        has_output = any(
+            (arguments.show_ir, arguments.show_results, arguments.show_stats)
+        )
 
         # Output group mutual exclusion
         # [ [-irs] | -S ]
@@ -325,7 +355,6 @@ class Output(ArgumentGroupParser):
 
 
 class FilterString(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         filter_string_group = parser.add_argument_group()
         filter_string_group.add_argument(
@@ -333,10 +362,12 @@ class FilterString(ArgumentGroupParser):
             nargs="?",
             default="",
             type=str,
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 filter the output to functions matching the given regular
                 expression
-            """),
+                """
+            ),
             metavar="<filter-string>",
         )
 
@@ -350,16 +381,17 @@ class FilterString(ArgumentGroupParser):
 
 
 class File(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         file_group = parser.add_argument_group()
         file_group.add_argument(
             "file",
             nargs=1,
             type=str,
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 the Python source file to analyse
-            """),
+                """
+            ),
             metavar="<file>",
         )
 
@@ -382,16 +414,17 @@ class File(ArgumentGroupParser):
 
 
 class Cache(ArgumentGroupParser):
-
     def register(parser: ArgumentParser) -> ArgumentParser:
         cache_group = parser.add_argument_group()
         cache_group.add_argument(
             "--cache",
             default="",
             type=str,
-            help=multi_paragraph_wrap("""\
+            help=multi_paragraph_wrap(
+                """\
                 the file to cache the results to, if successful
-            """),
+                """
+            ),
         )
 
         return parser
@@ -401,7 +434,7 @@ class Cache(ArgumentGroupParser):
         _, ext = splitext(f)
 
         if isfile(f):
-            error.ratter(f"'{f}' already exists and will be overwritten on success")    # noqa
+            error.ratter(f"'{f}' already exists and will be overwritten on success")
 
         if f != "" and ext != ".json":
             error.ratter(f"cache expects extension '.json', got '{ext}'")

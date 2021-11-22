@@ -13,18 +13,11 @@ from ratter.analyser.util import (
 
 
 class ImportClobberingAssertor(Assertor):
-
     def __clobbered(self, name: str, node: ast.AST) -> None:
-        self.failed(
-            f"redefinition of imported name '{name}'",
-            node
-        )
+        self.failed(f"redefinition of imported name '{name}'", node)
 
     def __deleted(self, name: str, node: ast.AST) -> None:
-        self.failed(
-            f"attempt to delete imported name '{name}'",
-            node
-        )
+        self.failed(f"attempt to delete imported name '{name}'", node)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         names = [n for t in node.targets for n in unravel_names(t)]

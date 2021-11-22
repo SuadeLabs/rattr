@@ -19,7 +19,7 @@ class ResultsEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResults: # noqa
+def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResults:
     """Generate the final results from the given IR.
 
     Removing cycles:

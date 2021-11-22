@@ -1,4 +1,4 @@
-from ratter.error.error import (  # noqa; NOTE Utils, shouldn't really be used but are exposed just in case
+from ratter.error.error import (  # noqa
     RatterBinOpInNameable,
     RatterComprehensionInNameable,
     RatterConstantInNameable,

@@ -71,7 +71,7 @@ class TestIrDag_Utils:
         fake_call = Call("not_a_real_function()", [], {})
         assert get_callee_target(fake_call, file_ir, {}) == (None, None)
 
-    def test_get_callee_target_imported_function(self, file_ir_from_dict, capfd):  # noqa
+    def test_get_callee_target_imported_function(self, file_ir_from_dict, capfd):
         # TODO Imported class/method
         fn = Func("fn", [], None, None)
         fn_ir = {
@@ -429,7 +429,7 @@ class TestIrDagNode:
     #     output, _ = capfd.readouterr()
 
     #     assert "unable to resolve call to 'some_undefined_func'" in output
-    #     assert "unable to resolve call to 'some_other_undefined_func'" in output  # noqa
+    #     assert "unable to resolve call to 'some_other_undefined_func'" in output
 
     def test_populate_on_stdlib(self, capfd):
         fn_a = Func("fn_a", ["a"], None, None)

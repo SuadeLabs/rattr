@@ -412,7 +412,7 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "print"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         return {
             "sets": {
                 Name("set_in_print_def"),
@@ -428,7 +428,7 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
             },
         }
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:       # noqa
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
         return {
             "sets": {
                 Name("set_in_print"),
@@ -460,7 +460,7 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "module.example"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         return {
             "sets": {
                 Name("set_in_example_def"),
@@ -476,7 +476,7 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
             },
         }
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:       # noqa
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
         return {
             "sets": {
                 Name("set_in_example"),

@@ -127,16 +127,15 @@ class Context:
 
         return self.symbol_table.get(name) or self.parent.get(name)
 
-    def get_call_target(self, callee: str, culprit: ast.Call, warn: bool = True) -> Optional[Symbol]: # noqa
+    def get_call_target(
+        self, callee: str, culprit: ast.Call, warn: bool = True
+    ) -> Optional[Symbol]:
         """Return the target of the given AST call, if within the context."""
         if not isinstance(callee, str) or not callee.endswith("()"):
             raise ValueError("'callee' must a string ending with '()'")
 
         name = remove_call_brackets(callee).replace("*", "")
-        stripped = name\
-            .replace("*",  "")\
-            .replace("[]", "")\
-            .replace("()", "")
+        stripped = name.replace("*", "").replace("[]", "").replace("()", "")
 
         if stripped.startswith("@"):
             return None
@@ -173,17 +172,16 @@ class Context:
         #   If it is an argument, then it is either a procedural parameter or a
         #   call to a method on an argument; distinguished by "." being in the
         #   callee name.
-        if warn and target is not None and not isinstance(target, CallTarget.__args__): # noqa
+        if warn and target is not None and not isinstance(target, CallTarget.__args__):
             if "." not in callee and self.declares(target.name):
                 error.error(
                     f"unable to resolve call to '{name}', likely a procedural "
                     f"parameter",
-                    culprit
+                    culprit,
                 )
             elif "." in callee:
                 # TODO Once method support is added, elevate this to an error
-                error.info(
-                    f"unable to resolve call to method '{name}'", culprit)
+                error.info(f"unable to resolve call to method '{name}'", culprit)
             else:
                 error.error(f"'{name}' is not callable", culprit)
 
@@ -317,18 +315,18 @@ class RootContext(Context):
     """
 
     module_level_attributes = [
-        '__annotations__',
-        '__builtins__',
-        '__cached__',
-        '__doc__',
-        '__file__',
-        '__loader__',
-        '__name__',
-        '__package__',
-        '__spec__'
+        "__annotations__",
+        "__builtins__",
+        "__cached__",
+        "__doc__",
+        "__file__",
+        "__loader__",
+        "__name__",
+        "__package__",
+        "__spec__",
     ]
 
-    def __new__(self, module: ast.Module) -> Any:   # Context, make mypy happy
+    def __new__(self, module: ast.Module) -> Any:  # Context, make mypy happy
         if not isinstance(module, ast.Module):
             raise TypeError("The root context can only exist for a module")
 
@@ -383,17 +381,16 @@ class RootContext(Context):
 
         for module in node.names:
             _import = _new_import_symbol(
-                module.asname or module.name,
-                module.name,
-                module.name,
-                node
+                module.asname or module.name, module.name, module.name, node
             )
             self.add(_import)
 
     def register_starred_import(self, node: ast.ImportFrom) -> None:
         """Helper method for starred imports."""
         if self.file is None or not self.file.endswith("__init__.py"):
-            error.warning(f"do not use 'from {node.module} import *', be explicit", node)   # noqa
+            error.warning(
+                f"do not use 'from {node.module} import *', be explicit", node
+            )
 
         module = node.module
 
@@ -421,10 +418,7 @@ class RootContext(Context):
 
         for target in node.names:
             _import = _new_import_symbol(
-                target.asname or target.name,
-                f"{module}.{target.name}",
-                module,
-                node
+                target.asname or target.name, f"{module}.{target.name}", module, node
             )
             self.add(_import)
 
@@ -435,7 +429,7 @@ class RootContext(Context):
                 target.asname or target.name,
                 f"{node.module}.{target.name}",
                 node.module,
-                node
+                node,
             )
             self.add(_import)
 
@@ -493,7 +487,7 @@ class RootContext(Context):
             "avoid 'del' at module-level, Ratter will assume the target has "
             "been removed before reaching any child context (functions, "
             "classes, etc)",
-            node
+            node,
         )
 
     # ----------------------------------------------------------------------- #

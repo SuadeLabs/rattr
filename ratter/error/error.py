@@ -19,17 +19,17 @@ __LINE_INFO = "\033[1mline {}:{}: \033[0m"
 
 
 class Level(Enum):
-    RATTER = "\033[34;1mratter\033[0m"      # Blue
-    INFO = "\033[33;1minfo\033[0m"          # Yellow / Orange
-    WARNING = "\033[33;1mwarning\033[0m"    # Yellow / Orange
-    ERROR = "\033[31;1merror\033[0m"        # Red
-    FATAL = "\033[31;1mfatal\033[0m"        # Red
+    RATTER = "\033[34;1mratter\033[0m"  # Blue
+    INFO = "\033[33;1minfo\033[0m"  # Yellow / Orange
+    WARNING = "\033[33;1mwarning\033[0m"  # Yellow / Orange
+    ERROR = "\033[31;1merror\033[0m"  # Red
+    FATAL = "\033[31;1mfatal\033[0m"  # Red
 
 
 def ratter(
     message: str,
     culprit: Optional[ast.AST] = None,
-    badness: int = 0,   # noqa
+    badness: int = 0,  # noqa
 ) -> None:
     """Log a message with the prefix "ratter", not for analyser errors."""
     __log(Level.RATTER, message, culprit)
@@ -89,7 +89,7 @@ def error(
 def fatal(
     message: str,
     culprit: Optional[ast.AST] = None,
-    badness: int = 0,   # noqa
+    badness: int = 0,  # noqa
 ) -> None:
     """Log a fatal error and, if given, include culprit line and file info.
 
@@ -135,31 +135,37 @@ def is_within_badness_threshold() -> bool:
 
 class RatterUnsupportedError(Exception):
     """Language feature is unsupported by Ratter."""
+
     pass
 
 
 class RatterUnaryOpInNameable(TypeError):
     """Unary operation found when resolving name."""
+
     pass
 
 
 class RatterBinOpInNameable(TypeError):
     """Binary operation found when resolving name."""
+
     pass
 
 
 class RatterConstantInNameable(TypeError):
     """Constant found when resolving name."""
+
     pass
 
 
 class RatterLiteralInNameable(TypeError):
     """Literal found when resolving name."""
+
     pass
 
 
 class RatterComprehensionInNameable(TypeError):
     """Comprehension found when resolving name."""
+
     pass
 
 
@@ -238,12 +244,14 @@ def __log(
 ) -> None:
     file_info, line_info = get_file_and_line_info(culprit)
 
-    print(__ERROR.format(
-        prefix=level.value,
-        optional_file_info=file_info,
-        optional_line_info=line_info,
-        message=message,
-    ))
+    print(
+        __ERROR.format(
+            prefix=level.value,
+            optional_file_info=file_info,
+            optional_line_info=line_info,
+            message=message,
+        )
+    )
 
 
 def __increment_badness(badness: int) -> None:

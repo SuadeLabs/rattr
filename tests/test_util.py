@@ -822,7 +822,7 @@ class TestUtil:
         assert not is_stdlib_module("ratter")
         assert not is_stdlib_module("ratter.analyser.context")
         assert not is_stdlib_module("ratter.analyser.context.context")
-        assert not is_stdlib_module("ratter.analyser.context.context.Context") # noqa
+        assert not is_stdlib_module("ratter.analyser.context.context.Context")
 
     def test_is_in_stdlib(self, stdlib_modules):
         for m in stdlib_modules:
@@ -1185,7 +1185,7 @@ class TestUtil:
 
         assert result == expected
 
-        call = ast.parse("get_sub_attr(get_sub_attr(o, 'in'), 'out')").body[0].value # noqa
+        call = ast.parse("get_sub_attr(get_sub_attr(o, 'in'), 'out')").body[0].value
         result = get_dynamic_name("get_sub_attr", call, "{first}.mid.{second}")
         expected = Name("o.in.mid.out", "o")
 
@@ -1197,7 +1197,7 @@ class TestUtil:
 
         assert result == expected
 
-        call = ast.parse("getattr(another_function(a, 'b'), 'c')").body[0].value # noqa
+        call = ast.parse("getattr(another_function(a, 'b'), 'c')").body[0].value
         with mock.patch("sys.exit") as _exit:
             result = get_dynamic_name("getattr", call, "{first}.{second}")
 
