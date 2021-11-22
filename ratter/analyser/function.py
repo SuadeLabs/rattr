@@ -13,7 +13,7 @@ from ratter.analyser.context import (
     Func,
     Name,
     Symbol,
-    new_context
+    new_context,
 )
 from ratter.analyser.types import (
     AnyAssign,
@@ -21,7 +21,7 @@ from ratter.analyser.types import (
     CompoundStrictlyNameable,
     FunctionIR,
     Nameable,
-    StrictlyNameable
+    StrictlyNameable,
 )
 from ratter.analyser.util import (
     LOCAL_VALUE_PREFIX,
@@ -37,7 +37,7 @@ from ratter.analyser.util import (
     get_function_def_args,
     is_call_to,
     lambda_in_rhs,
-    remove_call_brackets
+    remove_call_brackets,
 )
 from ratter.plugins import plugins
 

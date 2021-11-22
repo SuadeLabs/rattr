@@ -14,5 +14,5 @@ from ratter.error.error import (  # noqa; NOTE Utils, shouldn't really be used b
     is_within_badness_threshold,
     ratter,
     split_path,
-    warning
+    warning,
 )

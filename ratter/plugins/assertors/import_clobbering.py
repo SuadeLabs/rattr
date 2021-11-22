@@ -8,7 +8,7 @@ from ratter.analyser.types import AnyFunctionDef, Comprehension
 from ratter.analyser.util import (
     get_function_def_args,
     has_annotation,
-    unravel_names
+    unravel_names,
 )
 
 

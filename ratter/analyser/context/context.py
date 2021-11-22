@@ -23,7 +23,7 @@ from ratter.analyser.context.symbol import (
     Name,
     Symbol,
     get_module_name_and_spec,
-    get_possible_module_names
+    get_possible_module_names,
 )
 from ratter.analyser.context.symbol_table import SymbolTable
 from ratter.analyser.types import AnyAssign, Constant, Literal
@@ -44,7 +44,7 @@ from ratter.analyser.util import (
     lambda_in_rhs,
     module_name_from_file_path,
     remove_call_brackets,
-    unravel_names
+    unravel_names,
 )
 
 _Context = TypeVar("_Context", bound="Context")

@@ -22,7 +22,7 @@ from typing import (
     Set,
     Tuple,
     Type,
-    Union
+    Union,
 )
 
 from ratter import config, error
@@ -33,7 +33,7 @@ from ratter.analyser.context.symbol import (
     Name,
     Symbol,
     parse_call,
-    parse_name
+    parse_name,
 )
 from ratter.analyser.types import (
     AnyAssign,
@@ -46,7 +46,7 @@ from ratter.analyser.types import (
     FunctionIR,
     Literal,
     Nameable,
-    StrictlyNameable
+    StrictlyNameable,
 )
 
 # The prefix given to local constants, literals, etc to produce a name

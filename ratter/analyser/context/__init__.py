@@ -7,6 +7,6 @@ from ratter.analyser.context.symbol import (  # noqa: F401
     Func,
     Import,
     Name,
-    Symbol
+    Symbol,
 )
 from ratter.analyser.context.symbol_table import SymbolTable  # noqa: F401

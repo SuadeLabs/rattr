@@ -15,7 +15,7 @@ from ratter.analyser.util import (
     create_cache,
     is_blacklisted_module,
     re_filter_ir,
-    re_filter_results
+    re_filter_results,
 )
 from ratter.cli import Namespace, parse_arguments
 

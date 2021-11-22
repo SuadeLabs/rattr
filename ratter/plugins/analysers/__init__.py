@@ -2,7 +2,7 @@ from ratter.plugins.analysers.builtins import (
     DelattrAnalyser,
     GetattrAnalyser,
     HasattrAnalyser,
-    SetattrAnalyser
+    SetattrAnalyser,
 )
 
 BUILTIN_FUNCTION_ANALYSERS = (

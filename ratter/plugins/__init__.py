@@ -4,7 +4,7 @@ from typing import List, Set, Union
 from ratter.analyser.base import (
     Assertor,
     CustomFunctionAnalyser,
-    CustomFunctionHandler
+    CustomFunctionHandler,
 )
 from ratter.analyser.util import MODULE_BLACKLIST_PATTERNS
 from ratter.plugins.analysers import BUILTIN_FUNCTION_ANALYSERS as BUILTINS

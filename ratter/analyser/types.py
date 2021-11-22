@@ -10,7 +10,7 @@ from typing import (
     Optional,
     Set,
     Union,
-    ValuesView
+    ValuesView,
 )
 
 from ratter.analyser.context.symbol import Class, Func, Symbol

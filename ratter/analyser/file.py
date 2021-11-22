@@ -24,7 +24,7 @@ from ratter.analyser.util import (
     lambda_in_rhs,
     parse_ratter_results_from_annotation,
     read,
-    timer
+    timer,
 )
 from ratter.plugins import plugins
 

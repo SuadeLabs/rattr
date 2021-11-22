@@ -16,14 +16,14 @@ from ratter.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
     ClassIR,
-    FunctionIR
+    FunctionIR,
 )
 from ratter.analyser.util import (
     get_assignment_targets,
     get_fullname,
     get_function_def_args,
     has_annotation,
-    unravel_names
+    unravel_names,
 )
 
 
