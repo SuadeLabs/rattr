@@ -1,5 +1,8 @@
 from ratter.analyser.context.context import Context  # noqa: F401
-from ratter.analyser.context.context import RootContext, new_context  # noqa: F401
+from ratter.analyser.context.context import (  # noqa: F401
+    RootContext,
+    new_context,
+)
 from ratter.analyser.context.symbol import (  # noqa: F401
     Builtin,
     Call,
