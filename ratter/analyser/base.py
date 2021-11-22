@@ -1,9 +1,8 @@
 """Base classes for Ratter components."""
 
 import ast
-from ast import NodeVisitor, NodeTransformer    # noqa: F401
-
 from abc import ABCMeta, abstractmethod, abstractproperty
+from ast import NodeTransformer, NodeVisitor  # noqa: F401
 from itertools import product
 from typing import Dict, List, Optional
 

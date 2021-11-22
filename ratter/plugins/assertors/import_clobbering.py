@@ -1,15 +1,14 @@
 """Assert that there are no assignment to names that identify imports."""
 
 import ast
-
 from typing import Union
 
 from ratter.analyser.base import Assertor
 from ratter.analyser.types import AnyFunctionDef, Comprehension
 from ratter.analyser.util import (
-    has_annotation,
-    unravel_names,
     get_function_def_args,
+    has_annotation,
+    unravel_names
 )
 
 

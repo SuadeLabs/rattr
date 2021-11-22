@@ -1,7 +1,6 @@
 """Ratter file analyser."""
 
 import ast
-
 from collections import namedtuple
 from copy import deepcopy
 from typing import List, NamedTuple, Set, Tuple
@@ -9,7 +8,7 @@ from typing import List, NamedTuple, Set, Tuple
 from ratter import config, error
 from ratter.analyser.base import NodeVisitor
 from ratter.analyser.cls import ClassAnalyser
-from ratter.analyser.context import Context, RootContext, Import, Func
+from ratter.analyser.context import Context, Func, Import, RootContext
 from ratter.analyser.function import FunctionAnalyser
 from ratter.analyser.types import AnyAssign, AnyFunctionDef, FileIR, ImportsIR
 from ratter.analyser.util import (
@@ -25,11 +24,9 @@ from ratter.analyser.util import (
     lambda_in_rhs,
     parse_ratter_results_from_annotation,
     read,
-    timer,
+    timer
 )
-
 from ratter.plugins import plugins
-
 
 RatterStats = namedtuple("RatterStats", [
     "parse_time",

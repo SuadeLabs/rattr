@@ -1,5 +1,4 @@
 import argparse
-
 from abc import ABC, abstractstaticmethod
 from argparse import ArgumentError, ArgumentParser, Namespace
 from os.path import isfile, splitext

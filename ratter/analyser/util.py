@@ -2,12 +2,11 @@
 
 import ast
 import builtins
-from copy import deepcopy
 import hashlib
 import json
 import re
-
 from contextlib import contextmanager
+from copy import deepcopy
 from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
 from os.path import isfile
@@ -23,34 +22,32 @@ from typing import (
     Set,
     Tuple,
     Type,
-    Union,
+    Union
 )
 
 from ratter import config, error
+from ratter.analyser.context.symbol import get_possible_module_names  # noqa
 from ratter.analyser.context.symbol import (
     Class,
     Import,
     Name,
     Symbol,
     parse_call,
-    parse_name,
+    parse_name
 )
 from ratter.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
+    AstDef,
+    Comprehension,
     Constant,
     FileResults,
     FuncOrAsyncFunc,
     FunctionIR,
     Literal,
-    Comprehension,
     Nameable,
-    StrictlyNameable,
-    AstDef,
+    StrictlyNameable
 )
-
-from ratter.analyser.context.symbol import get_possible_module_names    # noqa
-
 
 # The prefix given to local constants, literals, etc to produce a name
 # E.g. "hi" -> get_basename_fullname_pair(.) = "@Str"

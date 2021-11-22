@@ -6,7 +6,6 @@ are rather limited.
 """
 
 import ast
-
 from typing import List
 
 from ratter.analyser.base import NodeVisitor
@@ -24,7 +23,7 @@ from ratter.analyser.util import (
     get_fullname,
     get_function_def_args,
     has_annotation,
-    unravel_names,
+    unravel_names
 )
 
 

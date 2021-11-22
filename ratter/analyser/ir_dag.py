@@ -6,13 +6,13 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 from ratter import config, error
 from ratter.analyser.context import (
-    Func,
+    Builtin,
     Call,
     Class,
-    Name,
-    Builtin,
+    Func,
     Import,
-    Symbol,
+    Name,
+    Symbol
 )
 from ratter.analyser.types import FileIR, FunctionIR, ImportsIR
 from ratter.analyser.util import (
@@ -21,7 +21,7 @@ from ratter.analyser.util import (
     is_pip_module,
     is_stdlib_module,
     module_name_from_file_path,
-    remove_call_brackets,
+    remove_call_brackets
 )
 
 

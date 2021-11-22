@@ -2,7 +2,6 @@
 
 import ast
 import json
-
 from typing import (
     Dict,
     ItemsView,
@@ -11,12 +10,10 @@ from typing import (
     Optional,
     Set,
     Union,
-    ValuesView,
+    ValuesView
 )
 
-from ratter.analyser.context.symbol import Class
-from ratter.analyser.context.symbol import Func, Symbol
-
+from ratter.analyser.context.symbol import Class, Func, Symbol
 
 Constant = Union[
     ast.Constant,

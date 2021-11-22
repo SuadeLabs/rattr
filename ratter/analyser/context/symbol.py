@@ -8,9 +8,9 @@ Symbol `name` is the Python `_identifier` for the given symbol.
 """
 
 from dataclasses import dataclass
-from itertools import accumulate, chain, filterfalse
 from importlib.machinery import ModuleSpec
 from importlib.util import find_spec
+from itertools import accumulate, chain, filterfalse
 from typing import Dict, List, Optional, Tuple, Union
 
 from ratter import config

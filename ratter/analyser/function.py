@@ -1,28 +1,27 @@
 """Ratter function analyser."""
 
 import ast
-
 from itertools import accumulate
 from typing import List, Optional, Tuple
 
 from ratter import error
 from ratter.analyser.base import NodeVisitor
 from ratter.analyser.context import (
-    Context,
-    new_context,
     Call,
     Class,
+    Context,
     Func,
     Name,
     Symbol,
+    new_context
 )
 from ratter.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
     CompoundStrictlyNameable,
-    Nameable,
     FunctionIR,
-    StrictlyNameable,
+    Nameable,
+    StrictlyNameable
 )
 from ratter.analyser.util import (
     LOCAL_VALUE_PREFIX,
@@ -38,9 +37,8 @@ from ratter.analyser.util import (
     get_function_def_args,
     is_call_to,
     lambda_in_rhs,
-    remove_call_brackets,
+    remove_call_brackets
 )
-
 from ratter.plugins import plugins
 
 

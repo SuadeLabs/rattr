@@ -2,13 +2,11 @@
 
 import ast
 import sys
-
 from enum import Enum
 from os.path import expanduser
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 
 from ratter import config
-
 
 __ERROR = "{prefix}: {optional_file_info}{optional_line_info}{message}"
 __FILE_INFO = "\033[1m{}: \033[0m"

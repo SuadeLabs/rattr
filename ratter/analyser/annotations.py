@@ -2,7 +2,6 @@
 
 from typing import Dict, List, Optional, Set, Tuple
 
-
 # A set of names, e.g.: "@BinOp", "x.attr", "var_one"
 Names = Set[str]
 

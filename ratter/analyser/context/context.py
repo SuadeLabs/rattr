@@ -10,31 +10,10 @@ functions such as `print`, etc.
 """
 
 import ast
-
 from contextlib import contextmanager
 from typing import Any, Generator, Iterable, Optional, Set, TypeVar, Union
 
 from ratter import config, error
-from ratter.analyser.types import AnyAssign, Constant, Literal
-from ratter.analyser.util import (
-    PYTHON_BUILTINS,
-    assignment_is_one_to_one,
-    enter_file,
-    get_absolute_module_name,
-    get_assignment_targets,
-    get_fullname,
-    get_starred_imports,
-    has_affect,
-    is_blacklisted_module,
-    is_method_on_primitive,
-    is_relative_import,
-    is_starred_import,
-    lambda_in_rhs,
-    module_name_from_file_path,
-    remove_call_brackets,
-    unravel_names,
-    get_function_def_args,
-)
 from ratter.analyser.context.symbol import (
     Builtin,
     CallTarget,
@@ -47,7 +26,26 @@ from ratter.analyser.context.symbol import (
     get_possible_module_names
 )
 from ratter.analyser.context.symbol_table import SymbolTable
-
+from ratter.analyser.types import AnyAssign, Constant, Literal
+from ratter.analyser.util import (
+    PYTHON_BUILTINS,
+    assignment_is_one_to_one,
+    enter_file,
+    get_absolute_module_name,
+    get_assignment_targets,
+    get_fullname,
+    get_function_def_args,
+    get_starred_imports,
+    has_affect,
+    is_blacklisted_module,
+    is_method_on_primitive,
+    is_relative_import,
+    is_starred_import,
+    lambda_in_rhs,
+    module_name_from_file_path,
+    remove_call_brackets,
+    unravel_names
+)
 
 _Context = TypeVar("_Context", bound="Context")
 

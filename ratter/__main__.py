@@ -1,7 +1,6 @@
 """Ratter entry point."""
 
 import json
-
 from math import log10
 from typing import Iterable, Set
 
@@ -9,14 +8,14 @@ from ratter import config, error
 from ratter.error import get_badness
 from ratter.analyser.context import Import, Symbol
 from ratter.analyser.file import RatterStats, parse_and_analyse_file
-from ratter.analyser.results import generate_results_from_ir, ResultsEncoder
+from ratter.analyser.results import ResultsEncoder, generate_results_from_ir
 from ratter.analyser.types import FileIR, FileResults, ImportsIR
 from ratter.analyser.util import (
     cache_is_valid,
     create_cache,
     is_blacklisted_module,
     re_filter_ir,
-    re_filter_results,
+    re_filter_results
 )
 from ratter.cli import Namespace, parse_arguments
 
