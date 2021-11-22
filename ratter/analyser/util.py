@@ -718,9 +718,9 @@ class read:
 
     def __enter__(self):
         with open(self.file, "r") as f:
-            for lineno, line in enumerate(f):
+            for _lineno, line in enumerate(f):
                 self.contents += line
-            self.lines = lineno + 1
+            self.lines = _lineno + 1
         return self.lines, self.contents
 
     def __exit__(self, *_):

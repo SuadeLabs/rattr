@@ -260,7 +260,7 @@ def construct_swap(func: Func, call: Call) -> Dict[str, str]:
     f_args = f_args[len(c_args):]
 
     # Ensure no ambiguities
-    for target, replacement in swaps.items():
+    for target in swaps.keys():
         if target not in c_kwargs.keys():
             continue
 
