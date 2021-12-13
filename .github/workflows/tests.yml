@@ -21,12 +21,11 @@ on:
 #       installed -- thus they are included as a "faux"-dependency
 jobs:
   unittests:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.6", "3.7", "pypy-3.7"]
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        python-version: ["3.7", "pypy-3.7"]
 
     steps:
       - uses: actions/checkout@v2

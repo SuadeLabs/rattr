@@ -50,11 +50,6 @@ class TestIrDag_Utils:
         builtin = Call("max()", [], {}, Builtin("max", has_affect=False))
         assert get_callee_target(builtin, file_ir, {}) == (None, None)
 
-        # Callee is in stdlib
-        stdlib = Call("sin()", [], {}, target=Import("sin", "math.sin"))
-        assert stdlib.target.module_name == "math"
-        assert get_callee_target(stdlib, file_ir, {}) == (None, None)
-
         # Normal -- `fn_a`
         fn_a_call = Call("fn_a()", [], {}, target=fn_a)
         assert get_callee_target(fn_a_call, file_ir, {}) == (fn_a, fn_a_ir)
@@ -70,6 +65,40 @@ class TestIrDag_Utils:
         # Non-existent
         fake_call = Call("not_a_real_function()", [], {})
         assert get_callee_target(fake_call, file_ir, {}) == (None, None)
+
+    @pytest.mark.pypy()
+    def test_get_callee_target_callee_in_stdlib(self):
+        fn_a = Func("fn_a", [], None, None)
+        fn_b = Func("fn_b", [], None, None)
+        cls_a = Class("ClassA", ["self", "arg"], None, None)
+        fn_a_ir = {
+            "sets": {Name("a"), Name("b.attr", "b")},
+            "gets": {Name("c")},
+            "dels": set(),
+            "calls": set(),
+        }
+        fn_b_ir = {
+            "sets": set(),
+            "gets": set(),
+            "dels": {Name("a")},
+            "calls": set(),
+        }
+        cls_a_ir = {
+            "sets": {Name("self.field", "self")},
+            "gets": {Name("arg.attr", "arg")},
+            "dels": set(),
+            "calls": set(),
+        }
+        file_ir = {
+            fn_a: fn_a_ir,
+            fn_b: fn_b_ir,
+            cls_a: cls_a_ir,
+        }
+
+        # Callee is in stdlib
+        stdlib = Call("sin()", [], {}, target=Import("sin", "math.sin"))
+        assert stdlib.target.module_name == "math"
+        assert get_callee_target(stdlib, file_ir, {}) == (None, None)
 
     def test_get_callee_target_imported_function(self, file_ir_from_dict, capfd):
         # TODO Imported class/method

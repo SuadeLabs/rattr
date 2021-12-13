@@ -12,16 +12,28 @@ from ratter.analyser.context.symbol import Call, Name
 from ratter.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "pypy: mark test to run only under pypy"
+    )
+
+
 def pytest_collection_modifyitems(config, items):
     """Alter the collected tests."""
     # If this is pypy, enable the tests which require pypy
+    pypy_items = list()
+    non_pypy_items = list()
+
+    for item in items:
+        if item.get_closest_marker("pypy"):
+            pypy_items.append(item)
+        else:
+            non_pypy_items.append(item)
+
     if is_pypy():
-        new_items = list()
-
-        for item in filter(lambda i: i.get_closest_marker("pypy"), items):
-            new_items.append(item)
-
-        items[:] = new_items
+        items[:] = pypy_items + non_pypy_items
+    else:
+        items[:] = non_pypy_items
 
 
 def is_pypy():
@@ -294,8 +306,6 @@ def stdlib_modules():
         'dis',
         'pickletools',
         'formatter',
-        'msilib',
-        'msvcrt',
         'posix',
         'pwd',
         'spwd',

@@ -69,6 +69,9 @@ STDLIB_MODULES_WITH_NO_SPEC = {
     "spwd",
     "nis",
     "test",
+    "multiprocessing",
+    "string",
+    "builtins",
 }
 
 # Standard library modules in "/usr/lib/python.?/dist-packages/" may appear in
@@ -579,7 +582,7 @@ def is_stdlib_module(module: str) -> bool:
         "/(usr|opt)/(pypy|python)/lib-python.*",
         "/(usr|opt)/pypy/lib_pypy.*",
         # GitHub `setup-python` locations
-        "/opt/.+/PyPy/.+/lib-python.*",
+        "/opt/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
         "/opt/.+/PyPy/.+/lib_pypy.*",
     )
 
@@ -595,6 +598,9 @@ def is_stdlib_module(module: str) -> bool:
         return True
 
     if spec is None or spec.origin is None:
+        return False
+
+    if "site-packages" in spec.origin:
         return False
 
     return any(re.fullmatch(p, spec.origin) for p in stdlib_patterns)
@@ -614,7 +620,7 @@ def is_in_stdlib(name: str) -> bool:
 
 
 def is_in_builtins(name_or_qualified_name: str) -> bool:
-    return name_or_qualified_name in dir(__builtins__)
+    return name_or_qualified_name in dir(builtins)
 
 
 def get_function_def_args(
