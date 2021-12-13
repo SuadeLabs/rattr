@@ -12,6 +12,27 @@ from ratter.analyser.context.symbol import Call, Name
 from ratter.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
 
 
+def pytest_collection_modifyitems(config, items):
+    """Alter the collected tests."""
+    # If this is pypy, enable the tests which require pypy
+    if is_pypy():
+        new_items = list()
+
+        for item in filter(lambda i: i.get_closest_marker("pypy"), items):
+            new_items.append(item)
+
+        items[:] = new_items
+
+
+def is_pypy():
+    """Return `True` if running under pypy."""
+    try:
+        import __pypy__
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
 @pytest.fixture
 def parse():
     def _inner(source: str) -> ast.AST:
