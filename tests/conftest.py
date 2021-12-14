@@ -5,6 +5,7 @@ import pytest
 
 from contextlib import contextmanager
 from os.path import dirname, join
+from typing import Iterable
 
 import ratter
 
@@ -26,35 +27,25 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     """Alter the collected tests."""
-    # If this is pypy, enable the tests which require pypy
-    pypy_items = list()
-    non_pypy_items = list()
+    filter_marked(items, "pypy", is_pypy())
+    filter_marked(items, "py_3_8_plus", is_python_3_8_plus())
+
+
+def filter_marked(items: Iterable, mark: str, condition: bool):
+    """Remove the marked items if the condition is `False`."""
+    marked = list()
+    unmarked = list()
 
     for item in items:
-        if item.get_closest_marker("pypy"):
-            pypy_items.append(item)
+        if item.get_closest_marker(mark):
+            marked.append(item)
         else:
-            non_pypy_items.append(item)
+            unmarked.append(item)
 
-    if is_pypy():
-        items[:] = pypy_items + non_pypy_items
+    if condition:
+        items[:] = marked + unmarked
     else:
-        items[:] = non_pypy_items
-
-    # If this is Python 3.8+, enable Python 3.8+ tests
-    py_lte_3_7_tests = list()
-    py_gte_3_8_tests = list()
-
-    for item in items:
-        if item.get_closest_marker("py_3_8_plus"):
-            py_gte_3_8_tests.append(item)
-        else:
-            py_lte_3_7_tests.append(item)
-
-    if is_python_3_8_plus():
-        items[:] = py_lte_3_7_tests + py_gte_3_8_tests
-    else:
-        items[:] = py_lte_3_7_tests
+        items[:] = unmarked
 
 
 def is_pypy():
