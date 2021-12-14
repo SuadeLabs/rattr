@@ -1,4 +1,5 @@
 import ast
+import os
 import sys
 import pytest
 
@@ -158,7 +159,6 @@ def stdlib_modules():
         'textwrap',
         'unicodedata',
         'stringprep',
-        'readline',
         'rlcompleter',
         'struct',
         'codecs',
@@ -329,19 +329,12 @@ def stdlib_modules():
         'compileall',
         'dis',
         'pickletools',
-        'posix',
-        'pwd',
         'spwd',
-        'grp',
         'crypt',
-        'termios',
         'tty',
         'pty',
-        'fcntl',
         'pipes',
-        'resource',
         'nis',
-        'syslog',
         'optparse',
         'imp',
         'six',
@@ -355,6 +348,19 @@ def stdlib_modules():
             'formatter',
             'parser',
             'symbol',
+        })
+
+    # Some stdlib modules are not on Windows
+    if os.name != "nt":
+        scraped.union({
+            'posix',
+            'resource',
+            'grp',
+            'fcntl',
+            'readline',
+            'termios',
+            'pwd',
+            'syslog',
         })
 
     return scraped

@@ -560,6 +560,10 @@ def is_pip_module(module: str) -> bool:
     if spec is None or spec.origin is None:
         return False
 
+    # No backslashes, bad windows!
+    spec.origin = spec.origin.replace("\\", "/")
+
+    print(spec.origin)
     return any(re.fullmatch(p, spec.origin) for p in pip_install_locations)
 
 
@@ -586,6 +590,10 @@ def is_stdlib_module(module: str) -> bool:
         # GitHub `setup-python` locations
         "/opt/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
         "/opt/.+/PyPy/.+/lib_pypy.*",
+        "/Users/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
+        "/Users/.+/PyPy/.+/lib_pypy.*",
+        "C:/.+/(PyPy|Python)/.+/lib.*",
+        "C:/.+/(PyPy|Python)/.+/DLLs.*",
     )
 
     try:
@@ -605,6 +613,10 @@ def is_stdlib_module(module: str) -> bool:
     if "site-packages" in spec.origin:
         return False
 
+    # No backslashes, bad windows!
+    spec.origin = spec.origin.replace("\\", "/")
+
+    print(spec.origin)
     return any(re.fullmatch(p, spec.origin) for p in stdlib_patterns)
 
 
