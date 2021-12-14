@@ -433,38 +433,40 @@ class TestIrDagNode:
         assert D_in_A.file_ir == file_ir
         assert len(D_in_A.children) == 0
 
-    # def test_populate_on_undefined(self, capfd):
-    #     fn_a = Func("fn_a", ["a"], None, None)
-    #     fn_a_ir = {
-    #         "sets": {Name("a")},
-    #         "gets": set(),
-    #         "dels": set(),
-    #         "calls": {
-    #             Call("fn_b()", ["a"], {}),
-    #             Call("some_undefined_func()", [], {}),
-    #         },
-    #     }
-    #     fn_b = Func("fn_b", ["b"], None, None)
-    #     fn_b_ir = {
-    #         "sets": {Name("b")},
-    #         "gets": set(),
-    #         "dels": set(),
-    #         "calls": {
-    #             Call("some_other_undefined_func()", [], {}),
-    #         },
-    #     }
-    #     file_ir = {
-    #         fn_a: fn_a_ir,
-    #         fn_b: fn_b_ir,
-    #     }
+    def test_on_undefined(self, capfd):
+        fn_a = Func("fn_a", ["a"], None, None)
+        fn_a_ir = {
+            "sets": {Name("a")},
+            "gets": set(),
+            "dels": set(),
+            "calls": {
+                Call("fn_b()", ["a"], {}),
+                Call("some_undefined_func()", [], {}),
+            },
+        }
+        fn_b = Func("fn_b", ["b"], None, None)
+        fn_b_ir = {
+            "sets": {Name("b")},
+            "gets": set(),
+            "dels": set(),
+            "calls": {
+                Call("some_other_undefined_func()", [], {}),
+            },
+        }
+        file_ir = {
+            fn_a: fn_a_ir,
+            fn_b: fn_b_ir,
+        }
 
-    #     A = TestIrDagNode(None, fn_a, fn_a_ir, file_ir)
-    #     A.populate()
+        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, {})
 
-    #     output, _ = capfd.readouterr()
+        # NOTE Error is already logged by analyser, thus nothing should happen
+        A.populate()
+        A.simplify()
 
-    #     assert "unable to resolve call to 'some_undefined_func'" in output
-    #     assert "unable to resolve call to 'some_other_undefined_func'" in output
+        output, _ = capfd.readouterr()
+
+        assert output == ""
 
     def test_populate_on_stdlib(self, capfd):
         fn_a = Func("fn_a", ["a"], None, None)
