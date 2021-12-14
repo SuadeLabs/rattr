@@ -474,11 +474,17 @@ class TestUtil:
                 "Call(func=Name(id='present', ctx=Load()), "
                 "args=[Str(s='value'), Str(s='another value')], keywords=[])"
             )
-        else:
+        elif sys.version_info.major == 3 and sys.version_info.minor == 8:
             expected = (
                 "Call(func=Name(id='present', ctx=Load()), "
                 "args=[Constant(value='value', kind=None), "
                 "Constant(value='another value', kind=None)], keywords=[])"
+            )
+        else:
+            expected = (
+                "Call(func=Name(id='present', ctx=Load()), "
+                "args=[Constant(value='value'), "
+                "Constant(value='another value')], keywords=[])"
             )
         assert ast.dump(get_annotation("present", fn_def)) == expected
 
@@ -493,13 +499,21 @@ class TestUtil:
                 "ctx=Load()), attr='present', ctx=Load()), "
                 "args=[Str(s='value'), Str(s='another value')], keywords=[])"
             )
-        else:
+        elif sys.version_info.major == 3 and sys.version_info.minor == 8:
             expected = (
                 "Call(func=Attribute(value=Attribute(value=Attribute(value="
                 "Name(id='a', ctx=Load()), attr='b', ctx=Load()), attr='c', "
                 "ctx=Load()), attr='present', ctx=Load()), "
                 "args=[Constant(value='value', kind=None), "
                 "Constant(value='another value', kind=None)], keywords=[])"
+            )
+        else:
+            expected = (
+                "Call(func=Attribute(value=Attribute(value=Attribute(value="
+                "Name(id='a', ctx=Load()), attr='b', ctx=Load()), attr='c', "
+                "ctx=Load()), attr='present', ctx=Load()), "
+                "args=[Constant(value='value'), "
+                "Constant(value='another value')], keywords=[])"
             )
         assert ast.dump(get_annotation("present", fn_def)) == expected
 

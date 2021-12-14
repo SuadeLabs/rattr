@@ -232,8 +232,6 @@ def stdlib_modules():
         'sched',
         'queue',
         '_thread',
-        '_dummy_thread',
-        'dummy_threading',
         'asyncio',
         'asyncio',
         'socket',
@@ -320,10 +318,8 @@ def stdlib_modules():
         'modulefinder',
         'runpy',
         'importlib',
-        'parser',
         'ast',
         'symtable',
-        'symbol',
         'token',
         'keyword',
         'tokenize',
@@ -333,7 +329,6 @@ def stdlib_modules():
         'compileall',
         'dis',
         'pickletools',
-        'formatter',
         'posix',
         'pwd',
         'spwd',
@@ -348,14 +343,21 @@ def stdlib_modules():
         'nis',
         'syslog',
         'optparse',
-        'imp'
-    }
-
-    manual = {
+        'imp',
         'six',
     }
 
-    return scraped.union(manual)
+    # Python 3.10 removed a lot of stdlib modules
+    if sys.version_info.major == 3 and sys.version_info.minor <= 9:
+        scraped.union({
+            '_dummy_thread',
+            'dummy_threading',
+            'formatter',
+            'parser',
+            'symbol',
+        })
+
+    return scraped
 
 
 @pytest.fixture
