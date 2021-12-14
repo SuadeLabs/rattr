@@ -363,7 +363,7 @@ class TestFunctionAnalyser:
 
         assert results == expected
 
-    def test_format(self, parse):
+    def test_format(self, parse, constant):
         as_func = Builtin("format", has_affect=False)
 
         # Simple
@@ -376,7 +376,7 @@ class TestFunctionAnalyser:
         expected = {
             Func("a_func", ["arg"], None, None): {
                 "calls": {
-                    Call("format()", ["arg", "@Str"], {}, target=as_func)
+                    Call("format()", ["arg", constant("Str")], {}, target=as_func)
                 },
                 "dels": set(),
                 "gets": {
@@ -398,7 +398,7 @@ class TestFunctionAnalyser:
         expected = {
             Func("a_func", ["arg"], None, None): {
                 "calls": {
-                    Call("format()", ["arg.attr", "@Str"], {}, target=as_func)
+                    Call("format()", ["arg.attr", constant("Str")], {}, target=as_func)
                 },
                 "dels": set(),
                 "gets": {
@@ -500,7 +500,7 @@ class TestFunctionAnalyser:
 
         assert results == expected
 
-    def test_return_value(self, parse):
+    def test_return_value(self, parse, constant):
         # No return value
         _ast = parse("""
             def a_func(blarg):
@@ -603,7 +603,7 @@ class TestFunctionAnalyser:
                 "gets": set(),
                 "dels": set(),
                 "calls": {
-                    Call("MyEnum()", ["@ReturnValue", "@Str"], {}, target=MyEnum),
+                    Call("MyEnum()", ["@ReturnValue", constant("Str")], {}, target=MyEnum),
                 },
             },
             MyEnum: {
@@ -640,7 +640,7 @@ class TestFunctionAnalyser:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("MyEnum()", ["@ReturnValue", "@Str"], {}, target=MyEnum),
+                    Call("MyEnum()", ["@ReturnValue", constant("Str")], {}, target=MyEnum),
                 },
             },
             MyEnum: {

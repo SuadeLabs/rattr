@@ -1,4 +1,5 @@
 import ast
+import sys
 import pytest
 
 from contextlib import contextmanager
@@ -10,11 +11,15 @@ from ratter.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
 from ratter.analyser.context import Context, RootContext
 from ratter.analyser.context.symbol import Call, Name
 from ratter.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
+from ratter.analyser.util import LOCAL_VALUE_PREFIX
 
 
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "pypy: mark test to run only under pypy"
+    )
+    config.addinivalue_line(
+        "markers", "py_3_8_plus: mark test to run only under Python 3.8+"
     )
 
 
@@ -35,6 +40,21 @@ def pytest_collection_modifyitems(config, items):
     else:
         items[:] = non_pypy_items
 
+    # If this is Python 3.8+, enable Python 3.8+ tests
+    py_lte_3_7_tests = list()
+    py_gte_3_8_tests = list()
+
+    for item in items:
+        if item.get_closest_marker("py_3_8_plus"):
+            py_gte_3_8_tests.append(item)
+        else:
+            py_lte_3_7_tests.append(item)
+
+    if is_python_3_8_plus():
+        items[:] = py_lte_3_7_tests + py_gte_3_8_tests
+    else:
+        items[:] = py_lte_3_7_tests
+
 
 def is_pypy():
     """Return `True` if running under pypy."""
@@ -42,6 +62,17 @@ def is_pypy():
         import __pypy__
         return True
     except ModuleNotFoundError:
+        return False
+
+
+def is_python_3_8_plus():
+    """Return `True` if running under Python 3.8 plus."""
+    if sys.version_info.major != 3:
+        raise NotImplementedError
+
+    if sys.version_info.minor >= 8:
+        return True
+    else:
         return False
 
 
@@ -163,7 +194,6 @@ def stdlib_modules():
         'fnmatch',
         'linecache',
         'shutil',
-        'macpath',
         'pickle',
         'copyreg',
         'shelve',
@@ -256,7 +286,6 @@ def stdlib_modules():
         'turtle',
         'cmd',
         'shlex',
-        'tkinter',
         'typing',
         'pydoc',
         'doctest',
@@ -270,7 +299,6 @@ def stdlib_modules():
         'trace',
         'tracemalloc',
         'distutils',
-        'ensurepip',
         'venv',
         'zipapp',
         'sys',
@@ -537,3 +565,25 @@ def handler():
     )
 
     return handler
+
+
+@pytest.fixture
+def constant():
+    """Return the version specific name for a constant of the given type.
+
+    In Python <= 3.7, constants are named as such "@Str", "@Num", etc.
+
+    In Python >= 3.8, constants are all named "@Constant".
+
+    """
+
+    def _inner(node_type: str):
+        if sys.version_info.major != 3:
+            raise AssertionError
+
+        if sys.version_info.minor <= 7:
+            return f"{LOCAL_VALUE_PREFIX}{node_type}"
+        else:
+            return f"{LOCAL_VALUE_PREFIX}Constant"
+
+    return _inner

@@ -246,3 +246,10 @@ class FileAnalyser(NodeVisitor):
     def visit_Lambda(self, node: ast.Lambda) -> None:
         # NOTE Only reached when the lambda is an anonymous function
         return error.fatal("module level lambdas unsupported", node)
+
+    # ----------------------------------------------------------------------- #
+    # Walrus Operator
+    # ----------------------------------------------------------------------- #
+
+    def visit_NamedExpr(self, node) -> None:
+        return error.fatal("walrus operator is currently unsupported", node)

@@ -5,6 +5,7 @@ import builtins
 import hashlib
 import json
 import re
+import sys
 from contextlib import contextmanager
 from copy import deepcopy
 from importlib.util import find_spec
@@ -576,6 +577,7 @@ def is_stdlib_module(module: str) -> bool:
     stdlib_patterns = (
         # "math", etc -- not the same builtins as "print", etc
         "built-in",
+        "frozen",
         # Standard install locations
         "/(usr|opt)/(local/)?lib/(pypy|python).*",
         "/(usr|opt)/(local/)?lib/(pypy|python).?/dist-packages.*",
@@ -931,14 +933,20 @@ def is_excluded_name(name: str) -> bool:
 
 def is_method_on_constant(name: str) -> bool:
     """Return `True` if the name is a call to method on a constant."""
-    return name.startswith(
-        (
-            "@Num.",
-            "@Str.",
-            "@Bytes.",
-            "@NameConstant.",
+    if sys.version_info.major == 3 and sys.version_info.minor <= 7:
+        return name.startswith(
+            (
+                "@Num.",
+                "@Str.",
+                "@Bytes.",
+                "@NameConstant.",
+            )
         )
-    )
+
+    if sys.version_info.major == 3 and sys.version_info.minor >= 8:
+        return name.startswith("@Constant.")
+
+    raise NotImplementedError
 
 
 def is_method_on_cast(name: str) -> bool:

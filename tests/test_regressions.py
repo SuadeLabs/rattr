@@ -80,7 +80,7 @@ class TestRegression:
 
         assert results == expected
 
-    def test_operation_on_anonymous_return_value(self, parse):
+    def test_operation_on_anonymous_return_value(self, parse, constant):
         _ast = parse("""
             def test_1(a):
                 # i.e. b.c and b.d are of a type that implements __add__
@@ -96,7 +96,7 @@ class TestRegression:
             Func("test_1", ["a"], None, None): {
                 "calls": {
                     Call("@BinOp.method()", [], {}, None),
-                    Call("max()", ["@BinOp.method()", "@Num"], {}, max_symbol),
+                    Call("max()", ["@BinOp.method()", constant("Num")], {}, max_symbol),
                 },
                 "dels": set(),
                 "gets": set(),
