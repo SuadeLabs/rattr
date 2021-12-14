@@ -396,8 +396,14 @@ class TestIrDagNode:
         A.populate()
 
         B_in_A = A.children[0]
-        C_in_A = B_in_A.children[0]
-        D_in_A = B_in_A.children[1]
+
+        # C and D can be either way around as it is a set
+        if B_in_A.children[0].func.name == fn_c.name:
+            C_in_A = B_in_A.children[0]
+            D_in_A = B_in_A.children[1]
+        else:
+            C_in_A = B_in_A.children[1]
+            D_in_A = B_in_A.children[0]
 
         # A
         assert A.call is None
@@ -543,8 +549,17 @@ class TestIrDagNode:
         A = IrDagNode(None, fn_a, fn_a_ir, file_ir, dict())
         A.populate()
 
-        B_in_A = A.children[1]
-        C_in_A = B_in_A.children[1]
+        # Can be either way around as it is a set
+        if A.children[0].func.name == fn_b.name:
+            B_in_A = A.children[0]
+        else:
+            B_in_A = A.children[1]
+
+        # Can be either way around as it is a set
+        if B_in_A.children[0].func.name == fn_c.name:
+            C_in_A = B_in_A.children[0]
+        else:
+            C_in_A = B_in_A.children[1]
 
         # A
         assert A.call is None
