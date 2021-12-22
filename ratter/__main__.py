@@ -5,7 +5,6 @@ from math import log10
 from typing import Iterable, Set
 
 from ratter import config, error
-from ratter.error import get_badness
 from ratter.analyser.context import Import, Symbol
 from ratter.analyser.file import RatterStats, parse_and_analyse_file
 from ratter.analyser.results import ResultsEncoder, generate_results_from_ir
@@ -18,6 +17,7 @@ from ratter.analyser.util import (
     re_filter_results,
 )
 from ratter.cli import Namespace, parse_arguments
+from ratter.error import get_badness
 
 
 def main(arguments: Namespace) -> None:
@@ -29,9 +29,7 @@ def main(arguments: Namespace) -> None:
     results = generate_results_from_ir(file_ir, imports_ir)
 
     if not error.is_within_badness_threshold():
-        error.fatal(
-            f"exceeded allowed badness ({get_badness()} > {config.threshold})"
-        )
+        error.fatal(f"exceeded allowed badness ({get_badness()} > {config.threshold})")
 
     if config.show_ir:
         show_ir(config.file, file_ir, imports_ir)
