@@ -110,17 +110,24 @@ def fatal(
     sys.exit(1)
 
 
+def get_badness() -> int:
+    """Return the badness value."""
+    return config.file_badness + config.simplify_badness
+
+
 def is_within_badness_threshold() -> bool:
     """Return `True` if the program is within the current badness threshold."""
-    # NOTE If strict either a fatal error is reached, or within threshold
+    badness = get_badness()
+
     if config.strict:
-        return True
+        return badness <= 0
 
     # NOTE A threshold of 0 is equivalent to a threshold of ∞
     if config.threshold == 0:
         return True
 
-    return (config.file_badness + config.simplify_badness) <= config.threshold
+    return badness <= config.threshold
+
 
 
 # --------------------------------------------------------------------------- #

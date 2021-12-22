@@ -4,6 +4,7 @@ from ratter.error.error import ( # noqa
     warning,
     error,
     fatal,
+    get_badness,
     is_within_badness_threshold,
     RatterUnsupportedError,
     RatterUnaryOpInNameable,
