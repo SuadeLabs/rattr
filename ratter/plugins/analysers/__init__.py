@@ -3,6 +3,7 @@ from ratter.plugins.analysers.builtins import (
     GetattrAnalyser,
     HasattrAnalyser,
     SetattrAnalyser,
+    SortedAnalyser,
 )
 
 BUILTIN_FUNCTION_ANALYSERS = (
@@ -10,4 +11,5 @@ BUILTIN_FUNCTION_ANALYSERS = (
     SetattrAnalyser(),
     HasattrAnalyser(),
     DelattrAnalyser(),
+    SortedAnalyser(),
 )
