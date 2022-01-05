@@ -155,9 +155,23 @@ class SortedAnalyser(CustomFunctionAnalyser):
             lambda_analyser = FunctionAnalyser(ast.FunctionDef(), lambda_ctx)
             lambda_analyser.visit(key.value.body)
 
-            # Substitute & union
-            fn_analyser.func_ir = partially_unbind(
-                fn_analyser.func_ir, {iterator: iterable}
+            # Substitute
+            lambda_analyser.func_ir = partially_unbind(
+                lambda_analyser.func_ir, {iterator: iterable}
+            )
+
+            # Union
+            fn_analyser.func_ir["gets"] = fn_analyser.func_ir["gets"].union(
+                lambda_analyser.func_ir["gets"]
+            )
+            fn_analyser.func_ir["sets"] = fn_analyser.func_ir["sets"].union(
+                lambda_analyser.func_ir["sets"]
+            )
+            fn_analyser.func_ir["dels"] = fn_analyser.func_ir["dels"].union(
+                lambda_analyser.func_ir["dels"]
+            )
+            fn_analyser.func_ir["calls"] = fn_analyser.func_ir["calls"].union(
+                lambda_analyser.func_ir["calls"]
             )
         else:
             fn_analyser.visit(key.value)
