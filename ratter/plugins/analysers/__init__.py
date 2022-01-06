@@ -5,9 +5,7 @@ from ratter.plugins.analysers.builtins import (
     SetattrAnalyser,
     SortedAnalyser,
 )
-from ratter.plugins.analysers.collections import (
-    DefaultDictAnalyser,
-)
+from ratter.plugins.analysers.collections import DefaultDictAnalyser
 
 DEFAULT_FUNCTION_ANALYSERS = (
     GetattrAnalyser(),
