@@ -131,7 +131,7 @@ class TestIrDag_Utils:
         assert get_callee_target(call, {}, imports_ir) == (None, None)
 
         output, _ = capfd.readouterr()
-        assert "unable to resolve call to import" in output
+        assert "unable to resolve call to 'nope' in import" in output
 
         # Callee module and target not found
         _i = Import("nah", "noway.nah")

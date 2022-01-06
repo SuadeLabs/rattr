@@ -171,6 +171,13 @@ def resolve_import(
     #   When reaching here the target may be a call to a method on an imported
     #   instance
 
+    if new_target is None and "." in local_name:
+        error.info(
+            f"{__prefix(caller)} unable to resolve call to method "
+            f"'{local_name}' in import '{module}'"
+        )
+        return None, None
+
     error.error(
         f"{__prefix(caller)} unable to resolve call to '{local_name}' in "
         f"import '{module}'"
