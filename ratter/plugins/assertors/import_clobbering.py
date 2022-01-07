@@ -55,6 +55,9 @@ class ImportClobberingAssertor(Assertor):
         if has_annotation("ratter_ignore", node):
             return
 
+        if has_annotation("ratter_results", node):
+            return
+
         if self.context.is_import(node.name):
             self.__clobbered(node.name, node)
             return
@@ -79,6 +82,9 @@ class ImportClobberingAssertor(Assertor):
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         if has_annotation("ratter_ignore", node):
+            return
+
+        if has_annotation("ratter_results", node):
             return
 
         if self.context.is_import(node.name):

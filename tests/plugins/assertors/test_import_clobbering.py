@@ -232,6 +232,29 @@ class TestImportClobberingAssertor:
 
         assert not _exit.called
 
+    def test_respect_ratter_results(self, parse):
+        _ast = parse("""
+            from math import func, async_func, SomeClass
+
+            @ratter_results
+            def func():
+                pass
+
+            @ratter_results
+            async def async_func():
+                pass
+
+            @ratter_results
+            class SomeClass:
+                pass
+        """)
+        with mock.patch("sys.exit") as _exit:
+            ImportClobberingAssertor(
+                is_strict=True
+            ).assert_holds(_ast, RootContext(_ast))
+
+        assert not _exit.called
+
     def test_argument_name(self, parse, capfd):
         # Normal
         _ast = parse("""
