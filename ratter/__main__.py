@@ -10,8 +10,8 @@ from ratter.analyser.file import RatterStats, parse_and_analyse_file
 from ratter.analyser.results import ResultsEncoder, generate_results_from_ir
 from ratter.analyser.types import FileIR, FileResults, ImportsIR
 from ratter.analyser.util import (
-    cache_is_valid,
-    create_cache,
+    results_cache_is_valid,
+    create_results_cache,
     is_blacklisted_module,
     re_filter_ir,
     re_filter_results,
@@ -40,8 +40,8 @@ def main(arguments: Namespace) -> None:
     if config.show_stats:
         show_stats(stats)
 
-    if config.cache:
-        write_cache(results, file_ir, imports_ir)
+    if config.cache_results:
+        write_results_cache(results, file_ir, imports_ir)
 
 
 def show_ir(file: str, file_ir: FileIR, imports_ir: ImportsIR) -> None:
@@ -175,9 +175,9 @@ def show_stats(stats: RatterStats) -> None:
     print(end="\n\n")
 
 
-def write_cache(results: FileResults, file_ir: FileIR, imports_ir: ImportsIR) -> None:
-    """Save the file results to the file cache."""
-    if cache_is_valid(config.file, config.cache):
+def write_results_cache(results: FileResults, file_ir: FileIR, imports_ir: ImportsIR) -> None:
+    """Save the file results to the cache."""
+    if results_cache_is_valid(config.file, config.cache_results):
         return error.ratter(f"cache for '{config.file}' is already up to date")
 
     imports: Set[str] = set()
@@ -199,7 +199,7 @@ def write_cache(results: FileResults, file_ir: FileIR, imports_ir: ImportsIR) ->
 
             imports.add(sym.module_spec.origin)
 
-    create_cache(results, imports, ResultsEncoder)
+    create_results_cache(results, imports, ResultsEncoder)
 
 
 def load_config(arguments: Namespace) -> None:
@@ -230,7 +230,7 @@ def load_config(arguments: Namespace) -> None:
     config.filter_string = arguments.filter_string
     config.file = arguments.file
 
-    config.cache = arguments.cache
+    config.cache_results = arguments.cache_results
 
 
 if __name__ == "__main__":

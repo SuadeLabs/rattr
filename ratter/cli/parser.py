@@ -69,7 +69,7 @@ def parse_arguments() -> Namespace:
         Output,
         FilterString,
         File,
-        Cache,
+        ResultsCache,
     )
 
     for argument_group_parser in ARGUMENT_GROUP_PARSERS:
@@ -414,11 +414,11 @@ class File(ArgumentGroupParser):
         return arguments
 
 
-class Cache(ArgumentGroupParser):
+class ResultsCache(ArgumentGroupParser):
     def register(parser: ArgumentParser) -> ArgumentParser:
-        cache_group = parser.add_argument_group()
-        cache_group.add_argument(
-            "--cache",
+        results_cache_group = parser.add_argument_group()
+        results_cache_group.add_argument(
+            "--cache-results",
             default="",
             type=str,
             help=multi_paragraph_wrap(
@@ -431,7 +431,7 @@ class Cache(ArgumentGroupParser):
         return parser
 
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
-        f = arguments.cache
+        f = arguments.cache_results
         _, ext = splitext(f)
 
         if isfile(f):

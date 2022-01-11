@@ -1062,13 +1062,13 @@ def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:
     return _hash.hexdigest()
 
 
-def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
+def results_cache_is_valid(filepath: str, results_cache_filepath: str) -> bool:
     """Return `True` if the cache has the correct hash."""
     if not isfile(filepath):
         return False
 
-    if isfile(cache_filepath):
-        with open(cache_filepath, "r") as f:
+    if isfile(results_cache_filepath):
+        with open(results_cache_filepath, "r") as f:
             cache: Dict[str, Any] = json.load(f)
     else:
         return False
@@ -1091,10 +1091,10 @@ def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
     return True
 
 
-def create_cache(
+def create_results_cache(
     results: FileResults, imports: Set[str], encoder: json.JSONEncoder
 ) -> None:
-    """Create a the cache and write it to the cache file.
+    """Create a the results cache and write it to the file.
 
     NOTE:
         The attribute `imports` should hold the file name of every directly and
@@ -1131,5 +1131,5 @@ def create_cache(
     ]
     to_cache["results"] = deepcopy(results)
 
-    with open(config.cache, "w") as f:
+    with open(config.cache_results, "w") as f:
         json.dump(to_cache, f, cls=encoder, indent=4)
