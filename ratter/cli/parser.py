@@ -5,6 +5,7 @@ from os.path import isfile, splitext
 
 from ratter import error
 from ratter.cli.util import multi_paragraph_wrap
+from ratter.version import __version__
 
 
 def parse_arguments() -> Namespace:
@@ -54,7 +55,7 @@ def parse_arguments() -> Namespace:
         "-v",
         "--version",
         action="version",
-        version="%(prog)s 1.0.0",
+        version=f"%(prog)s {__version__}",
     )
 
     # TODO Allow user to add to this (will need config to respect this)
