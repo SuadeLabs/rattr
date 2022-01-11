@@ -10,11 +10,11 @@ from ratter.analyser.file import RatterStats, parse_and_analyse_file
 from ratter.analyser.results import ResultsEncoder, generate_results_from_ir
 from ratter.analyser.types import FileIR, FileResults, ImportsIR
 from ratter.analyser.util import (
-    results_cache_is_valid,
     create_results_cache,
     is_blacklisted_module,
     re_filter_ir,
     re_filter_results,
+    results_cache_is_valid,
 )
 from ratter.cli import Namespace, parse_arguments
 from ratter.error import get_badness
@@ -175,7 +175,9 @@ def show_stats(stats: RatterStats) -> None:
     print(end="\n\n")
 
 
-def write_results_cache(results: FileResults, file_ir: FileIR, imports_ir: ImportsIR) -> None:
+def write_results_cache(
+    results: FileResults, file_ir: FileIR, imports_ir: ImportsIR
+) -> None:
     """Save the file results to the cache."""
     if results_cache_is_valid(config.file, config.cache_results):
         return error.ratter(f"cache for '{config.file}' is already up to date")
