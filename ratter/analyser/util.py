@@ -49,6 +49,7 @@ from ratter.analyser.types import (
     Nameable,
     StrictlyNameable,
 )
+from ratter.version import __version__
 
 # The prefix given to local constants, literals, etc to produce a name
 # E.g. "hi" -> get_basename_fullname_pair(.) = "@Str"
@@ -1076,6 +1077,9 @@ def results_cache_is_valid(filepath: str, results_cache_filepath: str) -> bool:
     received_hash = cache.get("filehash", None)
     expected_hash = get_file_hash(filepath)
 
+    if __version__ != cache.get("ratter_version", "pre-1.1.0"):
+        return False
+
     if filepath != cache.get("filepath", None):
         return False
 
@@ -1102,8 +1106,10 @@ def create_results_cache(
 
     Cache file format (JSON):
     {
-        "filepath": ...,    # the file the results belong to
-        "filehash": ...,    # the MD5 hash of the file when it was cached
+        "ratter_version": ...,  # the Ratter version the cache was created by
+
+        "filepath": ...,        # the file the results belong to
+        "filehash": ...,        # the MD5 hash of the file when it was cached
 
         "imports": [
             {"filename": ..., "filehash": ...,},
@@ -1124,6 +1130,7 @@ def create_results_cache(
     """
     to_cache = dict()
 
+    to_cache["ratter_version"] = __version__
     to_cache["filepath"] = config.file
     to_cache["filehash"] = get_file_hash(config.file)
     to_cache["imports"] = [
