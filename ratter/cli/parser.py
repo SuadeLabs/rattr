@@ -60,6 +60,7 @@ def parse_arguments() -> Namespace:
 
     # TODO Allow user to add to this (will need config to respect this)
     ARGUMENT_GROUP_PARSERS = (
+        DryRun,
         FollowImports,
         ExcludeImports,
         ExcludePatterns,
@@ -70,6 +71,7 @@ def parse_arguments() -> Namespace:
         FilterString,
         File,
         ResultsCache,
+        IrCache,
     )
 
     for argument_group_parser in ARGUMENT_GROUP_PARSERS:
@@ -85,7 +87,7 @@ def parse_arguments() -> Namespace:
         try:
             arguments = argument_group_parser.validate(parser, arguments)
         except ArgumentError as e:
-            error.ratter(parser.format_usage())
+            print(parser.format_usage())
             error.fatal(str(e))
 
     return arguments
@@ -97,6 +99,26 @@ class ArgumentGroupParser(ABC):
         return parser
 
     @abstractstaticmethod
+    def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
+        return arguments
+
+
+class DryRun(ArgumentGroupParser):
+    def register(parser: ArgumentParser) -> ArgumentParser:
+        dry_run_group = parser.add_argument_group()
+        dry_run_group.add_argument(
+            "--dry-run",
+            action="store_true",
+            help=multi_paragraph_wrap(
+                """\
+                print config from the received arguments, post validation,
+                and exit
+                """
+            ),
+        )
+
+        return parser
+
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
         return arguments
 
@@ -321,7 +343,7 @@ class Output(ArgumentGroupParser):
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
-                show stats Ratter statisitics
+                show stats ratter statisitics
                 """
             ),
         )
@@ -426,6 +448,7 @@ class ResultsCache(ArgumentGroupParser):
                 the file to cache the results to, if successful
                 """
             ),
+            metavar="CACHE_FILE",
         )
 
         return parser
@@ -440,4 +463,25 @@ class ResultsCache(ArgumentGroupParser):
         if f != "" and ext != ".json":
             error.ratter(f"cache expects extension '.json', got '{ext}'")
 
+        return arguments
+
+
+class IrCache(ArgumentGroupParser):
+    def register(parser: ArgumentParser) -> ArgumentParser:
+        ir_cache_group = parser.add_argument_group()
+        ir_cache_group.add_argument(
+            "--no-ir-cache",
+            action="store_true",
+            help=multi_paragraph_wrap(
+                """\
+                disbale intermediate results (IR) cache, with this disabled
+                ratter will not experience a speed up on subsequent runs of
+                unchanged files
+                """
+            ),
+        )
+
+        return parser
+
+    def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
         return arguments

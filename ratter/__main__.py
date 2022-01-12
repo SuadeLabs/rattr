@@ -24,6 +24,10 @@ def main(arguments: Namespace) -> None:
     """Ratter entry point."""
     load_config(arguments)
 
+    if config.dry_run:
+        print(json.dumps(config.__dict__, cls=ResultsEncoder, indent=4))
+        exit(0)
+
     file_ir, imports_ir, stats = parse_and_analyse_file()
 
     results = generate_results_from_ir(file_ir, imports_ir)
@@ -206,6 +210,8 @@ def write_results_cache(
 
 def load_config(arguments: Namespace) -> None:
     """Populate the config with the given arguments."""
+    config.dry_run = arguments.dry_run
+
     config.follow_imports = arguments.follow_imports
     config.follow_pip_imports = arguments.follow_imports >= 2
     config.follow_stdlib_imports = arguments.follow_imports >= 3
@@ -233,6 +239,8 @@ def load_config(arguments: Namespace) -> None:
     config.file = arguments.file
 
     config.cache_results = arguments.cache_results
+
+    config.ir_cache = not arguments.no_ir_cache
 
 
 if __name__ == "__main__":

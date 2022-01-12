@@ -11,6 +11,8 @@ class Config:
 
     """
 
+    dry_run: bool = False
+
     # Import following
     follow_imports: int = 1
     follow_pip_imports: bool = False
@@ -55,6 +57,9 @@ class Config:
 
     # File to cache results to
     cache_results: str = ""
+
+    # Use IR cahce
+    ir_cache: bool = True
 
 
 config = Config()
