@@ -177,7 +177,7 @@ class FileCache:
         self.set_imports()
 
         with open(cache_filepath, "w") as f:
-            f.write(jsonpickle.encode(self))
+            f.write(jsonpickle.encode(self, indent=4))
 
 
 @dataclass
