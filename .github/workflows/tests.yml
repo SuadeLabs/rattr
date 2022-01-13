@@ -4,7 +4,7 @@ name: CD/CI -- tests
 on:
   push:
     branches:
-      - "**"
+      - "main"
 
   pull_request:
     branches:
