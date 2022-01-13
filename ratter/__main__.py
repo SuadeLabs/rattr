@@ -2,20 +2,12 @@
 
 import json
 from math import log10
-from typing import Iterable, Set
 
 from ratter import config, error
-from ratter.analyser.context import Import, Symbol
 from ratter.analyser.file import RatterStats, parse_and_analyse_file
 from ratter.analyser.results import ResultsEncoder, generate_results_from_ir
 from ratter.analyser.types import FileIR, FileResults, ImportsIR
-from ratter.analyser.util import (
-    create_results_cache,
-    is_blacklisted_module,
-    re_filter_ir,
-    re_filter_results,
-    results_cache_is_valid,
-)
+from ratter.analyser.util import re_filter_ir, re_filter_results
 from ratter.cli import Namespace, parse_arguments
 from ratter.error import get_badness
 
@@ -30,7 +22,15 @@ def main(arguments: Namespace) -> None:
 
     file_ir, imports_ir, stats = parse_and_analyse_file()
 
-    results = generate_results_from_ir(file_ir, imports_ir)
+    cached = config.cache.get(config.file)
+
+    if not config.use_cache or cached.results is None:
+        cached.results = generate_results_from_ir(file_ir, imports_ir)
+
+    results = cached.results
+
+    if config.save_cache:
+        config.cache.write()
 
     if not error.is_within_badness_threshold():
         error.fatal(f"exceeded allowed badness ({get_badness()} > {config.threshold})")
@@ -44,8 +44,8 @@ def main(arguments: Namespace) -> None:
     if config.show_stats:
         show_stats(stats)
 
-    if config.cache_results:
-        write_results_cache(results, file_ir, imports_ir)
+    if config.save_results:
+        config.cache.get(config.file).to_file(config.save_results)
 
 
 def show_ir(file: str, file_ir: FileIR, imports_ir: ImportsIR) -> None:
@@ -179,35 +179,6 @@ def show_stats(stats: RatterStats) -> None:
     print(end="\n\n")
 
 
-def write_results_cache(
-    results: FileResults, file_ir: FileIR, imports_ir: ImportsIR
-) -> None:
-    """Save the file results to the cache."""
-    if results_cache_is_valid(config.file, config.cache_results):
-        return error.ratter(f"cache for '{config.file}' is already up to date")
-
-    imports: Set[str] = set()
-
-    for ctx in [file_ir.context, *[i.context for i in imports_ir.values()]]:
-        symbols: Iterable[Symbol] = ctx.symbol_table.symbols()
-        for sym in symbols:
-            if not isinstance(sym, Import):
-                continue
-
-            if is_blacklisted_module(sym.module_name):
-                continue
-
-            if sym.module_spec is None or sym.module_spec.origin is None:
-                continue
-
-            if sym.module_spec.origin == "built-in":
-                continue
-
-            imports.add(sym.module_spec.origin)
-
-    create_results_cache(results, imports, ResultsEncoder)
-
-
 def load_config(arguments: Namespace) -> None:
     """Populate the config with the given arguments."""
     config.dry_run = arguments.dry_run
@@ -238,9 +209,10 @@ def load_config(arguments: Namespace) -> None:
     config.filter_string = arguments.filter_string
     config.file = arguments.file
 
-    config.cache_results = arguments.cache_results
+    config.use_cache = not arguments.no_cache and not arguments.force_refresh_cache
+    config.save_cache = not arguments.no_cache
 
-    config.ir_cache = not arguments.no_ir_cache
+    config.save_results = arguments.save_results
 
 
 if __name__ == "__main__":

@@ -2,15 +2,11 @@
 
 import ast
 import builtins
-import hashlib
-import json
 import re
 import sys
 from contextlib import contextmanager
-from copy import deepcopy
 from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
-from os.path import isfile
 from string import ascii_lowercase
 from time import perf_counter
 from typing import (
@@ -20,13 +16,12 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Set,
     Tuple,
     Type,
     Union,
 )
 
-from ratter import config, error
+from ratter import error
 from ratter.analyser.context.symbol import get_possible_module_names  # noqa
 from ratter.analyser.context.symbol import (
     Class,
@@ -42,14 +37,12 @@ from ratter.analyser.types import (
     AstDef,
     Comprehension,
     Constant,
-    FileResults,
     FuncOrAsyncFunc,
     FunctionIR,
     Literal,
     Nameable,
     StrictlyNameable,
 )
-from ratter.version import __version__
 
 # The prefix given to local constants, literals, etc to produce a name
 # E.g. "hi" -> get_basename_fullname_pair(.) = "@Str"
@@ -535,6 +528,8 @@ def parse_ratter_results_from_annotation(fn_def: AnyFunctionDef, context) -> Fun
 
 def is_blacklisted_module(module: str) -> bool:
     """Return `True` if the given module matches a blacklisted pattern."""
+    from ratter import config
+
     # Exclude stdlib modules such as the built-in "_thread"
     if is_stdlib_module(module):
         return False
@@ -547,8 +542,6 @@ def is_blacklisted_module(module: str) -> bool:
 
 def is_pip_module(module: str) -> bool:
     """Return `True` if the given module is pip installed."""
-    pip_install_locations = (".+/site-packages.*",)
-
     try:
         spec = find_spec(module)
     except (AttributeError, ModuleNotFoundError, ValueError):
@@ -560,8 +553,14 @@ def is_pip_module(module: str) -> bool:
     # No backslashes, bad windows!
     spec.origin = spec.origin.replace("\\", "/")
 
-    print(spec.origin)
-    return any(re.fullmatch(p, spec.origin) for p in pip_install_locations)
+    return is_pip_filepath(spec.origin)
+
+
+def is_pip_filepath(filepath: str) -> bool:
+    """Return `True` if the given filepath belongs to a pip module."""
+    pip_install_locations = (".+/site-packages.*",)
+
+    return any(re.fullmatch(p, filepath) for p in pip_install_locations)
 
 
 def is_stdlib_module(module: str) -> bool:
@@ -574,28 +573,6 @@ def is_stdlib_module(module: str) -> bool:
     False
 
     """
-    # FIXME
-    #    Is there a better way of determining the  install locations?
-    #    Possibly see how pip abd setuptools do it?
-    stdlib_patterns = (
-        # "math", etc -- not the same builtins as "print", etc
-        "built-in",
-        "frozen",
-        # Standard install locations
-        # NOTE
-        #    This means that if you have a directory in your source code called e.g.
-        #    'lib/pypy/' we might ignore it.
-        ".+/lib/(pypy|python).*",
-        ".+/pypy/lib_pypy.*",
-        # GitHub `setup-python` locations
-        "/opt/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
-        "/opt/.+/PyPy/.+/lib_pypy.*",
-        "/Users/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
-        "/Users/.+/PyPy/.+/lib_pypy.*",
-        "C:/.+/(PyPy|Python)/.+/(L|l)ib.*",
-        "C:/.+/(PyPy|Python)/.+/DLLs.*",
-    )
-
     try:
         spec = find_spec(module)
     except (AttributeError, ModuleNotFoundError, ValueError):
@@ -619,7 +596,34 @@ def is_stdlib_module(module: str) -> bool:
     # No backslashes, bad windows!
     spec.origin = spec.origin.replace("\\", "/")
 
-    return any(re.fullmatch(p, spec.origin) for p in stdlib_patterns)
+    return is_stdlib_filepath(spec.origin)
+
+
+def is_stdlib_filepath(filepath: str) -> str:
+    """Return `True` if the given filepath is part of an stdlib module."""
+    # FIXME
+    #    Is there a better way of determining the  install locations?
+    #    Possibly see how pip abd setuptools do it?
+    stdlib_patterns = (
+        # "math", etc -- not the same builtins as "print", etc
+        "built-in",
+        "frozen",
+        # Standard install locations
+        # NOTE
+        #    This means that if you have a directory in your source code called e.g.
+        #    'lib/pypy/' we might ignore it.
+        ".+/lib/(pypy|python).*",
+        ".+/pypy/lib_pypy.*",
+        # GitHub `setup-python` locations
+        "/opt/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
+        "/opt/.+/PyPy/.+/lib_pypy.*",
+        "/Users/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
+        "/Users/.+/PyPy/.+/lib_pypy.*",
+        "C:/.+/(PyPy|Python)/.+/(L|l)ib.*",
+        "C:/.+/(PyPy|Python)/.+/DLLs.*",
+    )
+
+    return any(re.fullmatch(p, filepath) for p in stdlib_patterns)
 
 
 def is_in_stdlib(name: str) -> bool:
@@ -766,6 +770,8 @@ def get_starred_imports(
 @contextmanager
 def enter_file(new_file: str) -> Generator:
     """Set `config.current_file` for the scope of a context."""
+    from ratter import config
+
     old_file = config.current_file
     config.current_file = new_file
     yield
@@ -890,6 +896,8 @@ def module_name_from_file_path(file: str) -> Optional[str]:
 
 def get_absolute_module_name(base: str, level: int, target: str) -> str:
     """Return the absolute import for the given relative import."""
+    from ratter import config
+
     level -= int(config.current_file.endswith("__init__.py"))
 
     if level > 0:
@@ -942,6 +950,8 @@ def re_filter_results(d: Dict[str, Any], filter_by: str) -> Dict[str, Any]:
 
 def is_excluded_name(name: str) -> bool:
     """Return `True` if the given name is in the exclude list."""
+    from ratter import config
+
     return any(re.fullmatch(x, name) for x in config.excluded_names)
 
 
@@ -1042,101 +1052,3 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
     basename = first.split(".")[0].replace("*", "").replace("[]", "").replace("()", "")
 
     return Name(pattern.format(first=first, second=second), basename)
-
-
-def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:
-    """Return the hash of the given file, with a default blocksize of 1MiB."""
-    _hash = hashlib.md5()
-
-    if not isfile(filepath):
-        return _hash
-
-    with open(filepath, "rb") as f:
-        while True:
-            buffer = f.read(blocksize)
-
-            if not buffer:
-                break
-
-            _hash.update(buffer)
-
-    return _hash.hexdigest()
-
-
-def results_cache_is_valid(filepath: str, results_cache_filepath: str) -> bool:
-    """Return `True` if the cache has the correct hash."""
-    if not isfile(filepath):
-        return False
-
-    if isfile(results_cache_filepath):
-        with open(results_cache_filepath, "r") as f:
-            cache: Dict[str, Any] = json.load(f)
-    else:
-        return False
-
-    received_hash = cache.get("filehash", None)
-    expected_hash = get_file_hash(filepath)
-
-    if __version__ != cache.get("ratter_version", "pre-1.1.0"):
-        return False
-
-    if filepath != cache.get("filepath", None):
-        return False
-
-    if received_hash != expected_hash:
-        return False
-
-    # Check imports
-    for _import in cache.get("imports", dict()):
-        file, hash = _import["filepath"], _import["filehash"]
-        if hash != get_file_hash(file):
-            return False
-
-    return True
-
-
-def create_results_cache(
-    results: FileResults, imports: Set[str], encoder: json.JSONEncoder
-) -> None:
-    """Create a the results cache and write it to the file.
-
-    NOTE:
-        The attribute `imports` should hold the file name of every directly and
-        indirectly imported source code file.
-
-    Cache file format (JSON):
-    {
-        "ratter_version": ...,  # the Ratter version the cache was created by
-
-        "filepath": ...,        # the file the results belong to
-        "filehash": ...,        # the MD5 hash of the file when it was cached
-
-        "imports": [
-            {"filename": ..., "filehash": ...,},
-        ]
-
-        "results":
-            # For each function in the file:
-            "function_name": {
-                "sets"  : ["obj.attr", ...],
-                "gets"  : ["obj.attr", ...],
-                "dels"  : ["obj.attr", ...],
-                "calls" : ["obj.attr", ...],
-            },
-            ...
-        }
-    }
-
-    """
-    to_cache = dict()
-
-    to_cache["ratter_version"] = __version__
-    to_cache["filepath"] = config.file
-    to_cache["filehash"] = get_file_hash(config.file)
-    to_cache["imports"] = [
-        {"filepath": file, "filehash": get_file_hash(file)} for file in imports
-    ]
-    to_cache["results"] = deepcopy(results)
-
-    with open(config.cache_results, "w") as f:
-        json.dump(to_cache, f, cls=encoder, indent=4)

@@ -9,7 +9,7 @@ import ast
 from typing import List
 
 from ratter.analyser.base import NodeVisitor
-from ratter.analyser.context import Context
+from ratter.analyser.context.context import Context
 from ratter.analyser.context.symbol import Class, Func, Name, Symbol
 from ratter.analyser.function import FunctionAnalyser
 from ratter.analyser.types import (

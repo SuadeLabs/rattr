@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from ratter import config, error
-from ratter.analyser.context import (
+from ratter.analyser.context.symbol import (
     Builtin,
     Call,
     Class,

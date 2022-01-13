@@ -10,7 +10,7 @@ from typing import Iterable
 import ratter
 
 from ratter.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
-from ratter.analyser.context import Context, RootContext
+from ratter.analyser.context.context import Context, RootContext
 from ratter.analyser.context.symbol import Call, Name
 from ratter.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
 from ratter.analyser.util import LOCAL_VALUE_PREFIX

@@ -1,10 +1,10 @@
-from ratter.analyser.context import (
+from ratter.analyser.context.context import (
     RootContext,
-    Call,
     Class,
     Func,
     Name,
 )
+from ratter.analyser.context.symbol import Call
 from ratter.analyser.file import FileAnalyser
 
 

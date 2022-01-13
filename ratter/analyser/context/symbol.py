@@ -13,8 +13,6 @@ from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
 from typing import Dict, List, Optional, Tuple, Union
 
-from ratter import config
-
 
 @dataclass
 class Symbol:
@@ -74,6 +72,9 @@ class Func(Symbol):
     defined_in: Optional[str] = None
 
     def __post_init__(self) -> None:
+        # NOTE pytest fails from circular import if in global scope
+        from ratter import config
+
         self.defined_in = config.current_file
 
     def __hash__(self) -> int:
@@ -97,6 +98,9 @@ class Class(Symbol):
     defined_in: Optional[str] = None
 
     def __post_init__(self) -> None:
+        # NOTE pytest fails from circular import if in global scope
+        from ratter import config
+
         self.defined_in = config.current_file
 
     def __hash__(self) -> int:

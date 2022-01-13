@@ -1,5 +1,5 @@
-from ratter.analyser.context import (
-    RootContext,
+from ratter.analyser.context.context import RootContext
+from ratter.analyser.context.symbol import (
     Builtin,
     Call,
     Func,
