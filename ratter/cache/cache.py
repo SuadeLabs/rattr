@@ -108,7 +108,7 @@ class FileCache:
         If `self.filepath` is unset then `is_valid` is always `False`.
 
         """
-        if self.filepath is None or self.filepath is "undefined":
+        if self.filepath is None or self.filepath == "undefined":
             return False
 
         if not isfile(self.filepath):
@@ -138,7 +138,9 @@ class FileCache:
         return True
 
     @classmethod
-    def from_file(cls: Type[_FileCache], cache_filepath: str) -> _FileCache:
+    def from_file(
+        cls: Type[_FileCache], cache_filepath: str, display_errors: bool = True
+    ) -> _FileCache:
         """Return the instance storing the cache from the given file.
 
         NOTE On Security
@@ -148,6 +150,9 @@ class FileCache:
         [1] - https://docs.python.org/3/library/pickle.html
         [2] - http://jsonpickle.github.io/index.html#jsonpickle-usage
 
+        If `display_errors` is `True` (default) then the cached errors are
+        shown if the existing cache is loaded.
+
         """
         if not isfile(cache_filepath):
             raise FileNotFoundError(cache_filepath)
@@ -155,7 +160,12 @@ class FileCache:
         with open(cache_filepath, "r") as f:
             data = f.read()
 
-        return jsonpickle.decode(data)
+        loaded_cache: FileCache = jsonpickle.decode(data)
+
+        if display_errors:
+            loaded_cache.display_errors()
+
+        return loaded_cache
 
     def to_file(self, cache_filepath: Optional[str] = None) -> None:
         """Write the current cache to the disk.
@@ -241,12 +251,7 @@ class RatterCache:
 
     def get_or_new(self, filepath: str) -> FileCache:
         """Return the cache for the given file, creating if needed."""
-        cached = self.get(filepath)
-
-        if cached is not None:
-            cached.display_errors()
-
-        return cached or self.new(filepath)
+        return self.get(filepath) or self.new(filepath)
 
     def write(self) -> None:
         """Write all caches to their default locations.
