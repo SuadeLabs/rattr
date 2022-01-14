@@ -7,7 +7,11 @@ from typing import Dict, List, Optional, Set, Type, TypeVar
 import jsonpickle
 
 from ratter.analyser.types import FileIR, FileResults
-from ratter.cache.util import get_cache_filepath, get_file_hash, get_import_filepaths
+from ratter.cache.util import (
+    get_cache_filepath,
+    get_file_hash,
+    get_import_filepaths,
+)
 from ratter.version import __version__
 
 _FileCache = TypeVar("_FileCache", bound="FileCache")

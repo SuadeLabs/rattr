@@ -10,7 +10,6 @@ from ratter.analyser.context.context import Context
 from ratter.analyser.context.symbol import Import
 from ratter.analyser.util import is_pip_filepath, is_stdlib_filepath
 
-
 DO_NOT_CACHE = {"built-in", "frozen"}
 
 
