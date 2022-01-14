@@ -41,11 +41,11 @@ def mocked_module_spec(origin: str):
     return m_module_spec
 
 
-def get_relative_libpath(lib: str) -> Path:
-    if "\\" in lib and os.name == "nt":
-        return Path(Import(lib).module_spec.origin[3:]).parent
+def get_relative_libpath(lib: str) -> str:
+    libdir = Path(Import(lib).module_spec.origin).parent
+    drive_or_root = list(libdir.parents)[-1]
 
-    return Path(Import(lib).module_spec.origin[1:]).parent
+    return str(libdir.relative_to(drive_or_root))
 
 
 class TestFileCache:

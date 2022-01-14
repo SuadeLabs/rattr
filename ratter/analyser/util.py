@@ -550,15 +550,15 @@ def is_pip_module(module: str) -> bool:
     if spec is None or spec.origin is None:
         return False
 
-    # No backslashes, bad windows!
-    spec.origin = spec.origin.replace("\\", "/")
-
     return is_pip_filepath(spec.origin)
 
 
 def is_pip_filepath(filepath: str) -> bool:
     """Return `True` if the given filepath belongs to a pip module."""
     pip_install_locations = (".+/site-packages.*",)
+
+    # No backslashes, bad windows!
+    filepath = filepath.replace("\\", "/")
 
     return any(re.fullmatch(p, filepath) for p in pip_install_locations)
 
@@ -593,9 +593,6 @@ def is_stdlib_module(module: str) -> bool:
     if "site-packages" in spec.origin:
         return False
 
-    # No backslashes, bad windows!
-    spec.origin = spec.origin.replace("\\", "/")
-
     return is_stdlib_filepath(spec.origin)
 
 
@@ -622,6 +619,9 @@ def is_stdlib_filepath(filepath: str) -> str:
         "C:/.+/(PyPy|Python)/.+/(L|l)ib.*",
         "C:/.+/(PyPy|Python)/.+/DLLs.*",
     )
+
+    # No backslashes, bad windows!
+    filepath = filepath.replace("\\", "/")
 
     return any(re.fullmatch(p, filepath) for p in stdlib_patterns)
 
