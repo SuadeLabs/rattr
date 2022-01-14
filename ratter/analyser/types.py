@@ -113,9 +113,9 @@ class FileIR:
     """Provide a `Mapping[Func, FunctionIR]`, with context."""
 
     def __init__(self, context):
-        # `self.context: Context` omitted to avoid circular import, hopefully
-        # mypy's inference is sufficient
-        self.context = context
+        from ratter.analyser.context.context import Context
+
+        self.context: Context = context
         self._file_ir: _FileIR = dict()
 
     def __eq__(self, other) -> bool:
