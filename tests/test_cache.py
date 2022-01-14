@@ -1,11 +1,13 @@
 import hashlib
-import os
+import mock
 import tempfile
 from itertools import combinations
 from pathlib import Path
 
 from ratter.analyser.context.symbol import Import
+from ratter.cache.cache import FileCache, RatterCache
 from ratter.cache.util import get_cache_filepath, get_file_hash
+from ratter.version import __version__
 
 
 def get_cache_filepath_safe(filepath: str) -> str:
@@ -15,20 +17,150 @@ def get_cache_filepath_safe(filepath: str) -> str:
 class TestFileCache:
 
     def test_set_file_info(self):
-        raise AssertionError
+        cache = FileCache()
+
+        assert cache.filepath == "undefined"
+        assert cache.filehash == "undefined"
+
+        cache.set_file_info(__file__)
+
+        assert cache.filepath == __file__
+        assert cache.filehash == get_file_hash(__file__)
 
     def test_set_imports(self):
         raise AssertionError
 
-    def test_add_error(self):
-        raise AssertionError
+    def test_errors(self, capsys):
+        # Test set errors
+        cache = FileCache()
 
-    def test_display_errors(self):
-        raise AssertionError
+        assert cache.errors == list()
+
+        cache.add_error("error: this is my error")
+        cache.add_error("error: this is another error")
+        cache.add_error("warning: i must warn you, i am the last")
+
+        assert cache.errors == [
+            "error: this is my error",
+            "error: this is another error",
+            "warning: i must warn you, i am the last",
+        ]
+
+        # Test display errors
+        cache.display_errors()
+        output, _ = capsys.readouterr()
+
+        assert output == "".join(
+            line + "\n" for line in
+            [
+                "error: this is my error",
+                "error: this is another error",
+                "warning: i must warn you, i am the last",
+            ]
+        )
+
+    def test_errors_integration(self, capsys):
+        from ratter import config, error
+
+        assert isinstance(config.cache, RatterCache)
+
+        config.current_file = __file__
+        cache = config.cache.get_or_new(__file__)
+        other_cache = config.cache.get_or_new(
+            Path(__file__).parent / "test_base.py"
+        )
+
+        error.error("test error")
+        error.warning("test warning")
+
+        # Errors are added to __file__ errors but not to the redherring cache
+        real_output: str = capsys.readouterr()[0]
+        assert cache.errors == real_output.splitlines()
+        assert other_cache.errors == list()
+
+        # Display errors works, output only prints since last call
+        cache.display_errors()
+        cached_output: str = capsys.readouterr()[0]
+        assert cached_output == real_output
 
     def test_is_valid(self):
-        raise AssertionError
+        __hash__ = get_file_hash(__file__)
 
+        # self.filepath is unset
+        assert not FileCache().is_valid
+        assert not FileCache(filepath=None).is_valid
+
+        # self.filepath is not a file
+        assert not FileCache(filepath="not-a-file").is_valid
+
+        # self.ratter_version is incorrect
+        file_cache = FileCache(
+            filepath=__file__,
+            filehash=__hash__,
+        )
+        assert file_cache.is_valid
+        file_cache.ratter_version = "Cheesed to meet you"
+        assert not file_cache.is_valid
+
+        # self.python_version is incorrect
+        file_cache = FileCache(
+            filepath=__file__,
+            filehash=__hash__,
+        )
+        assert file_cache.is_valid
+        file_cache.ratter_version = "The Wrong Trousers"
+        assert not file_cache.is_valid
+
+        # self.filehash is incorrect
+        file_cache = FileCache(
+            filepath=__file__,
+            filehash=__hash__,
+        )
+        assert file_cache.is_valid
+        file_cache.filehash = "The Curse of the Were-Rabbit"
+        assert not file_cache.is_valid
+
+        # self.imports
+        with mock.patch("ratter.cache.cache.get_file_hash") as m_get_file_hash:
+            file_cache = FileCache(
+                filepath=__file__,
+                filehash=__hash__,
+            )
+
+            # Empty
+            m_get_file_hash.side_effect = [
+                __hash__,
+                FileNotFoundError,
+            ]
+            assert file_cache.is_valid
+
+            # Incorrect
+            file_cache.imports = [
+                {
+                    "filepath": "first import",
+                    "filehash": "first import hash",
+                },
+                {
+                    "filepath": "second import",
+                    "filehash": "second import hash",
+                },
+            ]
+            m_get_file_hash.side_effect = [
+                __hash__,
+                "NOT first import hash",
+                "NOT second import hash",
+                FileNotFoundError,
+            ]
+            assert not file_cache.is_valid
+
+            # Correct
+            m_get_file_hash.side_effect = [
+                __hash__,
+                "first import hash",
+                "second import hash",
+                FileNotFoundError,
+            ]
+            assert file_cache.is_valid
 
 
 class TestRatterCache:

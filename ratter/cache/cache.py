@@ -122,9 +122,6 @@ class FileCache:
             return False
 
         # Validate file
-        if self.filepath != self.filepath:
-            return False
-
         if self.filehash != get_file_hash(self.filepath):
             return False
 
@@ -217,9 +214,16 @@ class RatterCache:
             except FileNotFoundError:
                 return None
 
-            if cache.is_valid:
-                self.cache_by_file[filepath] = cache
-                return cache
+            if not cache.is_valid:
+                return None
+
+            if cache.filepath != filepath:
+                raise ValueError(
+                    f"cache filepath does not match real filepath, "
+                    f"'{cache.filepath}' != '{filepath}'"
+                )
+
+            return cache
 
         return None
 
