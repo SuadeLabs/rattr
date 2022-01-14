@@ -152,6 +152,11 @@ class FileCache:
         shown if the existing cache is loaded.
 
         """
+        from ratter import config
+
+        if not config.use_cache:
+            raise RuntimeError("unable to read cache when config.use_cache is false")
+
         if not isfile(cache_filepath):
             raise FileNotFoundError(cache_filepath)
 
@@ -176,6 +181,11 @@ class FileCache:
         imports for this file may be incorrect, see `self.set_imports`.
 
         """
+        from ratter import config
+
+        if not config.save_cache:
+            raise RuntimeError("unable to read cache when config.save_cache is false")
+
         if cache_filepath is None:
             cache_filepath = get_cache_filepath(self.filepath)
 
