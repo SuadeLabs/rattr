@@ -22,7 +22,7 @@ from typing import (
     Union,
 )
 
-from ratter import config, error
+from ratter import error
 from ratter.analyser.context.symbol import (
     Builtin,
     CallTarget,
@@ -82,6 +82,8 @@ class Context:
     """
 
     def __init__(self, parent: Optional[_Context]) -> None:
+        from ratter import config
+
         self.parent = parent
         self.symbol_table = SymbolTable()
         self.file = config.current_file
@@ -249,6 +251,8 @@ class Context:
 
     def expand_starred_imports(self) -> Type[_Context]:
         """Expand starred imports to normal imports."""
+        from ratter import config
+
         seen: Set[str] = set()
 
         # Create initial starred list for BFS
@@ -400,6 +404,8 @@ class RootContext(Context):
 
     def register_starred_import(self, node: ast.ImportFrom) -> None:
         """Helper method for starred imports."""
+        from ratter import config
+
         if self.file is None or not self.file.endswith("__init__.py"):
             error.warning(
                 f"do not use 'from {node.module} import *', be explicit", node
@@ -419,6 +425,8 @@ class RootContext(Context):
 
     def register_relative_import(self, node: ast.ImportFrom) -> None:
         """Helper method for relative imports."""
+        from ratter import config
+
         base = module_name_from_file_path(config.current_file)
 
         if base is None:
