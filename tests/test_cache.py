@@ -7,7 +7,7 @@ from itertools import combinations
 from pathlib import Path
 
 from ratter.analyser.context.context import Context
-from ratter.analyser.context.symbol import Func, Import, Name
+from ratter.analyser.context.symbol import Call, Func, Import, Name
 from ratter.analyser.types import FileIR
 from ratter.cache.cache import import_info_by_filepath, FileCache, RatterCache
 from ratter.cache.util import (
@@ -31,6 +31,13 @@ def mocked_cache(**kwargs):
         setattr(m_cache, kw, arg)
 
     return m_cache
+
+
+def mocked_module_spec(origin: str):
+    m_module_spec = mock.Mock(spec=["origin"])
+    m_module_spec.origin = origin
+
+    return m_module_spec
 
 
 class TestFileCache:
@@ -422,8 +429,348 @@ class TestCacheUtils:
         cachepath.parent.rmdir()
         assert not cachepath.parent.is_dir()
 
-    def test_get_import_filepaths(self):
-        raise AssertionError
+    def test_get_import_filepaths_no_imports(self):
+        with mock.patch("ratter.cache.util._get_direct_imports") as m_get_imports:
+            m_get_imports.side_effect = lambda _: list()
+            assert get_import_filepaths("anything") == set()
+
+    def test_get_import_filepaths_direct(self, config):
+        """Case of A imports B."""
+        # Define B
+        b_ctx = Context(None)
+        b_lib_func = Func("lib_func", ["a"], None, None)
+        b_ctx.add_all([
+            Name("I_AM_A_CONSTANT"),
+            Name("I_AM_JUST_SHOUTING"),
+            b_lib_func,
+        ])
+        b_ir = FileIR(b_ctx)
+        b_ir._file_ir = {
+            b_lib_func: {
+                "sets": {
+                    Name("a.attr", "a"),
+                },
+                "gets": set(),
+                "dels": set(),
+                "calls": set(),
+            }
+        }
+        b_cache = FileCache(
+            filepath="b.py",
+            filehash="H(b.py)",
+            ir=b_ir,
+        )
+
+        # Define A
+        # Import B.lib_func
+        a_ctx = Context(None)
+        import_lib_func = Import("lib_func", "b.lib_func", "b")
+        import_lib_func.module_spec = mocked_module_spec("b.py")
+        a_func = Func("a_needs_a_fn_too", ["arg"], None, None)
+        a_ctx.add_all([
+            import_lib_func,
+            Name("var_a"),
+            Name("var_b"),
+            a_func,
+        ])
+        a_ir = FileIR(a_ctx)
+        a_ir._file_ir = {
+            a_func: {
+                "sets": set(),
+                "gets": {
+                    Name("arg.something", "arg"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("lib_func()", ["arg"], {}, target=import_lib_func),
+                },
+            }
+        }
+        a_cache = FileCache(
+            filepath="a.py",
+            filehash="H(a.py)",
+            ir=a_ir,
+        )
+
+        # New RatterCache
+        ratter_cache = RatterCache(
+            changed={a_cache.filepath, b_cache.filepath},
+            cache_by_file={
+                a_cache.filepath: a_cache,
+                b_cache.filepath: b_cache,
+            }
+        )
+
+        # Test
+        with config("cache", ratter_cache):
+            assert get_import_filepaths(a_cache.filepath) == {"b.py"}
+            assert get_import_filepaths(b_cache.filepath) == set()
+
+    def test_get_import_filepaths_circular(self, config):
+        """Case of A imports B, B imports A."""
+        # Define B
+        b_ctx = Context(None)
+        b_lib_func = Func("lib_func", ["a"], None, None)
+        b_ctx.add_all([
+            Name("I_AM_A_CONSTANT"),
+            Name("I_AM_JUST_SHOUTING"),
+            b_lib_func,
+        ])
+        b_ir = FileIR(b_ctx)
+        b_ir._file_ir = {
+            b_lib_func: {
+                "sets": {
+                    Name("a.attr", "a"),
+                },
+                "gets": set(),
+                "dels": set(),
+                "calls": set(),
+            }
+        }
+        b_cache = FileCache(
+            filepath="b.py",
+            filehash="H(b.py)",
+            ir=b_ir,
+        )
+
+        # Define A
+        # Import B.lib_func
+        a_ctx = Context(None)
+        import_lib_func = Import("lib_func", "b.lib_func", "b")
+        import_lib_func.module_spec = mocked_module_spec("b.py")
+        a_func = Func("a_needs_a_fn_too", ["arg"], None, None)
+        a_ctx.add_all([
+            import_lib_func,
+            Name("var_a"),
+            Name("var_b"),
+            a_func,
+        ])
+        a_ir = FileIR(a_ctx)
+        a_ir._file_ir = {
+            a_func: {
+                "sets": set(),
+                "gets": {
+                    Name("arg.something", "arg"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("lib_func()", ["arg"], {}, target=import_lib_func),
+                },
+            }
+        }
+        a_cache = FileCache(
+            filepath="a.py",
+            filehash="H(a.py)",
+            ir=a_ir,
+        )
+
+        # B imports A
+        import_a = Import("a", None, "a")
+        import_a.module_spec = mocked_module_spec("a.py")
+        b_ctx.add(import_a)
+
+        # New RatterCache
+        ratter_cache = RatterCache(
+            changed={a_cache.filepath, b_cache.filepath},
+            cache_by_file={
+                a_cache.filepath: a_cache,
+                b_cache.filepath: b_cache,
+            }
+        )
+
+        # Test
+        with config("cache", ratter_cache):
+            assert get_import_filepaths(a_cache.filepath) == {"b.py"}
+            assert get_import_filepaths(b_cache.filepath) == {"a.py"}
+
+    def test_get_import_filepaths_chained(self, config):
+        """Case of A imports B, B imports C."""
+        # Define C
+        # C holds just data, should still work!
+        c_ctx = Context(None)
+        c_ctx.add_all([
+            Name("state"),
+            Name("IMPORTANT_CONSTANT"),
+        ])
+        c_ir = FileIR(c_ctx)
+        c_ir._file_ir = dict()
+        c_cache = FileCache(
+            filepath="c.py",
+            filehash="H(c.py)",
+            ir=c_ir,
+        )
+
+        # Define B
+        b_ctx = Context(None)
+        import_constant = Import("IMPORTANT_CONSTANT", "c.IMPORTANT_CONSTANT", "c")
+        import_constant.module_spec = mocked_module_spec("c.py")
+        b_lib_func = Func("lib_func", ["a"], None, None)
+        b_ctx.add_all([
+            import_constant,
+            Name("I_AM_A_CONSTANT"),
+            Name("I_AM_JUST_SHOUTING"),
+            b_lib_func,
+        ])
+        b_ir = FileIR(b_ctx)
+        b_ir._file_ir = {
+            b_lib_func: {
+                "sets": {
+                    Name("a.attr", "a"),
+                },
+                "gets": set(),
+                "dels": set(),
+                "calls": set(),
+            }
+        }
+        b_cache = FileCache(
+            filepath="b.py",
+            filehash="H(b.py)",
+            ir=b_ir,
+        )
+
+        # Define A
+        # Import B.lib_func
+        a_ctx = Context(None)
+        import_lib_func = Import("lib_func", "b.lib_func", "b")
+        import_lib_func.module_spec = mocked_module_spec("b.py")
+        a_func = Func("a_needs_a_fn_too", ["arg"], None, None)
+        a_ctx.add_all([
+            import_lib_func,
+            Name("var_a"),
+            Name("var_b"),
+            a_func,
+        ])
+        a_ir = FileIR(a_ctx)
+        a_ir._file_ir = {
+            a_func: {
+                "sets": set(),
+                "gets": {
+                    Name("arg.something", "arg"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("lib_func()", ["arg"], {}, target=import_lib_func),
+                },
+            }
+        }
+        a_cache = FileCache(
+            filepath="a.py",
+            filehash="H(a.py)",
+            ir=a_ir,
+        )
+
+        # New RatterCache
+        ratter_cache = RatterCache(
+            changed={a_cache.filepath, b_cache.filepath},
+            cache_by_file={
+                a_cache.filepath: a_cache,
+                b_cache.filepath: b_cache,
+                c_cache.filepath: c_cache,
+            }
+        )
+
+        # Test
+        with config("cache", ratter_cache):
+            assert get_import_filepaths(a_cache.filepath) == {"b.py", "c.py"}
+            assert get_import_filepaths(b_cache.filepath) == {"c.py"}
+            assert get_import_filepaths(c_cache.filepath) == set()
+
+    def test_get_import_filepaths_circular_chained(self, config):
+        """Case of A imports B, B imports C, C imports A."""
+        # Define C
+        # C holds just data, should still work!
+        c_ctx = Context(None)
+        c_ctx.add_all([
+            Name("state"),
+            Name("IMPORTANT_CONSTANT"),
+        ])
+        c_ir = FileIR(c_ctx)
+        c_ir._file_ir = dict()
+        c_cache = FileCache(
+            filepath="c.py",
+            filehash="H(c.py)",
+            ir=c_ir,
+        )
+
+        # Define B
+        b_ctx = Context(None)
+        import_constant = Import("IMPORTANT_CONSTANT", "c.IMPORTANT_CONSTANT", "c")
+        import_constant.module_spec = mocked_module_spec("c.py")
+        b_lib_func = Func("lib_func", ["a"], None, None)
+        b_ctx.add_all([
+            import_constant,
+            Name("I_AM_A_CONSTANT"),
+            Name("I_AM_JUST_SHOUTING"),
+            b_lib_func,
+        ])
+        b_ir = FileIR(b_ctx)
+        b_ir._file_ir = {
+            b_lib_func: {
+                "sets": {
+                    Name("a.attr", "a"),
+                },
+                "gets": set(),
+                "dels": set(),
+                "calls": set(),
+            }
+        }
+        b_cache = FileCache(
+            filepath="b.py",
+            filehash="H(b.py)",
+            ir=b_ir,
+        )
+
+        # Define A
+        # Import B.lib_func
+        a_ctx = Context(None)
+        import_lib_func = Import("lib_func", "b.lib_func", "b")
+        import_lib_func.module_spec = mocked_module_spec("b.py")
+        a_func = Func("a_needs_a_fn_too", ["arg"], None, None)
+        a_ctx.add_all([
+            import_lib_func,
+            Name("var_a"),
+            Name("var_b"),
+            a_func,
+        ])
+        a_ir = FileIR(a_ctx)
+        a_ir._file_ir = {
+            a_func: {
+                "sets": set(),
+                "gets": {
+                    Name("arg.something", "arg"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("lib_func()", ["arg"], {}, target=import_lib_func),
+                },
+            }
+        }
+        a_cache = FileCache(
+            filepath="a.py",
+            filehash="H(a.py)",
+            ir=a_ir,
+        )
+
+        # C imports A
+        import_a = Import("a", None, "a")
+        import_a.module_spec = mocked_module_spec("a.py")
+        c_ctx.add(import_a)
+
+        # New RatterCache
+        ratter_cache = RatterCache(
+            changed={a_cache.filepath, b_cache.filepath},
+            cache_by_file={
+                a_cache.filepath: a_cache,
+                b_cache.filepath: b_cache,
+                c_cache.filepath: c_cache,
+            }
+        )
+
+        # Test
+        with config("cache", ratter_cache):
+            assert get_import_filepaths(a_cache.filepath) == {"b.py", "c.py"}
+            assert get_import_filepaths(b_cache.filepath) == {"c.py", "a.py"}
+            assert get_import_filepaths(c_cache.filepath) == {"a.py", "b.py"}
 
     def test__get_direct_imports(self):
         from ratter import config

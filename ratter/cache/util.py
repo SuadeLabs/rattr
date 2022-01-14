@@ -86,6 +86,9 @@ def get_import_filepaths(filepath: str) -> Set[str]:
         if i_path in imports:
             continue
 
+        if i_path == filepath:
+            continue
+
         imports.add(i_path)
 
         queue += _get_direct_imports(i_path)
