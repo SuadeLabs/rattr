@@ -1,5 +1,6 @@
 import hashlib
 import mock
+import pytest
 import tempfile
 from itertools import combinations
 from pathlib import Path
@@ -12,6 +13,15 @@ from ratter.version import __version__
 
 def get_cache_filepath_safe(filepath: str) -> str:
     return get_cache_filepath(filepath, mkdir=False)
+
+
+def mocked_cache(**kwargs):
+    m_cache = mock.Mock(spec=FileCache)
+
+    for kw, arg in kwargs.items():
+        setattr(m_cache, kw, arg)
+
+    return m_cache
 
 
 class TestFileCache:
@@ -166,16 +176,104 @@ class TestFileCache:
 class TestRatterCache:
 
     def test_has(self):
-        raise AssertionError
+        assert not RatterCache().has("nope")
 
-    def test_get(self):
-        raise AssertionError
+        populated = RatterCache(cache_by_file={"file": mock.Mock()})
+        assert populated.has("file")
+        assert not populated.has("some_other_file")
+
+    def test_get(self, config):
+        # Does not exist
+        assert RatterCache().get("nope") is None
+
+        populated = RatterCache(cache_by_file={"file": mock.Mock()})
+
+        # Has been loaded or created
+        assert populated.get("file") is not None
+        assert populated.get("some_other_file") is None
+
+        # Load from file
+        with config("use_cache", True):
+            with mock.patch("ratter.cache.cache.FileCache") as m_FileCache:
+                m_cache = mocked_cache(
+                    filepath="loaded_file",
+                    is_valid=True,
+                )
+                m_FileCache.from_file.side_effect = [
+                    m_cache,
+                    AssertionError,
+                ]
+
+                assert populated.get("loaded_file") is not None
+
+        # Load from file, file does not exist
+        with config("use_cache", True):
+            with mock.patch("ratter.cache.cache.FileCache") as m_FileCache:
+                m_cache = mocked_cache(
+                    filepath="loaded_file",
+                    is_valid=True,
+                )
+                m_FileCache.from_file.side_effect = [
+                    FileNotFoundError,
+                ]
+
+                assert populated.get("loaded_file") is None
+
+        # Load from file, file is outdated
+        with config("use_cache", True):
+            with mock.patch("ratter.cache.cache.FileCache") as m_FileCache:
+                m_cache = mocked_cache(
+                    filepath="loaded_file",
+                    is_valid=False,
+                )
+                m_FileCache.from_file.side_effect = [
+                    m_cache,
+                    AssertionError,
+                ]
+
+                assert populated.get("loaded_file") is None
+
+        # Load from file, filepath mismatch
+        with config("use_cache", True):
+            with mock.patch("ratter.cache.cache.FileCache") as m_FileCache:
+                m_cache = mocked_cache(
+                    filepath="THE WRONG FILE PATH",
+                    is_valid=True,
+                )
+                m_FileCache.from_file.side_effect = [
+                    m_cache,
+                    AssertionError,
+                ]
+
+                with pytest.raises(ValueError):
+                    populated.get("loaded_file") is None
+
+        # Post-tests changes should be empty
+        assert populated.changed == set()
 
     def test_new(self):
-        raise AssertionError
+        ratter_cache = RatterCache()
+
+        assert ratter_cache.get("my_file") is None
+        assert ratter_cache.changed == set()
+        assert ratter_cache.cache_by_file == dict()
+
+        assert ratter_cache.new("my_file") is not None
+        assert ratter_cache.changed == {"my_file"}
+        assert ratter_cache.cache_by_file["my_file"] is not None
 
     def test_get_or_new(self):
-        raise AssertionError
+        ratter_cache = RatterCache()
+        existant = ratter_cache.new("existing")
+
+        # Get existant
+        assert ratter_cache.get_or_new("existing") == existant
+
+        # Get non-existant
+        non_existant = ratter_cache.get_or_new("non_existant")
+        assert non_existant is not None
+        assert non_existant != existant
+        assert non_existant.filepath == "non_existant"
 
 
 class TestCacheUtils:
