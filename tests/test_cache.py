@@ -1,3 +1,4 @@
+from functools import partial
 import hashlib
 import mock
 import pytest
@@ -8,7 +9,7 @@ from pathlib import Path
 from ratter.analyser.context.context import Context
 from ratter.analyser.context.symbol import Func, Import, Name
 from ratter.analyser.types import FileIR
-from ratter.cache.cache import FileCache, RatterCache
+from ratter.cache.cache import import_info_by_filepath, FileCache, RatterCache
 from ratter.cache.util import (
     DO_NOT_CACHE,
     get_cache_filepath,
@@ -45,8 +46,72 @@ class TestFileCache:
         assert cache.filepath == __file__
         assert cache.filehash == get_file_hash(__file__)
 
-    def test_set_imports(self):
-        raise AssertionError
+    @mock.patch("ratter.cache.cache.get_import_filepaths")
+    def test_set_imports(self, m_get_import_filepaths):
+        m_get_import_filepaths: mock.MagicMock = m_get_import_filepaths
+
+        # Test adding nothing
+        m_get_import_filepaths.return_value = set()
+        file_cache = FileCache()
+
+        assert file_cache.imports == list()
+        file_cache.set_imports()
+        assert file_cache.imports == list()
+
+        # Util -- sort by file
+        sorted_by_file = partial(sorted, key=lambda info: info["filepath"])
+
+        # Test not in import_info_by_filepath
+        # Test set import_info_by_filepath
+        with mock.patch("ratter.cache.cache.get_file_hash") as m_get_file_hash:
+            assert import_info_by_filepath == dict()
+
+            # Data
+            modules = [
+                "some_import",
+                "another",
+                "some.dotted.module",
+            ]
+            imports = [{"filepath": m, "filehash": f"H({m})"} for m in modules]
+
+            # Mock
+            m_get_file_hash.side_effect = lambda f: f"H({f})"
+            m_get_import_filepaths.return_value = set(modules)
+
+            # Test
+            file_cache = FileCache()
+            assert file_cache.imports == list()
+            file_cache.set_imports()
+            assert sorted_by_file(file_cache.imports) == sorted_by_file(imports)
+
+            # Has set import_info_by_filepath?
+            for m in modules:
+                assert import_info_by_filepath[m] == {
+                    "filepath": m,
+                    "filehash": f"H({m})",
+                }
+
+        # Test in import_info_by_filepath
+        with mock.patch("ratter.cache.cache.import_info_by_filepath") as m_import_info:
+            # Data
+            modules = [
+                "some_import",
+                "another",
+                "some.dotted.module",
+            ]
+            imports = [{"filepath": m, "filehash": f"H({m})"} for m in modules]
+            import_info = {m: i for m, i in zip(modules, imports)}
+
+            # Mock
+            m_import_info.__contains__.side_effect = import_info.__contains__
+            m_import_info.__getitem__.side_effect = import_info.__getitem__
+            m_get_import_filepaths.return_value = set(modules)
+
+            # Test
+            file_cache = FileCache()
+            assert file_cache.imports == list()
+            file_cache.set_imports()
+            assert sorted_by_file(file_cache.imports) == sorted_by_file(imports)
 
     def test_errors(self, capsys):
         # Test set errors
