@@ -57,8 +57,8 @@ class Config:
     save_results: str = ""
 
     # Cache settings
-    use_cache: bool = True
-    save_cache: bool = True
+    use_cache: bool = False
+    save_cache: bool = False
 
     # HACK Below items constitute run-time state and are not strictly config
     # TODO
