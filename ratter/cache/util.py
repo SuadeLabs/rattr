@@ -32,7 +32,7 @@ def get_file_hash(filepath: str, blocksize: int = 2 ** 20) -> Optional[str]:
     return _hash.hexdigest()
 
 
-def get_cache_filepath(filepath: str, mkdir: bool = True) -> str:
+def get_cache_filepath(source_filepath: str, mkdir: bool = True) -> str:
     """Return the default cache filepath corresponding to the given file.
 
     Side-effect:
@@ -40,31 +40,27 @@ def get_cache_filepath(filepath: str, mkdir: bool = True) -> str:
         `mkdir` is explicitly set to `False`.
 
     """
-    dir_as_path = Path(filepath).parent
-    file_as_path = Path(filepath).with_suffix(".json").name
+    if source_filepath in DO_NOT_CACHE:
+        raise ValueError(f"can't cache built-in module at '{source_filepath}'")
+
+    tmp = Path(tempfile.gettempdir())
+    source_file_dir = Path(source_filepath).parent
+    cache_file_name = Path(source_filepath).with_suffix(".json").name
 
     # NOTE
-    #   We don't really want to be clogging up /usr/lib/pypy and such with
-    #   cache files... So set to /tmp/.ratter/cache/usr/lib/pypy/* or OS
-    #   equivalent.
-    # NOTE Python Version Compatibility
-    #   `Path.parents` does not support splicing or negative indexing pre-3.10,
-    #   thus it is converted to a list.
-    #   https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.parents
-    if filepath in DO_NOT_CACHE:
-        raise ValueError(f"can't cache built-in module at '{filepath}'")
-    elif is_pip_filepath(filepath) or is_stdlib_filepath(filepath):
-        tmp = Path(tempfile.gettempdir())
-        libpath = dir_as_path.relative_to(list(dir_as_path.parents)[-1])
-        new_dir_as_path = tmp / ".ratter" / "cache" / libpath
+    #   We don't want to be clogging up /usr/lib/pypy etc with cache files...
+    #   So place pip/stdlib cache files <OS temp>/.ratter/cache/path/to/source
+    if is_pip_filepath(source_filepath) or is_stdlib_filepath(source_filepath):
+        root = list(source_file_dir.parents)[-1]
+        cache_dir = tmp / ".ratter" / "cache" / source_file_dir.relative_to(root)
     else:
-        new_dir_as_path = dir_as_path / ".ratter" / "cache"
+        cache_dir = source_file_dir / ".ratter" / "cache"
 
-    # NOTE Create the containing path if it does not exist
-    if mkdir and not new_dir_as_path.is_dir():
-        new_dir_as_path.mkdir(parents=True)
+    # Create the containing path if it does not exist
+    if mkdir and not cache_dir.is_dir():
+        cache_dir.mkdir(parents=True)
 
-    return str(new_dir_as_path / file_as_path)
+    return str(cache_dir / cache_file_name)
 
 
 def get_import_filepaths(filepath: str) -> Set[str]:
