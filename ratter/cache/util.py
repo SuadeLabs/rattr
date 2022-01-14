@@ -102,12 +102,15 @@ def _get_direct_imports(filepath: str) -> List[Import]:
     from ratter import config
 
     if filepath in DO_NOT_CACHE:
-        return []
+        return list()
 
     cached = config.cache.get(filepath)
 
-    if cached is None or cached.ir is None:
+    if cached is None:
         return list()
+
+    if cached.ir is None:
+        raise ValueError(f"cache IR is not populated for '{filepath}'")
 
     ctx: Context = cached.ir.context
     imports: List[Import] = list()

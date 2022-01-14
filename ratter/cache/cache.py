@@ -78,9 +78,7 @@ class FileCache:
     def set_imports(self) -> None:
         """Set the file imports for this cache.
 
-        NOTE
-            Assumes `config.cache` is *fully* populated, see
-            `get_import_filepaths`.
+        NOTE Assumes `config.cache` is complete, see `get_import_filepaths`.
 
         """
         for i_filepath in get_import_filepaths(self.filepath):
@@ -240,7 +238,7 @@ class RatterCache:
     def new(self, filepath: str) -> FileCache:
         """Return and register a new cache for the given filepath."""
         if self.has(filepath):
-            raise FileExistsError
+            raise ValueError(f"cache for '{filepath}' already loaded")
 
         self.cache_by_file[filepath] = FileCache()
         self.cache_by_file[filepath].set_file_info(filepath)

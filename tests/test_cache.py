@@ -5,9 +5,17 @@ import tempfile
 from itertools import combinations
 from pathlib import Path
 
-from ratter.analyser.context.symbol import Import
+from ratter.analyser.context.context import Context
+from ratter.analyser.context.symbol import Func, Import, Name
+from ratter.analyser.types import FileIR
 from ratter.cache.cache import FileCache, RatterCache
-from ratter.cache.util import get_cache_filepath, get_file_hash
+from ratter.cache.util import (
+    DO_NOT_CACHE,
+    get_cache_filepath,
+    get_file_hash,
+    get_import_filepaths,
+    _get_direct_imports,
+)
 from ratter.version import __version__
 
 
@@ -348,3 +356,52 @@ class TestCacheUtils:
         # Clean-up
         cachepath.parent.rmdir()
         assert not cachepath.parent.is_dir()
+
+    def test_get_import_filepaths(self):
+        raise AssertionError
+
+    def test__get_direct_imports(self):
+        from ratter import config
+
+        # Do not cache
+        for file in DO_NOT_CACHE:
+            assert _get_direct_imports(file) == list()
+
+        # File not in cache
+        assert _get_direct_imports("i-am-not-in-the-cache") == list()
+
+        # Cache IR is unset i.e. cache is initialised but not populated
+        unpopulated = config.cache.new("unpopulated.py")
+        with pytest.raises(ValueError):
+            _get_direct_imports(unpopulated.filepath)
+
+        # Populated, no imports
+        context = Context(None)
+        populated = config.cache.new("populated.py")
+        populated.ir = FileIR(context)
+        assert _get_direct_imports(populated.filepath) == list()
+
+        # Populated, w/ imports
+        imports = [
+            # Stdlib
+            Import("pathlib"),
+            # Pip
+            Import("flask"),
+            # Local, ratter
+            Import("ratter.cache.cache"),
+            # Local, imaginary
+            Import("my.special.module"),
+        ]
+        non_imports = [
+            Name("some.redherring.names", "some"),
+            Name("that.should.be.wellformed", "that"),
+            Name("alpha"),
+            Name("beta"),
+            Name("gamma"),
+            Func("delta", ["a", "b"], None, None),
+        ]
+        context.add_all(imports)
+        context.add_all(non_imports)
+
+        populated.ir = FileIR(context)
+        assert _get_direct_imports(populated.filepath) == imports
