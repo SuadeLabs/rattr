@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from os.path import isfile
+from platform import python_version
 from typing import Dict, List, Optional, Set, Type, TypeVar
 
 import jsonpickle
@@ -26,10 +27,11 @@ class FileCache:
 
     The cache is designed to be JSON serialisable/un-serialisable.
 
-    Cache format (JSON):
+    Cache format (JSON, not accounting for `jsonpickle` data):
     ```json
     {
         "ratter_version": ...,  # the Ratter version the cache was created by
+        "python_version": ...,  # the Python version Ratter was run under
 
         "filepath": ...,        # the file the results belong to
         "filehash": ...,        # the MD5 hash of the file when it was cached
@@ -55,6 +57,7 @@ class FileCache:
     """
 
     ratter_version: str = __version__
+    python_version: str = field(default_factory=python_version)
 
     filepath: str = "undefined"
     filehash: str = "undefined"
@@ -99,34 +102,30 @@ class FileCache:
             print(error)
 
     @property
-    def is_valid(self, filepath: Optional[str] = None) -> bool:
-        """Return `True` if the cache is valid for the given file.
+    def is_valid(self) -> bool:
+        """Return `True` if the cache is valid.
 
-        If `filepath` is `None` it is assumed that the cache is being checked
-        for `self.filepath`. The common use case for this will be s.t.
-        >>> FileCache.from_file(cache_filepath).is_valid()
-        can be used in place of the more verbose
-        >>> FileCache.from_file(cache_filepath).is_valid(my_filepath)
-        where `my_filepath` is known to be the same as the filepath stored in the
-        cache.
+        If `self.filepath` is unset then `is_valid` is always `False`.
 
         """
-        # Default to the cache's filepath
-        if filepath is None:
-            filepath = self.filepath
+        if self.filepath is None or self.filepath is "undefined":
+            return False
 
-        if not isfile(filepath):
+        if not isfile(self.filepath):
             return False
 
         # Validate version
         if self.ratter_version != __version__:
             return False
 
-        # Validate file
-        if self.filepath != filepath:
+        if self.python_version != python_version():
             return False
 
-        if self.filehash != get_file_hash(filepath):
+        # Validate file
+        if self.filepath != self.filepath:
+            return False
+
+        if self.filehash != get_file_hash(self.filepath):
             return False
 
         # Validate imports
