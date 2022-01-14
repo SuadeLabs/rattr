@@ -1,6 +1,7 @@
 from functools import partial
 import hashlib
 import mock
+import os
 import pytest
 import tempfile
 from itertools import combinations
@@ -38,6 +39,13 @@ def mocked_module_spec(origin: str):
     m_module_spec.origin = origin
 
     return m_module_spec
+
+
+def get_relative_libpath(lib: str) -> Path:
+    if "\\" in lib and os.name == "nt":
+        return Path(Import(lib).module_spec.origin[3:]).parent
+
+    return Path(Import(lib).module_spec.origin[1:]).parent
 
 
 class TestFileCache:
@@ -386,7 +394,7 @@ class TestCacheUtils:
 
         # Is pip module
         filepath = get_cache_filepath_safe(Import("flask").module_spec.origin)
-        rel_libpath = Path(Import("flask").module_spec.origin[1:]).parent
+        rel_libpath = get_relative_libpath("flask")
         assert filepath.startswith(tmp)
         assert filepath == str(
             Path(tmp) / ".ratter" / "cache" / rel_libpath / "__init__.json"
@@ -394,7 +402,7 @@ class TestCacheUtils:
 
         # Is stdlib module
         filepath = get_cache_filepath_safe(Import("pathlib").module_spec.origin)
-        rel_libpath = Path(Import("pathlib").module_spec.origin[1:]).parent
+        rel_libpath = get_relative_libpath("pathlib")
         assert filepath.startswith(tmp)
         assert filepath == str(
             Path(tmp) / ".ratter" / "cache" / rel_libpath / "pathlib.json"
