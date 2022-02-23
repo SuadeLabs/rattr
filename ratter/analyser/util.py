@@ -573,16 +573,19 @@ def is_stdlib_module(module: str) -> bool:
     False
 
     """
-    # FIXME Is there a better way of determining the  install locations
+    # FIXME
+    #    Is there a better way of determining the  install locations?
+    #    Possibly see how pip abd setuptools do it?
     stdlib_patterns = (
         # "math", etc -- not the same builtins as "print", etc
         "built-in",
         "frozen",
         # Standard install locations
-        "/(usr|opt)/(local/)?lib/(pypy|python).*",
-        "/(usr|opt)/(local/)?lib/(pypy|python).?/dist-packages.*",
-        "/(usr|opt)/(pypy|python)/lib-python.*",
-        "/(usr|opt)/pypy/lib_pypy.*",
+        # NOTE
+        #    This means that if you have a directory in your source code called e.g.
+        #    'lib/pypy/' we might ignore it.
+        ".+/lib/(pypy|python).*",
+        ".+/pypy/lib_pypy.*",
         # GitHub `setup-python` locations
         "/opt/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
         "/opt/.+/PyPy/.+/lib_pypy.*",
