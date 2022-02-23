@@ -591,7 +591,7 @@ def is_stdlib_module(module: str) -> bool:
         "/opt/.+/PyPy/.+/lib_pypy.*",
         "/Users/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
         "/Users/.+/PyPy/.+/lib_pypy.*",
-        "C:/.+/(PyPy|Python)/.+/lib.*",
+        "C:/.+/(PyPy|Python)/.+/(L|l)ib.*",
         "C:/.+/(PyPy|Python)/.+/DLLs.*",
     )
 
@@ -618,7 +618,6 @@ def is_stdlib_module(module: str) -> bool:
     # No backslashes, bad windows!
     spec.origin = spec.origin.replace("\\", "/")
 
-    print(spec.origin)
     return any(re.fullmatch(p, spec.origin) for p in stdlib_patterns)
 
 
