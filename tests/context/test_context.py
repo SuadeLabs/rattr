@@ -2,10 +2,9 @@ import ast
 import mock
 
 
-from ratter.analyser.context import (
-    Context,
-    RootContext,
-    SymbolTable,
+from ratter.analyser.context.context import Context, RootContext
+from ratter.analyser.context.symbol_table import SymbolTable
+from ratter.analyser.context.symbol import (
     Name,
     Builtin,
     Import,

@@ -6,15 +6,8 @@ from typing import List, Optional, Tuple
 
 from ratter import error
 from ratter.analyser.base import NodeVisitor
-from ratter.analyser.context import (
-    Call,
-    Class,
-    Context,
-    Func,
-    Name,
-    Symbol,
-    new_context,
-)
+from ratter.analyser.context.context import Context, new_context
+from ratter.analyser.context.symbol import Call, Class, Func, Name, Symbol
 from ratter.analyser.types import (
     AnyAssign,
     AnyFunctionDef,

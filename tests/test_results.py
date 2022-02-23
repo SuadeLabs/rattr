@@ -1,7 +1,6 @@
 import mock
 
-from ratter.analyser.context import Call, Func, Name, Import
-from ratter.analyser.context.symbol import Class
+from ratter.analyser.context.symbol import Call, Class, Func, Name, Import
 from ratter.analyser.results import generate_results_from_ir
 
 

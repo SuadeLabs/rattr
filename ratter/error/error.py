@@ -6,8 +6,6 @@ from enum import Enum
 from os.path import expanduser
 from typing import List, Optional, Tuple
 
-from ratter import config
-
 __ERROR = "{prefix}: {optional_file_info}{optional_line_info}{message}"
 __FILE_INFO = "\033[1m{}: \033[0m"
 __LINE_INFO = "\033[1mline {}:{}: \033[0m"
@@ -41,6 +39,8 @@ def info(
     badness: int = 0,
 ) -> None:
     """Log a low-priority warning and, if given, include culprit info."""
+    from ratter import config
+
     __increment_badness(badness)
 
     if not config.show_warnings:
@@ -61,6 +61,8 @@ def warning(
     badness: int = 1,
 ) -> None:
     """Log a warning and, if given, include culprit line and file info."""
+    from ratter import config
+
     __increment_badness(badness)
 
     if not config.show_warnings:
@@ -78,6 +80,8 @@ def error(
     badness: int = 5,
 ) -> None:
     """Log an error and, if given, include culprit line and file info."""
+    from ratter import config
+
     __increment_badness(badness)
 
     if config.strict and badness > 0:
@@ -110,11 +114,15 @@ def fatal(
 
 def get_badness() -> int:
     """Return the badness value."""
+    from ratter import config
+
     return config.file_badness + config.simplify_badness
 
 
 def is_within_badness_threshold() -> bool:
     """Return `True` if the program is within the current badness threshold."""
+    from ratter import config
+
     badness = get_badness()
 
     if config.strict:
@@ -175,6 +183,8 @@ class RatterComprehensionInNameable(TypeError):
 
 def get_file_and_line_info(culprit: Optional[ast.AST]) -> Tuple[str, str]:
     """Return the formatted line and line and file info as strings."""
+    from ratter import config
+
     if culprit is None:
         return "", ""
 
@@ -219,6 +229,8 @@ def split_path(path: str) -> List[str]:
 
 def format_path(path: Optional[str]) -> Optional[str]:
     """Return the given path formatted in line with `config`."""
+    from ratter import config
+
     if path is None:
         return None
 
@@ -241,19 +253,29 @@ def __log(
     message: str,
     culprit: Optional[ast.AST] = None,
 ) -> None:
+    from ratter import config
+
     file_info, line_info = get_file_and_line_info(culprit)
 
-    print(
-        __ERROR.format(
-            prefix=level.value,
-            optional_file_info=file_info,
-            optional_line_info=line_info,
-            message=message,
-        )
+    error = __ERROR.format(
+        prefix=level.value,
+        optional_file_info=file_info,
+        optional_line_info=line_info,
+        message=message,
     )
+
+    if config.current_file:
+        cached = config.cache.get(config.current_file)
+
+        if cached is not None:
+            cached.add_error(error)
+
+    print(error)
 
 
 def __increment_badness(badness: int) -> None:
+    from ratter import config
+
     if isinstance(badness, int) and badness < 0:
         raise ValueError("'badness' must be positive integer")
 

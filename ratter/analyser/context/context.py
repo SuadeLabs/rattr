@@ -11,9 +11,18 @@ functions such as `print`, etc.
 
 import ast
 from contextlib import contextmanager
-from typing import Any, Generator, Iterable, Optional, Set, TypeVar, Union
+from typing import (
+    Any,
+    Generator,
+    Iterable,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+)
 
-from ratter import config, error
+from ratter import error
 from ratter.analyser.context.symbol import (
     Builtin,
     CallTarget,
@@ -26,7 +35,6 @@ from ratter.analyser.context.symbol import (
     get_possible_module_names,
 )
 from ratter.analyser.context.symbol_table import SymbolTable
-from ratter.analyser.types import AnyAssign, Constant, Literal
 from ratter.analyser.util import (
     PYTHON_BUILTINS,
     assignment_is_one_to_one,
@@ -74,6 +82,8 @@ class Context:
     """
 
     def __init__(self, parent: Optional[_Context]) -> None:
+        from ratter import config
+
         self.parent = parent
         self.symbol_table = SymbolTable()
         self.file = config.current_file
@@ -239,8 +249,10 @@ class Context:
     # Syntactic sugar
     # ----------------------------------------------------------------------- #
 
-    def expand_starred_imports(self) -> _Context:
+    def expand_starred_imports(self) -> Type[_Context]:
         """Expand starred imports to normal imports."""
+        from ratter import config
+
         seen: Set[str] = set()
 
         # Create initial starred list for BFS
@@ -260,18 +272,23 @@ class Context:
                 continue
 
             with open(_i.module_spec.origin, "r") as f:
-                _i_ast = ast.parse(f.read())
+                _ast = ast.parse(f.read())
 
-            with enter_file(_i.module_spec.origin):
-                _i_ctx = RootContext(_i_ast)
+            cached = config.cache.get_or_new(_i.module_spec.origin)
+
+            if not config.use_cache or cached.ir is None:
+                with enter_file(_i.module_spec.origin):
+                    ctx = RootContext(_ast)
+            else:
+                ctx = cached.ir.context
 
             seen.add(_i.module_spec.origin)
 
-            starred += get_starred_imports(_i_ctx.symbol_table.symbols(), seen)
+            starred += get_starred_imports(ctx.symbol_table.symbols(), seen)
 
-            # Tread `from x import *` as syntactic sugar for
+            # Treat `from x import *` as syntactic sugar for
             # `from x import a, b, c, ...`
-            for s in _i_ctx.symbol_table.symbols():
+            for s in ctx.symbol_table.symbols():
                 self.add(Import(s.name, f"{_i.qualified_name}.{s.name}"))
 
         return self
@@ -387,6 +404,8 @@ class RootContext(Context):
 
     def register_starred_import(self, node: ast.ImportFrom) -> None:
         """Helper method for starred imports."""
+        from ratter import config
+
         if self.file is None or not self.file.endswith("__init__.py"):
             error.warning(
                 f"do not use 'from {node.module} import *', be explicit", node
@@ -406,6 +425,8 @@ class RootContext(Context):
 
     def register_relative_import(self, node: ast.ImportFrom) -> None:
         """Helper method for relative imports."""
+        from ratter import config
+
         base = module_name_from_file_path(config.current_file)
 
         if base is None:
@@ -456,7 +477,7 @@ class RootContext(Context):
 
         RootContext.register_named_imports(self, node)
 
-    def register_AnyAssign(self, node: AnyAssign) -> None:
+    def register_AnyAssign(self, node: ast.stmt) -> None:
         targets = get_assignment_targets(node)
 
         if lambda_in_rhs(node):
@@ -558,6 +579,9 @@ class RootContext(Context):
             "floating"), then disallow it.
 
         """
+        # Circular import
+        from ratter.analyser.types import Constant, Literal
+
         if isinstance(node.value, Literal.__args__):
             return
 

@@ -1,7 +1,7 @@
 """Ratter functions for producing and displaying results."""
 import json
 
-from ratter.analyser.context import Symbol
+from ratter.analyser.context.symbol import Symbol
 from ratter.analyser.ir_dag import IrDagNode
 from ratter.analyser.types import FileIR, FileResults, ImportsIR
 
@@ -15,6 +15,9 @@ class ResultsEncoder(json.JSONEncoder):
 
         if isinstance(obj, Symbol):
             return repr(obj)
+
+        if obj.__class__.__name__ == "RatterCache":
+            return str(obj)
 
         return super().default(obj)
 

@@ -5,6 +5,7 @@ from os.path import isfile, splitext
 
 from ratter import error
 from ratter.cli.util import multi_paragraph_wrap
+from ratter.version import __version__
 
 
 def parse_arguments() -> Namespace:
@@ -54,11 +55,12 @@ def parse_arguments() -> Namespace:
         "-v",
         "--version",
         action="version",
-        version="%(prog)s 1.0.0",
+        version=f"%(prog)s {__version__}",
     )
 
     # TODO Allow user to add to this (will need config to respect this)
     ARGUMENT_GROUP_PARSERS = (
+        DryRun,
         FollowImports,
         ExcludeImports,
         ExcludePatterns,
@@ -69,6 +71,7 @@ def parse_arguments() -> Namespace:
         FilterString,
         File,
         Cache,
+        ResultsCache,
     )
 
     for argument_group_parser in ARGUMENT_GROUP_PARSERS:
@@ -84,7 +87,7 @@ def parse_arguments() -> Namespace:
         try:
             arguments = argument_group_parser.validate(parser, arguments)
         except ArgumentError as e:
-            error.ratter(parser.format_usage())
+            print(parser.format_usage())
             error.fatal(str(e))
 
     return arguments
@@ -96,6 +99,26 @@ class ArgumentGroupParser(ABC):
         return parser
 
     @abstractstaticmethod
+    def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
+        return arguments
+
+
+class DryRun(ArgumentGroupParser):
+    def register(parser: ArgumentParser) -> ArgumentParser:
+        dry_run_group = parser.add_argument_group()
+        dry_run_group.add_argument(
+            "--dry-run",
+            action="store_true",
+            help=multi_paragraph_wrap(
+                """\
+                print config from the received arguments, post validation,
+                and exit
+                """
+            ),
+        )
+
+        return parser
+
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
         return arguments
 
@@ -320,7 +343,7 @@ class Output(ArgumentGroupParser):
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
-                show stats Ratter statisitics
+                show stats ratter statisitics
                 """
             ),
         )
@@ -416,13 +439,24 @@ class File(ArgumentGroupParser):
 class Cache(ArgumentGroupParser):
     def register(parser: ArgumentParser) -> ArgumentParser:
         cache_group = parser.add_argument_group()
-        cache_group.add_argument(
-            "--cache",
-            default="",
-            type=str,
+        cache_mutex_group = cache_group.add_mutually_exclusive_group()
+        cache_mutex_group.add_argument(
+            "--force-refresh-cache",
+            action="store_true",
             help=multi_paragraph_wrap(
                 """\
-                the file to cache the results to, if successful
+                do not use the cache while processing, but overwrite it on
+                success
+                """
+            ),
+        )
+        cache_mutex_group.add_argument(
+            "--no-cache",
+            action="store_true",
+            help=multi_paragraph_wrap(
+                """\
+                disbale working cache, with this disabled ratter will not
+                experience a speed up on subsequent runs of unchanged files
                 """
             ),
         )
@@ -430,7 +464,28 @@ class Cache(ArgumentGroupParser):
         return parser
 
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
-        f = arguments.cache
+        return arguments
+
+
+class ResultsCache(ArgumentGroupParser):
+    def register(parser: ArgumentParser) -> ArgumentParser:
+        results_cache_group = parser.add_argument_group()
+        results_cache_group.add_argument(
+            "--save-results",
+            default="",
+            type=str,
+            help=multi_paragraph_wrap(
+                """\
+                the file to copy the cached results to, if successfull
+                """
+            ),
+            metavar="CACHE_FILE",
+        )
+
+        return parser
+
+    def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
+        f = arguments.save_results
         _, ext = splitext(f)
 
         if isfile(f):

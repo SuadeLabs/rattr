@@ -7,7 +7,7 @@ from itertools import product
 from typing import Dict, List, Optional
 
 from ratter import error
-from ratter.analyser.context import Context
+from ratter.analyser.context.context import Context
 from ratter.analyser.context.symbol import Import
 from ratter.analyser.types import FuncOrAsyncFunc, FunctionIR
 

@@ -4,12 +4,11 @@ import mock
 import pytest
 
 from ratter import error
-from ratter.analyser.context import (
+from ratter.analyser.context.context import Context, RootContext
+from ratter.analyser.context.symbol import (
     Call,
     Class,
-    Context,
     Name,
-    RootContext,
 )
 from ratter.analyser.util import (
     assignment_is_one_to_one,

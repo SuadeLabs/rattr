@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Optional, Set
 
+from ratter.cache import RatterCache
+
 
 @dataclass
 class Config:
@@ -10,6 +12,8 @@ class Config:
         Defaults only used in tests, `__main__.py` will always override
 
     """
+
+    dry_run: bool = False
 
     # Import following
     follow_imports: int = 1
@@ -49,12 +53,24 @@ class Config:
     # File info
     file: str = "<no_file>"
 
-    # HACK State, cleaner than passing [str | None] to dozens of functions
-    # NOTE See `util.py::enter_file`
+    # File to save cache results to
+    save_results: str = ""
+
+    # Cache settings
+    use_cache: bool = False
+    save_cache: bool = False
+
+    # HACK Below items constitute run-time state and are not strictly config
+    # TODO
+    #   Move state somewhere intelligent, without having to pass state
+    #   to/through dozens of functions making the function signatures messier
+    #   than needed
+
+    # See `util.py::enter_file`
     current_file: Optional[str] = None
 
-    # Cache file
-    cache: str = ""
+    # See `RatterCache`
+    cache: RatterCache = field(default_factory=RatterCache)
 
 
 config = Config()

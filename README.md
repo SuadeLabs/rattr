@@ -90,6 +90,46 @@ as nested functions -- "un-nest" them.
 See `python ratter -h`.
 
 
+## Security
+
+### Caching and Serialisation
+
+Both the `pickle` and `jsonpickle` libraries, used for serialisation in Python,
+have known security issues which are inherited by Ratter (`jsonpickle` is used
+s.t. the cache files remain human readable). As such you should not allow cache
+files to be loaded from untrusted sources.
+
+If you are concerned about security, or you are unable to ensure cache files
+are trusted, you can run Ratter with the `--no-cache` argument to avoid the use
+of the `jsonpickle` library.
+
+
+[1] https://docs.python.org/3/library/pickle.html
+
+[2] https://jsonpickle.github.io/#jsonpickle-usage
+
+
+### Imports and `importlib`
+
+Ratter uses `importlib.util.find_spec` to locate the source code for imported
+modules when following imports. However, the function `find_spec(m)` has the
+side-effect that, when called, the parent module of `m` will be imported, thus
+the parent of `m` will be imported by Ratter and any code in the global scope
+of `m`'s parent will be executed. As such you should not run Ratter on any
+code you do not trust and would not be willing to execute.
+
+If you wish to avoid the use of `find_spec` you can set the CLI argument
+`--follow-imports 0` or `--follow-imports 1`, however, you must do so at your
+own risk as this has not been thoroughly tested.
+
+We intend to fix this vulnerability after moving to Python 3.8+ in the future,
+by using the new `importlib.metadata` library [3], which appears to not
+suffer from the same issue.
+
+
+[3] https://docs.python.org/3.8/library/importlib.metadata.html
+
+
 ## Errors and Warnings
 
 Ratter can give five types of error/warnings: raised Python errors, output

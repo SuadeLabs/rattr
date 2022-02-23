@@ -3,7 +3,7 @@
 import ast
 
 from ratter.analyser.base import CustomFunctionAnalyser
-from ratter.analyser.context import Context
+from ratter.analyser.context.context import Context
 from ratter.analyser.types import FuncOrAsyncFunc, FunctionIR
 
 

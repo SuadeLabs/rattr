@@ -1,7 +1,7 @@
 import mock
 import pytest
 
-from ratter.analyser.context import Builtin, Call, Func, Name, Import
+from ratter.analyser.context.symbol import Builtin, Call, Func, Name, Import
 from ratter.analyser.context.symbol import Class
 from ratter.analyser.ir_dag import (
     IrDagNode,

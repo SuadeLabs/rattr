@@ -8,7 +8,8 @@ from typing import List, NamedTuple, Set, Tuple
 from ratter import config, error
 from ratter.analyser.base import NodeVisitor
 from ratter.analyser.cls import ClassAnalyser
-from ratter.analyser.context import Context, Func, Import, RootContext
+from ratter.analyser.context.context import Context, RootContext
+from ratter.analyser.context.symbol import Func, Import
 from ratter.analyser.function import FunctionAnalyser
 from ratter.analyser.types import AnyAssign, AnyFunctionDef, FileIR, ImportsIR
 from ratter.analyser.util import (
@@ -26,6 +27,7 @@ from ratter.analyser.util import (
     read,
     timer,
 )
+from ratter.cache.util import DO_NOT_CACHE
 from ratter.plugins import plugins
 
 RatterStats = namedtuple(
@@ -66,8 +68,13 @@ def __parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
     with timer() as parse_timer, read(config.file) as (file_lines, source):
         _ast = ast.parse(source)
 
+    cached = config.cache.get_or_new(config.file)
+
     with timer() as root_context_timer:
-        context = RootContext(_ast).expand_starred_imports()
+        if not config.use_cache or cached.ir is None:
+            context = RootContext(_ast).expand_starred_imports()
+        else:
+            context = cached.ir.context
 
     with timer() as assert_timer:
         for assertor in plugins.assertors:
@@ -75,14 +82,18 @@ def __parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
 
     with timer() as analyse_imports_timer:
         if config.follow_imports:
-            symbols = context.symbol_table.symbols()
-            imports = list(filter(lambda s: s._is(Import), symbols))
-            imports_ir, import_stats = parse_and_analyse_imports(imports)
+            imports = filter(lambda s: s._is(Import), context.symbol_table.symbols())
+            imports_ir, import_stats = parse_and_analyse_imports(list(imports))
         else:
             imports_ir, import_stats = dict(), ImportStats(0, 0, 0)
 
     with timer() as analyse_file_timer:
-        file_ir = FileAnalyser(_ast, context).analyse()
+        if not config.use_cache or cached.ir is None:
+            file_ir = FileAnalyser(_ast, context).analyse()
+        else:
+            file_ir = cached.ir
+
+    cached.ir = file_ir
 
     stats = RatterStats(
         parse_timer.time,
@@ -140,17 +151,28 @@ def parse_and_analyse_imports(imports: List[Import]) -> Tuple[ImportsIR, ImportS
             continue
 
         with read(module_path) as (file_lines, source):
-            _i_ast = ast.parse(source)
+            _ast = ast.parse(source)
 
-        with enter_file(module_path):
-            _i_ctx = RootContext(_i_ast).expand_starred_imports()
-            _i_ir = FileAnalyser(_i_ast, _i_ctx).analyse()
+        if module_path in DO_NOT_CACHE:
+            ir = FileAnalyser(
+                _ast, RootContext(_ast).expand_starred_imports()
+            ).analyse()
+        else:
+            cached = config.cache.get_or_new(module_path)
 
-        imports_ir[module_name] = _i_ir
+            if not config.use_cache or cached.ir is None:
+                with enter_file(module_path):
+                    cached.ir = FileAnalyser(
+                        _ast, RootContext(_ast).expand_starred_imports()
+                    ).analyse()
+
+            ir = cached.ir
+
+        imports_ir[module_name] = ir
 
         # Add the import's imports to the queue
         _i_imports = list(
-            filter(lambda s: s._is(Import), _i_ctx.symbol_table.symbols())
+            filter(lambda s: s._is(Import), ir.context.symbol_table.symbols())
         )
         imports += _i_imports
 
