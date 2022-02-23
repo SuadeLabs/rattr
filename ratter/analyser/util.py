@@ -1044,7 +1044,7 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
     return Name(pattern.format(first=first, second=second), basename)
 
 
-def get_file_hash(filepath: str, blocksize: int = 2 ** 20) -> str:
+def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:
     """Return the hash of the given file, with a default blocksize of 1MiB."""
     _hash = hashlib.md5()
 
