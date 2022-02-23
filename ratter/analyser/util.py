@@ -62,17 +62,13 @@ LOCAL_VALUE_PREFIX = "@"
 # See:
 # https://docs.python.org/3.7/library/importlib.html#importlib.util.find_spec
 STDLIB_MODULES_WITH_NO_SPEC = {
-    "unicodedata",
-    "array",
     "ossaudiodev",
     "2to3",
-    "sys",
     "spwd",
     "nis",
     "test",
     "multiprocessing",
     "string",
-    "builtins",
 }
 
 # Standard library modules in "/usr/lib/python.?/dist-packages/" may appear in
@@ -600,6 +596,9 @@ def is_stdlib_module(module: str) -> bool:
         spec = find_spec(module)
     except (AttributeError, ModuleNotFoundError, ValueError):
         spec = None
+
+    if module in sys.builtin_module_names:
+        return True
 
     if module in STDLIB_MODULES_WITH_NO_SPEC:
         return True
