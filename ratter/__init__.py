@@ -1,1 +1,1 @@
-from ratter.config import config    # noqa
+from ratter.config import config  # noqa

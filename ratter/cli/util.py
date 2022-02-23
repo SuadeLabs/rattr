@@ -32,7 +32,7 @@ def multi_paragraph_wrap(text: str, width: int = 80) -> str:
 
             lines.append(line)
 
-        return "\n".join(fill(dedent(l), width) for l in lines)
+        return "\n".join(fill(dedent(line), width) for line in lines)
 
     def _paragraph(text: str) -> str:
         return fill(text, width)

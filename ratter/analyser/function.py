@@ -1,27 +1,26 @@
 """Ratter function analyser."""
 
 import ast
-
 from itertools import accumulate
 from typing import List, Optional, Tuple
 
 from ratter import error
 from ratter.analyser.base import NodeVisitor
 from ratter.analyser.context import (
-    Context,
-    new_context,
     Call,
     Class,
+    Context,
     Func,
     Name,
     Symbol,
+    new_context,
 )
 from ratter.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
     CompoundStrictlyNameable,
-    Nameable,
     FunctionIR,
+    Nameable,
     StrictlyNameable,
 )
 from ratter.analyser.util import (
@@ -40,7 +39,6 @@ from ratter.analyser.util import (
     lambda_in_rhs,
     remove_call_brackets,
 )
-
 from ratter.plugins import plugins
 
 
@@ -75,9 +73,7 @@ class FunctionAnalyser(NodeVisitor):
         return self.func_ir
 
     def get_and_verify_name(
-        self,
-        node: Nameable,
-        ctx: ast.expr_context
+        self, node: Nameable, ctx: ast.expr_context
     ) -> Tuple[str, str]:
         """Return the name, also verify validity."""
         base, full = get_basename_fullname_pair(node, safe=True)
@@ -168,7 +164,7 @@ class FunctionAnalyser(NodeVisitor):
             args = get_function_call_args(node)
         else:
             error.warning(f"'{target.name}' initialised but not stored", node)
-            args = get_function_call_args(node, LOCAL_VALUE_PREFIX+target.name)
+            args = get_function_call_args(node, LOCAL_VALUE_PREFIX + target.name)
 
         # NOTE
         #   If this is a call to a method on an attribute, then it necessarily
@@ -193,7 +189,7 @@ class FunctionAnalyser(NodeVisitor):
         else:
             name = remove_call_brackets(get_fullname(node, safe=True))
 
-        analyser = plugins.custom_function_handler.get(name, self.context.get_root())   # noqa
+        analyser = plugins.custom_function_handler.get(name, self.context.get_root())
 
         if analyser is None:
             return False
@@ -211,11 +207,7 @@ class FunctionAnalyser(NodeVisitor):
     # Context alterors: assignments and deleteion
     # ----------------------------------------------------------------------- #
 
-    def visit_LambdaAssign(
-        self,
-        node: AnyAssign,
-        targets: List[ast.expr]
-    ) -> None:
+    def visit_LambdaAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
         """Helper method for handling non-anonymous lambdas."""
         target = targets[0]
 
@@ -229,11 +221,7 @@ class FunctionAnalyser(NodeVisitor):
 
         self.context.add(func)
 
-    def visit_ClassAssign(
-        self,
-        node: AnyAssign,
-        targets: List[ast.expr]
-    ) -> None:
+    def visit_ClassAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
         """Helper method for assignments where RHS is a new class instance."""
         target = targets[0]
 
@@ -471,7 +459,8 @@ class FunctionAnalyser(NodeVisitor):
                 return False
 
             target = self.context.get_call_target(
-                get_fullname(node, True), node, warn=False)
+                get_fullname(node, True), node, warn=False
+            )
 
             if not isinstance(target, Class):
                 return False

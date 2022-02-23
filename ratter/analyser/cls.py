@@ -6,7 +6,6 @@ are rather limited.
 """
 
 import ast
-
 from typing import List
 
 from ratter.analyser.base import NodeVisitor
@@ -17,7 +16,7 @@ from ratter.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
     ClassIR,
-    FunctionIR
+    FunctionIR,
 )
 from ratter.analyser.util import (
     get_assignment_targets,
@@ -59,7 +58,7 @@ def get_base_names(cls: ast.ClassDef) -> List[str]:
 
 def is_enum(cls: ast.ClassDef) -> bool:
     # NOTE Purely heuristic, though it does allow for user defined Enum bases
-    return any(n == "Enum" or n.endswith(".Enum") for n in get_base_names(cls))     # noqa
+    return any(n == "Enum" or n.endswith(".Enum") for n in get_base_names(cls))
 
 
 class ClassAnalyser(NodeVisitor):
@@ -153,14 +152,19 @@ class ClassAnalyser(NodeVisitor):
 
     def visit_enum_initialiser(self) -> None:
         cls: Class = self.context.get(self.class_name)
-        cls.args, cls.vararg, cls.kwarg = ["self", "_id", ], None, None
+        cls.args, cls.vararg, cls.kwarg = (
+            [
+                "self",
+                "_id",
+            ],
+            None,
+            None,
+        )
 
         # NOTE Can't determine result at compile-time, thus give every option
         symbols = self.context.symbol_table.symbols()
-        names: List[Symbol] = list(
-            filter(lambda s: isinstance(s, Name), symbols))
-        enum_values = filter(
-            lambda n: n.name.startswith(f"{self.class_name}."), names)
+        names: List[Symbol] = list(filter(lambda s: isinstance(s, Name), symbols))
+        enum_values = filter(lambda n: n.name.startswith(f"{self.class_name}."), names)
 
         ir: FunctionIR = {
             "sets": set(),

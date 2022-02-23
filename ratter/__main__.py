@@ -1,15 +1,13 @@
 """Ratter entry point."""
 
 import json
-
 from math import log10
 from typing import Iterable, Set
 
 from ratter import config, error
-from ratter.error import get_badness
 from ratter.analyser.context import Import, Symbol
 from ratter.analyser.file import RatterStats, parse_and_analyse_file
-from ratter.analyser.results import generate_results_from_ir, ResultsEncoder
+from ratter.analyser.results import ResultsEncoder, generate_results_from_ir
 from ratter.analyser.types import FileIR, FileResults, ImportsIR
 from ratter.analyser.util import (
     cache_is_valid,
@@ -19,6 +17,7 @@ from ratter.analyser.util import (
     re_filter_results,
 )
 from ratter.cli import Namespace, parse_arguments
+from ratter.error import get_badness
 
 
 def main(arguments: Namespace) -> None:
@@ -30,9 +29,7 @@ def main(arguments: Namespace) -> None:
     results = generate_results_from_ir(file_ir, imports_ir)
 
     if not error.is_within_badness_threshold():
-        error.fatal(
-            f"exceeded allowed badness ({get_badness()} > {config.threshold})"
-        )
+        error.fatal(f"exceeded allowed badness ({get_badness()} > {config.threshold})")
 
     if config.show_ir:
         show_ir(config.file, file_ir, imports_ir)
@@ -51,8 +48,7 @@ def show_ir(file: str, file_ir: FileIR, imports_ir: ImportsIR) -> None:
     """Prettily print the given file and imports IR."""
     if config.filter_string:
         imports_ir = {
-            i: re_filter_ir(ir, config.filter_string)
-            for i, ir in imports_ir.items()
+            i: re_filter_ir(ir, config.filter_string) for i, ir in imports_ir.items()
         }
         file_ir = re_filter_ir(file_ir, config.filter_string)
 
@@ -92,7 +88,7 @@ def show_stats(stats: RatterStats) -> None:
     # Print time stats
     print(end="\n\n")
     print(table_header)
-    print("="*table_width)
+    print("=" * table_width)
     for col_one, col_two in times.items():
         print(row.format(col_one, format(col_two, ".9f") + " s"))
 
@@ -107,7 +103,7 @@ def show_stats(stats: RatterStats) -> None:
     # Print imports stats
     print(end="\n\n")
     print(table_header)
-    print("="*table_width)
+    print("=" * table_width)
     digits = 1 + int(log10(max(*imports.values(), 1)))
     for col_one, col_two in imports.items():
         print(row.format(col_one, format(col_two).zfill(digits)))
@@ -123,7 +119,7 @@ def show_stats(stats: RatterStats) -> None:
     # Print line stats
     print(end="\n\n")
     print(table_header)
-    print("="*table_width)
+    print("=" * table_width)
     digits = 1 + int(log10(max(*lines.values())))
     for col_one, col_two in lines.items():
         print(row.format(col_one, format(col_two).zfill(digits)))
@@ -132,10 +128,9 @@ def show_stats(stats: RatterStats) -> None:
     table_header = row.format("", "Magnitude")
     table_width = len(table_header)
     badness_stats = {
-        "Total badness": sum((
-            config.file_badness,
-            config.import_badness,
-            config.simplify_badness)),
+        "Total badness": sum(
+            (config.file_badness, config.import_badness, config.simplify_badness)
+        ),
         "... from <file>": config.file_badness,
         "... from imports": config.import_badness,
         "... from simplification": config.simplify_badness,
@@ -144,7 +139,7 @@ def show_stats(stats: RatterStats) -> None:
     # Print badness stats
     print(end="\n\n")
     print(table_header)
-    print("="*table_width)
+    print("=" * table_width)
     if max(*badness_stats.values()) > 0:
         digits = 1 + int(log10(max(*badness_stats.values())))
     else:
@@ -157,9 +152,8 @@ def show_stats(stats: RatterStats) -> None:
     badness_summary_stats = {
         "True badness": badness,
         "Threshold": config.threshold if config.threshold > 0 else "∞",
-        "Average badness/line": format(
-            badness / stats.file_lines, ".3f"
-        ) + " b/l (true badness / <file> lines)",
+        "Average badness/line": format(badness / stats.file_lines, ".3f")
+        + " b/l (true badness / <file> lines)",
     }
     summary = f"{{:{1 + max(map(len, badness_summary_stats.keys()))}}}: {{}}"
     print(end="\n\n")
@@ -170,9 +164,8 @@ def show_stats(stats: RatterStats) -> None:
     summary_stats = {
         "Total time": format(sum(times.values()), ".6f") + " s",
         "Total lines": sum(lines.values()),
-        "Average lines/second": format(
-            sum(lines.values()) / sum(times.values()), ".0f"
-        ) + " l/s",
+        "Average lines/second": format(sum(lines.values()) / sum(times.values()), ".0f")
+        + " l/s",
     }
     summary = f"{{:{1 + max(map(len, summary_stats.keys()))}}}: {{}}"
     print(end="\n\n")
@@ -182,7 +175,7 @@ def show_stats(stats: RatterStats) -> None:
     print(end="\n\n")
 
 
-def write_cache(results: FileResults, file_ir: FileIR, imports_ir: ImportsIR) -> None:  # noqa
+def write_cache(results: FileResults, file_ir: FileIR, imports_ir: ImportsIR) -> None:
     """Save the file results to the file cache."""
     if cache_is_valid(config.file, config.cache):
         return error.ratter(f"cache for '{config.file}' is already up to date")

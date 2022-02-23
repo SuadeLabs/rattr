@@ -1,4 +1,5 @@
 import ast
+import sys
 import mock
 import pytest
 
@@ -77,7 +78,7 @@ class TestUtil:
 
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
-    def test_get_basename_full_name_pair_coverage(self):
+    def test_get_basename_full_name_pair_coverage(self, constant):
         # Name
         nameable = ast.parse("ast_name").body[0].value
         expected = ("ast_name", "ast_name")
@@ -119,14 +120,14 @@ class TestUtil:
 
         # NameConstant
         nameable = ast.parse("True").body[0].value
-        expected = ("@NameConstant", "@NameConstant")
+        expected = (constant("NameConstant"), constant("NameConstant"))
         with pytest.raises(error.RatterConstantInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
         # Literal
         nameable = ast.parse("(1).to_bytes()").body[0].value
-        expected = ("@Num", "@Num.to_bytes()")
+        expected = (constant("Num"), f"{constant('Num')}.to_bytes()")
         with pytest.raises(error.RatterConstantInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
@@ -468,22 +469,52 @@ class TestUtil:
         fn_def = _ast.body[4]
         assert get_annotation("absent", fn_def) is None
 
-        expected = (
-            "Call(func=Name(id='present', ctx=Load()), "
-            "args=[Str(s='value'), Str(s='another value')], keywords=[])"
-        )
+        if sys.version_info.major == 3 and sys.version_info.minor == 7:
+            expected = (
+                "Call(func=Name(id='present', ctx=Load()), "
+                "args=[Str(s='value'), Str(s='another value')], keywords=[])"
+            )
+        elif sys.version_info.major == 3 and sys.version_info.minor == 8:
+            expected = (
+                "Call(func=Name(id='present', ctx=Load()), "
+                "args=[Constant(value='value', kind=None), "
+                "Constant(value='another value', kind=None)], keywords=[])"
+            )
+        else:
+            expected = (
+                "Call(func=Name(id='present', ctx=Load()), "
+                "args=[Constant(value='value'), "
+                "Constant(value='another value')], keywords=[])"
+            )
         assert ast.dump(get_annotation("present", fn_def)) == expected
 
         # Called Attr w/ args
         fn_def = _ast.body[5]
         assert get_annotation("absent", fn_def) is None
 
-        expected = (
-            "Call(func=Attribute(value=Attribute(value=Attribute(value=Name"
-            "(id='a', ctx=Load()), attr='b', ctx=Load()), attr='c', "
-            "ctx=Load()), attr='present', ctx=Load()), "
-            "args=[Str(s='value'), Str(s='another value')], keywords=[])"
-        )
+        if sys.version_info.major == 3 and sys.version_info.minor == 7:
+            expected = (
+                "Call(func=Attribute(value=Attribute(value=Attribute(value="
+                "Name(id='a', ctx=Load()), attr='b', ctx=Load()), attr='c', "
+                "ctx=Load()), attr='present', ctx=Load()), "
+                "args=[Str(s='value'), Str(s='another value')], keywords=[])"
+            )
+        elif sys.version_info.major == 3 and sys.version_info.minor == 8:
+            expected = (
+                "Call(func=Attribute(value=Attribute(value=Attribute(value="
+                "Name(id='a', ctx=Load()), attr='b', ctx=Load()), attr='c', "
+                "ctx=Load()), attr='present', ctx=Load()), "
+                "args=[Constant(value='value', kind=None), "
+                "Constant(value='another value', kind=None)], keywords=[])"
+            )
+        else:
+            expected = (
+                "Call(func=Attribute(value=Attribute(value=Attribute(value="
+                "Name(id='a', ctx=Load()), attr='b', ctx=Load()), attr='c', "
+                "ctx=Load()), attr='present', ctx=Load()), "
+                "args=[Constant(value='value'), "
+                "Constant(value='another value')], keywords=[])"
+            )
         assert ast.dump(get_annotation("present", fn_def)) == expected
 
     def test_parse_annotation(self, parse):
@@ -789,13 +820,12 @@ class TestUtil:
 
     def test_is_pip_module(self):
         # NOTE
-        #   This is not the best test ever as it assumes that "flask" and
-        #   "dateutil" are installed and that "numpy" and "pandas" are not.
+        #   This is not the best test ever as it assumes that "flask" are
+        #   installed and that "numpy" and "pandas" are not.
         #   However, as this test is testing code that if checking for that
         #   exact property I see no better way of testing it -- a mock would
         #   mock away the tested feature.
         assert is_pip_module("flask")
-        assert is_pip_module("dateutil")
 
         assert not is_pip_module("numpy")
         assert not is_pip_module("pandas")
@@ -823,7 +853,7 @@ class TestUtil:
         assert not is_stdlib_module("ratter")
         assert not is_stdlib_module("ratter.analyser.context")
         assert not is_stdlib_module("ratter.analyser.context.context")
-        assert not is_stdlib_module("ratter.analyser.context.context.Context") # noqa
+        assert not is_stdlib_module("ratter.analyser.context.context.Context")
 
     def test_is_in_stdlib(self, stdlib_modules):
         for m in stdlib_modules:
@@ -914,7 +944,7 @@ class TestUtil:
 
         assert get_function_def_args(fn_def) == ([], "args", "kwargs")
 
-    def test_get_function_call_args(self, capfd):
+    def test_get_function_call_args(self, capfd, constant):
         # fn()
         fn_call = ast.parse("fn()").body[0].value
         assert get_function_call_args(fn_call) == ([], {})
@@ -926,7 +956,7 @@ class TestUtil:
         # fn(a, b, c="val", d=e)
         fn_call = ast.parse("fn(a, b, c='val', d=e)").body[0].value
         assert get_function_call_args(fn_call) == \
-            (["a", "b"], {"c": "@Str", "d": "e"})
+            (["a", "b"], {"c": constant("Str"), "d": "e"})
 
         # fn(a=b)
         fn_call = ast.parse("fn(a=b)").body[0].value
@@ -1137,14 +1167,14 @@ class TestUtil:
             assert not is_excluded_name("sin")
             assert is_excluded_name("_hidden_func")
 
-    def test_is_method_on_constant(self):
+    def test_is_method_on_constant(self, constant):
         assert not is_method_on_constant("some_var")
         assert not is_method_on_constant("some_var.methodd")
         assert not is_method_on_constant("some_var[0].method")
 
-        assert not is_method_on_constant("@Str")
-        assert is_method_on_constant("@Str.methodd")
-        assert is_method_on_constant("@Str.[0].method")
+        assert not is_method_on_constant(constant("Str"))
+        assert is_method_on_constant(constant("Str") + ".methodd")
+        assert is_method_on_constant(constant("Str") + ".[0].method")
 
     def test_is_method_on_cast(self):
         assert not is_method_on_cast("some_var")
@@ -1155,8 +1185,8 @@ class TestUtil:
         assert is_method_on_cast("set().union")
         assert is_method_on_cast("list().append")
 
-    def test_is_method_on_primitive(self):
-        assert not is_method_on_primitive("@Str")
+    def test_is_method_on_primitive(self, constant):
+        assert not is_method_on_primitive(constant("Str"))
         assert not is_method_on_primitive("some_var")
         assert not is_method_on_primitive("func")
         assert not is_method_on_primitive("func")
@@ -1164,8 +1194,8 @@ class TestUtil:
 
         assert is_method_on_primitive("set().union")
         assert is_method_on_primitive("list().append")
-        assert is_method_on_primitive("@Str.methodd")
-        assert is_method_on_primitive("@Str.[0].method")
+        assert is_method_on_primitive(constant("Str") + ".methodd")
+        assert is_method_on_primitive(constant("Str") + ".[0].method")
 
     def test_get_dynamic_name(self):
         call = ast.parse("getattr(object, 'attribute')").body[0].value
@@ -1186,7 +1216,7 @@ class TestUtil:
 
         assert result == expected
 
-        call = ast.parse("get_sub_attr(get_sub_attr(o, 'in'), 'out')").body[0].value # noqa
+        call = ast.parse("get_sub_attr(get_sub_attr(o, 'in'), 'out')").body[0].value
         result = get_dynamic_name("get_sub_attr", call, "{first}.mid.{second}")
         expected = Name("o.in.mid.out", "o")
 
@@ -1198,7 +1228,7 @@ class TestUtil:
 
         assert result == expected
 
-        call = ast.parse("getattr(another_function(a, 'b'), 'c')").body[0].value # noqa
+        call = ast.parse("getattr(another_function(a, 'b'), 'c')").body[0].value
         with mock.patch("sys.exit") as _exit:
             result = get_dynamic_name("getattr", call, "{first}.{second}")
 

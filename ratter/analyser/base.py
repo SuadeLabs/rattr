@@ -1,9 +1,8 @@
 """Base classes for Ratter components."""
 
 import ast
-from ast import NodeVisitor, NodeTransformer    # noqa: F401
-
 from abc import ABCMeta, abstractmethod, abstractproperty
+from ast import NodeTransformer, NodeVisitor  # noqa: F401
 from itertools import product
 from typing import Dict, List, Optional
 
@@ -59,7 +58,7 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
         return ""
 
     @abstractmethod
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         """Return the IR of the definition of the handled function."""
         return {
             "sets": set(),
@@ -104,10 +103,10 @@ class CustomFunctionHandler:
         self._builtins: Dict[str, CustomFunctionAnalyser] = dict()
         self._user_def: Dict[str, CustomFunctionAnalyser] = dict()
 
-        for analyser in (builtins or []):
+        for analyser in builtins or []:
             self._builtins[analyser.name] = analyser
 
-        for analyser in (user_defined or []):
+        for analyser in user_defined or []:
             self._user_def[analyser.name] = analyser
 
     def __get_by_name(self, name: str) -> Optional[CustomFunctionAnalyser]:
@@ -121,11 +120,14 @@ class CustomFunctionHandler:
 
         return analyser
 
-    def __get_by_symbol(self, name: str, ctx: Context) -> Optional[CustomFunctionAnalyser]: # noqa
+    def __get_by_symbol(
+        self, name: str, ctx: Context
+    ) -> Optional[CustomFunctionAnalyser]:
         symbols: List[Import] = list()
 
-        _imports: filter[Import] = \
-            filter(lambda s: isinstance(s, Import), ctx.symbol_table.symbols())
+        _imports: filter[Import] = filter(
+            lambda s: isinstance(s, Import), ctx.symbol_table.symbols()
+        )
 
         for symbol in _imports:
             # From imported
@@ -142,7 +144,9 @@ class CustomFunctionHandler:
                 return analyser
 
             # Module imported
-            if analyser.qualified_name == name.replace(symbol.name, symbol.qualified_name): # noqa
+            if analyser.qualified_name == name.replace(
+                symbol.name, symbol.qualified_name
+            ):
                 return analyser
 
         return None
@@ -160,7 +164,7 @@ class CustomFunctionHandler:
         """Return `True` if there is a analyser for the function `name`."""
         return self.get(name, ctx) is not None
 
-    def handle_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def handle_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         """Dispatch to the to the appropriate analyser."""
         analyser = self.get(name, ctx)
 
@@ -169,7 +173,7 @@ class CustomFunctionHandler:
 
         return analyser.on_def(name, node, ctx)
 
-    def handle_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR: # noqa
+    def handle_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
         """Dispatch to the to the appropriate analyser."""
         analyser = self.get(name, ctx)
 

@@ -2,7 +2,6 @@
 
 from typing import Dict, List, Optional, Set, Tuple
 
-
 # A set of names, e.g.: "@BinOp", "x.attr", "var_one"
 Names = Set[str]
 
@@ -15,6 +14,7 @@ Calls = List[Tuple[str, CalleeArgs]]
 
 def ratter_ignore():
     """Do not parse the decorated function, thus omitted from the results."""
+
     def _inner(f, *args, **kwargs):
         return f
 
@@ -28,6 +28,7 @@ def ratter_results(
     calls: Optional[Calls] = None,
 ):
     """Explicitly provide results for a function which will then be ignored."""
+
     def _inner(f, *args, **kwargs):
         return f
 

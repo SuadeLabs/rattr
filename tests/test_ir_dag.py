@@ -50,11 +50,6 @@ class TestIrDag_Utils:
         builtin = Call("max()", [], {}, Builtin("max", has_affect=False))
         assert get_callee_target(builtin, file_ir, {}) == (None, None)
 
-        # Callee is in stdlib
-        stdlib = Call("sin()", [], {}, target=Import("sin", "math.sin"))
-        assert stdlib.target.module_name == "math"
-        assert get_callee_target(stdlib, file_ir, {}) == (None, None)
-
         # Normal -- `fn_a`
         fn_a_call = Call("fn_a()", [], {}, target=fn_a)
         assert get_callee_target(fn_a_call, file_ir, {}) == (fn_a, fn_a_ir)
@@ -71,7 +66,41 @@ class TestIrDag_Utils:
         fake_call = Call("not_a_real_function()", [], {})
         assert get_callee_target(fake_call, file_ir, {}) == (None, None)
 
-    def test_get_callee_target_imported_function(self, file_ir_from_dict, capfd):  # noqa
+    @pytest.mark.pypy()
+    def test_get_callee_target_callee_in_stdlib(self):
+        fn_a = Func("fn_a", [], None, None)
+        fn_b = Func("fn_b", [], None, None)
+        cls_a = Class("ClassA", ["self", "arg"], None, None)
+        fn_a_ir = {
+            "sets": {Name("a"), Name("b.attr", "b")},
+            "gets": {Name("c")},
+            "dels": set(),
+            "calls": set(),
+        }
+        fn_b_ir = {
+            "sets": set(),
+            "gets": set(),
+            "dels": {Name("a")},
+            "calls": set(),
+        }
+        cls_a_ir = {
+            "sets": {Name("self.field", "self")},
+            "gets": {Name("arg.attr", "arg")},
+            "dels": set(),
+            "calls": set(),
+        }
+        file_ir = {
+            fn_a: fn_a_ir,
+            fn_b: fn_b_ir,
+            cls_a: cls_a_ir,
+        }
+
+        # Callee is in stdlib
+        stdlib = Call("sin()", [], {}, target=Import("sin", "math.sin"))
+        assert stdlib.target.module_name == "math"
+        assert get_callee_target(stdlib, file_ir, {}) == (None, None)
+
+    def test_get_callee_target_imported_function(self, file_ir_from_dict, capfd):
         # TODO Imported class/method
         fn = Func("fn", [], None, None)
         fn_ir = {
@@ -367,8 +396,14 @@ class TestIrDagNode:
         A.populate()
 
         B_in_A = A.children[0]
-        C_in_A = B_in_A.children[0]
-        D_in_A = B_in_A.children[1]
+
+        # C and D can be either way around as it is a set
+        if B_in_A.children[0].func.name == fn_c.name:
+            C_in_A = B_in_A.children[0]
+            D_in_A = B_in_A.children[1]
+        else:
+            C_in_A = B_in_A.children[1]
+            D_in_A = B_in_A.children[0]
 
         # A
         assert A.call is None
@@ -398,38 +433,40 @@ class TestIrDagNode:
         assert D_in_A.file_ir == file_ir
         assert len(D_in_A.children) == 0
 
-    # def test_populate_on_undefined(self, capfd):
-    #     fn_a = Func("fn_a", ["a"], None, None)
-    #     fn_a_ir = {
-    #         "sets": {Name("a")},
-    #         "gets": set(),
-    #         "dels": set(),
-    #         "calls": {
-    #             Call("fn_b()", ["a"], {}),
-    #             Call("some_undefined_func()", [], {}),
-    #         },
-    #     }
-    #     fn_b = Func("fn_b", ["b"], None, None)
-    #     fn_b_ir = {
-    #         "sets": {Name("b")},
-    #         "gets": set(),
-    #         "dels": set(),
-    #         "calls": {
-    #             Call("some_other_undefined_func()", [], {}),
-    #         },
-    #     }
-    #     file_ir = {
-    #         fn_a: fn_a_ir,
-    #         fn_b: fn_b_ir,
-    #     }
+    def test_on_undefined(self, capfd):
+        fn_a = Func("fn_a", ["a"], None, None)
+        fn_a_ir = {
+            "sets": {Name("a")},
+            "gets": set(),
+            "dels": set(),
+            "calls": {
+                Call("fn_b()", ["a"], {}),
+                Call("some_undefined_func()", [], {}),
+            },
+        }
+        fn_b = Func("fn_b", ["b"], None, None)
+        fn_b_ir = {
+            "sets": {Name("b")},
+            "gets": set(),
+            "dels": set(),
+            "calls": {
+                Call("some_other_undefined_func()", [], {}),
+            },
+        }
+        file_ir = {
+            fn_a: fn_a_ir,
+            fn_b: fn_b_ir,
+        }
 
-    #     A = TestIrDagNode(None, fn_a, fn_a_ir, file_ir)
-    #     A.populate()
+        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, {})
 
-    #     output, _ = capfd.readouterr()
+        # NOTE Error is already logged by analyser, thus nothing should happen
+        A.populate()
+        A.simplify()
 
-    #     assert "unable to resolve call to 'some_undefined_func'" in output
-    #     assert "unable to resolve call to 'some_other_undefined_func'" in output  # noqa
+        output, _ = capfd.readouterr()
+
+        assert output == ""
 
     def test_populate_on_stdlib(self, capfd):
         fn_a = Func("fn_a", ["a"], None, None)
@@ -514,8 +551,17 @@ class TestIrDagNode:
         A = IrDagNode(None, fn_a, fn_a_ir, file_ir, dict())
         A.populate()
 
-        B_in_A = A.children[1]
-        C_in_A = B_in_A.children[1]
+        # Can be either way around as it is a set
+        if A.children[0].func.name == fn_b.name:
+            B_in_A = A.children[0]
+        else:
+            B_in_A = A.children[1]
+
+        # Can be either way around as it is a set
+        if B_in_A.children[0].func.name == fn_c.name:
+            C_in_A = B_in_A.children[0]
+        else:
+            C_in_A = B_in_A.children[1]
 
         # A
         assert A.call is None

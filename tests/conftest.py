@@ -1,8 +1,11 @@
 import ast
+import os
+import sys
 import pytest
 
 from contextlib import contextmanager
 from os.path import dirname, join
+from typing import Iterable
 
 import ratter
 
@@ -10,6 +13,59 @@ from ratter.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
 from ratter.analyser.context import Context, RootContext
 from ratter.analyser.context.symbol import Call, Name
 from ratter.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
+from ratter.analyser.util import LOCAL_VALUE_PREFIX
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "pypy: mark test to run only under pypy"
+    )
+    config.addinivalue_line(
+        "markers", "py_3_8_plus: mark test to run only under Python 3.8+"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Alter the collected tests."""
+    filter_marked(items, "pypy", is_pypy())
+    filter_marked(items, "py_3_8_plus", is_python_3_8_plus())
+
+
+def filter_marked(items: Iterable, mark: str, condition: bool):
+    """Remove the marked items if the condition is `False`."""
+    marked = list()
+    unmarked = list()
+
+    for item in items:
+        if item.get_closest_marker(mark):
+            marked.append(item)
+        else:
+            unmarked.append(item)
+
+    if condition:
+        items[:] = marked + unmarked
+    else:
+        items[:] = unmarked
+
+
+def is_pypy():
+    """Return `True` if running under pypy."""
+    try:
+        import __pypy__
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
+def is_python_3_8_plus():
+    """Return `True` if running under Python 3.8 plus."""
+    if sys.version_info.major != 3:
+        raise NotImplementedError
+
+    if sys.version_info.minor >= 8:
+        return True
+    else:
+        return False
 
 
 @pytest.fixture
@@ -94,7 +150,6 @@ def stdlib_modules():
         'textwrap',
         'unicodedata',
         'stringprep',
-        'readline',
         'rlcompleter',
         'struct',
         'codecs',
@@ -130,11 +185,9 @@ def stdlib_modules():
         'fnmatch',
         'linecache',
         'shutil',
-        'macpath',
         'pickle',
         'copyreg',
         'shelve',
-        'marshal',
         'dbm',
         'sqlite3',
         'zlib',
@@ -169,8 +222,6 @@ def stdlib_modules():
         'sched',
         'queue',
         '_thread',
-        '_dummy_thread',
-        'dummy_threading',
         'asyncio',
         'asyncio',
         'socket',
@@ -223,7 +274,6 @@ def stdlib_modules():
         'turtle',
         'cmd',
         'shlex',
-        'tkinter',
         'typing',
         'pydoc',
         'doctest',
@@ -237,7 +287,6 @@ def stdlib_modules():
         'trace',
         'tracemalloc',
         'distutils',
-        'ensurepip',
         'venv',
         'zipapp',
         'sys',
@@ -254,15 +303,12 @@ def stdlib_modules():
         'site',
         'code',
         'codeop',
-        'zipimport',
         'pkgutil',
         'modulefinder',
         'runpy',
         'importlib',
-        'parser',
         'ast',
         'symtable',
-        'symbol',
         'token',
         'keyword',
         'tokenize',
@@ -272,31 +318,41 @@ def stdlib_modules():
         'compileall',
         'dis',
         'pickletools',
-        'formatter',
-        'msilib',
-        'msvcrt',
-        'posix',
-        'pwd',
         'spwd',
-        'grp',
         'crypt',
-        'termios',
         'tty',
         'pty',
-        'fcntl',
         'pipes',
-        'resource',
         'nis',
-        'syslog',
         'optparse',
-        'imp'
-    }
-
-    manual = {
+        'imp',
         'six',
     }
 
-    return scraped.union(manual)
+    # Python 3.10 removed a lot of stdlib modules
+    if sys.version_info.major == 3 and sys.version_info.minor <= 9:
+        scraped.union({
+            '_dummy_thread',
+            'dummy_threading',
+            'formatter',
+            'parser',
+            'symbol',
+        })
+
+    # Some stdlib modules are not on Windows
+    if os.name != "nt":
+        scraped.union({
+            'posix',
+            'resource',
+            'grp',
+            'fcntl',
+            'readline',
+            'termios',
+            'pwd',
+            'syslog',
+        })
+
+    return scraped
 
 
 @pytest.fixture
@@ -412,7 +468,7 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "print"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         return {
             "sets": {
                 Name("set_in_print_def"),
@@ -428,7 +484,7 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
             },
         }
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:       # noqa
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
         return {
             "sets": {
                 Name("set_in_print"),
@@ -460,7 +516,7 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "module.example"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR: # noqa
+    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
         return {
             "sets": {
                 Name("set_in_example_def"),
@@ -476,7 +532,7 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
             },
         }
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:       # noqa
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
         return {
             "sets": {
                 Name("set_in_example"),
@@ -506,3 +562,25 @@ def handler():
     )
 
     return handler
+
+
+@pytest.fixture
+def constant():
+    """Return the version specific name for a constant of the given type.
+
+    In Python <= 3.7, constants are named as such "@Str", "@Num", etc.
+
+    In Python >= 3.8, constants are all named "@Constant".
+
+    """
+
+    def _inner(node_type: str):
+        if sys.version_info.major != 3:
+            raise AssertionError
+
+        if sys.version_info.minor <= 7:
+            return f"{LOCAL_VALUE_PREFIX}{node_type}"
+        else:
+            return f"{LOCAL_VALUE_PREFIX}Constant"
+
+    return _inner

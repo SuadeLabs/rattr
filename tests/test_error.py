@@ -61,7 +61,7 @@ class TestError_Util:
         # File, w/ culprit
         with enter_file(file):
             assert error.get_file_and_line_info(None) == ("", "")
-            assert error.get_file_and_line_info(culprit) == (file_info, line_info)  # noqa
+            assert error.get_file_and_line_info(culprit) == (file_info, line_info)
 
     def test_split_path(self):
         tests = {

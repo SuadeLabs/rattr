@@ -9,7 +9,6 @@ from ratter.analyser.base import (
 from ratter.analyser.util import MODULE_BLACKLIST_PATTERNS
 from ratter.plugins.analysers import BUILTIN_FUNCTION_ANALYSERS as BUILTINS
 
-
 Plugin = Union[Assertor, CustomFunctionAnalyser]
 
 
@@ -43,7 +42,9 @@ class Plugins:
             raise TypeError
 
         if isinstance(module_or_modules, str):
-            modules = {module_or_modules, }
+            modules = {
+                module_or_modules,
+            }
 
         if isinstance(module_or_modules, set):
             modules = module_or_modules

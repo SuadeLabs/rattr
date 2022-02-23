@@ -1,5 +1,8 @@
 """Tests shared across multiple analysers."""
 
+import mock
+import pytest
+
 from ratter.analyser.context import RootContext
 from ratter.analyser.file import FileAnalyser
 
@@ -198,3 +201,44 @@ class TestAnnotations:
 
         print(results)
         assert results == expected
+
+
+class TestUnsupported:
+
+    @pytest.mark.py_3_8_plus()
+    def test_walrus_operator_is_unsupported(self, parse):
+        # In file
+        _ast = parse("""
+            print(a := 4)
+        """)
+
+        with mock.patch("sys.exit") as _exit:
+            FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        # In func
+        _ast = parse("""
+            def fn():
+                print(a := 4)
+        """)
+
+        with mock.patch("sys.exit") as _exit:
+            FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        # In class
+        _ast = parse("""
+            class Walruses:
+                print(a := 4)
+        """)
+
+        with mock.patch("sys.exit") as _exit:
+            FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        # In method
+        _ast = parse("""
+            class OrIsItWalri:
+                def or_walrii(self):
+                    print(a := 4)
+        """)
+
+        with mock.patch("sys.exit") as _exit:
+            FileAnalyser(_ast, RootContext(_ast)).analyse()

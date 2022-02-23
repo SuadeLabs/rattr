@@ -172,6 +172,41 @@ will become `@BinOp.some_attr`, and the latter `@Int.to_bytes`.
 }
 ```
 
+## Support for Python 3.8
+
+Between Python 3.7 and Python 3.8 there were several significant changes that
+effect Ratter and how it works, namely:
+
+1. the introduction of the walrus operator;
+2. the addition of `posonlyargs` to `ast.arguments`;
+3. complete rework of the representation of constants in `ast`.
+
+As it stands Ratter will run on-and-under Python 3.8, however, with varying
+support for the above. Specifically: 1. is not supported, and usage will cause
+an error; 2. is not supported, and usage results in undefined behaviour; and 3.
+is fully supported.
+
+An additional issue with Python 3.7/3.8 cross-compatibility is the introduction
+of `typing.get_origin` and `typing.get_args`, removing the need to rely on the
+undefined behaviour of `Union().__args__`. Though, as the latter works in both,
+this does not affect the execution of Ratter -- it just results in some
+complaints by `mypy` which could be avoided it only Python 3.8 were supported.
+
+Links regarding the above:
+
+[1] https://stackoverflow.com/questions/45957615/check-a-variable-against-union-type-at-runtime-in-python-3-6
+-- answers 1 and 2 specifically touch on the `typing.get_args` /
+`Union().__args__` issue.
+
+[2] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#literals
+-- literals are very different.
+
+[3] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#NamedExpr
+-- walrus operator.
+
+[4] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#arguments
+-- `posonlyargs`.
+
 
 --------------------------------------------------------------------------------
 

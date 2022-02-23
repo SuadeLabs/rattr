@@ -8,9 +8,9 @@ Symbol `name` is the Python `_identifier` for the given symbol.
 """
 
 from dataclasses import dataclass
-from itertools import accumulate, chain, filterfalse
 from importlib.machinery import ModuleSpec
 from importlib.util import find_spec
+from itertools import accumulate, chain, filterfalse
 from typing import Dict, List, Optional, Tuple, Union
 
 from ratter import config
@@ -57,8 +57,9 @@ class Import(Symbol):
         if self.qualified_name is None:
             self.qualified_name = self.name
 
-        self.module_name, self.module_spec = \
-            get_module_name_and_spec(self.qualified_name)
+        self.module_name, self.module_spec = get_module_name_and_spec(
+            self.qualified_name
+        )
 
     def __hash__(self) -> int:
         return hash(repr(self))
@@ -89,6 +90,7 @@ class Class(Symbol):
         empty), but vararg and kwarg may-or-may-not be None
 
     """
+
     args: Optional[List[str]]
     vararg: Optional[str]
     kwarg: Optional[str]
@@ -126,7 +128,7 @@ def parse_name(name: str) -> Name:
 def parse_call(
     callee: str,
     args: Tuple[List[str], Dict[str, str]],
-    target: Optional[CallTarget] = None
+    target: Optional[CallTarget] = None,
 ) -> Call:
     if not callee.endswith("()"):
         callee += "()"
@@ -165,7 +167,10 @@ def get_possible_module_names(name: str) -> List[str]:
 
     return list(ordered)
 
-def get_module_name_and_spec(name: str) -> Union[Tuple[str, ModuleSpec], Tuple[None, None]]:  # noqa
+
+def get_module_name_and_spec(
+    name: str,
+) -> Union[Tuple[str, ModuleSpec], Tuple[None, None]]:
     """Return the `ModuleSpec` for an imported name.
 
     If `name` is a module (e.g. `math`) then the spec of the module will be

@@ -78,7 +78,7 @@ class TestClassAnalyser:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("SomeClass()", ["@ReturnValue", "arg"], {}, target=cls)    # noqa
+                    Call("SomeClass()", ["@ReturnValue", "arg"], {}, target=cls)
                 },
             },
             cls: {
@@ -312,7 +312,7 @@ class TestClassAnalyser:
 
         assert results == expected
 
-    def test_enum_call(self, parse):
+    def test_enum_call(self, parse, constant):
         _ast = parse("""
             from enum import Enum
 
@@ -349,7 +349,7 @@ class TestClassAnalyser:
                 "sets": set(),
                 "gets": set(),
                 "calls": {
-                    Call("MyEnum()", ["@ReturnValue", "@Str"], {}, target=enum)
+                    Call("MyEnum()", ["@ReturnValue", constant("Str")], {}, target=enum)
                 },
                 "dels": set(),
             },

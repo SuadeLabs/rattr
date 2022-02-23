@@ -1,1 +1,1 @@
-from ratter.cli.parser import Namespace, parse_arguments    # noqa: F401
+from ratter.cli.parser import Namespace, parse_arguments  # noqa: F401

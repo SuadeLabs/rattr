@@ -1,31 +1,23 @@
 """Assert that there are no assignment to names that identify imports."""
 
 import ast
-
 from typing import Union
 
 from ratter.analyser.base import Assertor
 from ratter.analyser.types import AnyFunctionDef, Comprehension
 from ratter.analyser.util import (
+    get_function_def_args,
     has_annotation,
     unravel_names,
-    get_function_def_args,
 )
 
 
 class ImportClobberingAssertor(Assertor):
-
     def __clobbered(self, name: str, node: ast.AST) -> None:
-        self.failed(
-            f"redefinition of imported name '{name}'",
-            node
-        )
+        self.failed(f"redefinition of imported name '{name}'", node)
 
     def __deleted(self, name: str, node: ast.AST) -> None:
-        self.failed(
-            f"attempt to delete imported name '{name}'",
-            node
-        )
+        self.failed(f"attempt to delete imported name '{name}'", node)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         names = [n for t in node.targets for n in unravel_names(t)]
