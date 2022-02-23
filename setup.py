@@ -29,6 +29,16 @@ setup(
     long_description=DESCRIPTION,
     long_description_content_type="text/markdown",
     install_requires=INSTALL_REQUIRES,
+    extras_require={
+        "dev": [
+            "black==22.1.0",
+            "flake8-bugbear==22.1.11",
+            "flake8==4.0.1",
+            "flask==2.0.3",
+            "isort==5.10.1",
+            "pytest==7.0.1",
+        ],
+    },
     scripts=[
         "bin/ratter",
     ],

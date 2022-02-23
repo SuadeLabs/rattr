@@ -27,8 +27,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade black
+          python -m pip install .[dev]
 
       - name: Run black on ratter
         run: black --check ratter/
@@ -46,9 +45,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade flake8
-          python -m pip install --upgrade flake8-bugbear
+          python -m pip install .[dev]
 
       - name: Run flake8 on ratter
         run: flake8 ratter/
@@ -66,9 +63,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade isort
+          python -m pip install .[dev]
 
       - name: Run isort on ratter
         run: isort -c ratter/
-
