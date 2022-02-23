@@ -1,28 +1,53 @@
-import os
+import pathlib
 
 from setuptools import setup, find_packages
 
 
-here = os.path.abspath(os.path.dirname(__file__))
+HERE = pathlib.Path(__file__).parent.resolve()
 
 # Copy description from README.md
-with open(os.path.join(here, "README.md"), "r") as f:
+with open(HERE / "README.md") as f:
     DESCRIPTION = f.read()
 
 # Copy requirements from requirements.txt
-with open(os.path.join(here, "requirements.txt"), "r") as f:
+with open(HERE / "requirements.txt") as f:
     INSTALL_REQUIRES = [line.strip() for line in f.readlines()]
 
 
 setup(
     name="ratter",
-    version="1.0.0",
+    use_scm_version={
+        "write_to": "ratter/_version.py",
+        "write_to_template": (
+            'version = "{version}"  # this should be overwritten by setuptools_scm\n'
+        ),
+    },
+    setup_requires=['setuptools_scm'],
     author="Suade Labs",
     packages=find_packages(),
-    description="Python 3.7 function analyser",
+    description="Rattr rats on your attrs.",
     long_description=DESCRIPTION,
+    long_description_content_type="text/markdown",
     install_requires=INSTALL_REQUIRES,
     scripts=[
         "bin/ratter",
-    ]
+    ],
+    keywords="automation formatter yapf autopep8 pyfmt gofmt rustfmt",
+    url="https://github.com/SuadeLabs/ratter",
+    license="MIT",
+    python_requires=">=3.7",
+    classifiers=[
+        "Environment :: Console",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3 :: Only",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Topic :: Software Development :: Quality Assurance",
+    ],
 )

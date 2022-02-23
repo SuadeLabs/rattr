@@ -3,7 +3,7 @@ from abc import ABC, abstractstaticmethod
 from argparse import ArgumentError, ArgumentParser, Namespace
 from os.path import isfile, splitext
 
-from ratter import error
+from ratter import _version, error
 from ratter.cli.util import multi_paragraph_wrap
 
 
@@ -54,7 +54,7 @@ def parse_arguments() -> Namespace:
         "-v",
         "--version",
         action="version",
-        version="%(prog)s 1.0.0",
+        version=f"%(prog)s {_version.version}",
     )
 
     # TODO Allow user to add to this (will need config to respect this)
