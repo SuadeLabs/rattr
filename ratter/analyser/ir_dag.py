@@ -151,14 +151,14 @@ def resolve_import(
     local_name = remove_call_brackets(local_name)
 
     new_target: Optional[Symbol] = module_ir.context.get(local_name)
-    if isinstance(new_target, Func):
+    if isinstance(new_target, (Func, Class)):
         ir = module_ir.get(new_target)
 
         # NOTE If the imported function is ignored then it will have no IR
         if ir is None:
             error.error(
-                f"{_where} unable to resolve imported function '{local_name}'"
-                f", likely '@ratter_ignore()'d"
+                f"{_where} unable to resolve imported callable '{local_name}'"
+                f" in '{module}', it is likely ignored"
             )
             return None, None
 
@@ -171,7 +171,17 @@ def resolve_import(
     #   When reaching here the target may be a call to a method on an imported
     #   instance
 
-    error.error(f"{__prefix(caller)} unable to resolve call to import '{local_name}'")
+    if new_target is None and "." in local_name:
+        error.info(
+            f"{__prefix(caller)} unable to resolve call to method "
+            f"'{local_name}' in import '{module}'"
+        )
+        return None, None
+
+    error.error(
+        f"{__prefix(caller)} unable to resolve call to '{local_name}' in "
+        f"import '{module}'"
+    )
     return None, None
 
 
