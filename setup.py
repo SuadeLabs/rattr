@@ -22,7 +22,7 @@ setup(
             'version = "{version}"  # this should be overwritten by setuptools_scm\n'
         ),
     },
-    setup_requires=['setuptools_scm'],
+    setup_requires=["setuptools_scm"],
     author="Suade Labs",
     packages=find_packages(),
     description="Rattr rats on your attrs.",
@@ -39,10 +39,8 @@ setup(
             "pytest==7.0.1",
         ],
     },
-    scripts=[
-        "bin/ratter",
-    ],
-    keywords="automation formatter yapf autopep8 pyfmt gofmt rustfmt",
+    entry_points={"console_scripts": ["ratter = ratter.__main__:entry_point"]},
+    keywords="automation linting type-checking attributes rats",
     url="https://github.com/SuadeLabs/ratter",
     license="MIT",
     python_requires=">=3.7",

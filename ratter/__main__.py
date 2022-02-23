@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Ratter entry point."""
 
 import json
@@ -233,5 +234,10 @@ def load_config(arguments: Namespace) -> None:
     config.cache = arguments.cache
 
 
-if __name__ == "__main__":
+def entry_point():
+    """Entry point for command line app."""
     main(parse_arguments())
+
+
+if __name__ == "__main__":
+    entry_point()
