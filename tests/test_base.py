@@ -1,6 +1,7 @@
 """Ratter Base class tests."""
 
-import mock
+from unittest import mock
+
 import pytest
 
 from ratter.analyser.base import (

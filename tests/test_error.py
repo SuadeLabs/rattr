@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from ratter import error
 from ratter.analyser.util import enter_file

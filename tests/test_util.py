@@ -1,6 +1,7 @@
 import ast
 import sys
-import mock
+from unittest import mock
+
 import pytest
 
 from ratter import error

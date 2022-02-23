@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from ratter.analyser.context import Call, Func, Name, Import
 from ratter.analyser.context.symbol import Class

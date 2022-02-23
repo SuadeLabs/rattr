@@ -1,5 +1,5 @@
 import ast
-import mock
+from unittest import mock
 
 
 from ratter.analyser.context import (

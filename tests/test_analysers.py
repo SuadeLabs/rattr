@@ -1,6 +1,7 @@
 """Tests shared across multiple analysers."""
 
-import mock
+from unittest import mock
+
 import pytest
 
 from ratter.analyser.context import RootContext
