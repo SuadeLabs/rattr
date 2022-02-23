@@ -128,5 +128,3 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# The _version.py file is controlled by setuptools_sc
-ratter/_version.py
