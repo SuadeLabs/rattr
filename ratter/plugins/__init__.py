@@ -7,7 +7,7 @@ from ratter.analyser.base import (
     CustomFunctionHandler,
 )
 from ratter.analyser.util import MODULE_BLACKLIST_PATTERNS
-from ratter.plugins.analysers import BUILTIN_FUNCTION_ANALYSERS as BUILTINS
+from ratter.plugins.analysers import DEFAULT_FUNCTION_ANALYSERS as DEFAULTS
 
 Plugin = Union[Assertor, CustomFunctionAnalyser]
 
@@ -22,7 +22,7 @@ class Plugins:
     @property
     def custom_function_handler(self) -> CustomFunctionHandler:
         if self._handler is None:
-            self._handler = CustomFunctionHandler(BUILTINS, self.analysers)
+            self._handler = CustomFunctionHandler(DEFAULTS, self.analysers)
 
         return self._handler
 
