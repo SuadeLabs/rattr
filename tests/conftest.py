@@ -1,5 +1,4 @@
 import ast
-import os
 import sys
 from contextlib import contextmanager
 from os.path import dirname, join
@@ -275,7 +274,6 @@ def stdlib_modules():
         "pydoc",
         "doctest",
         "unittest",
-        "2to3",
         "test",
         "bdb",
         "faulthandler",
@@ -323,35 +321,7 @@ def stdlib_modules():
         "nis",
         "optparse",
         "imp",
-        "six",
     }
-
-    # Python 3.10 removed a lot of stdlib modules
-    if sys.version_info.major == 3 and sys.version_info.minor <= 9:
-        scraped.union(
-            {
-                "_dummy_thread",
-                "dummy_threading",
-                "formatter",
-                "parser",
-                "symbol",
-            }
-        )
-
-    # Some stdlib modules are not on Windows
-    if os.name != "nt":
-        scraped.union(
-            {
-                "posix",
-                "resource",
-                "grp",
-                "fcntl",
-                "readline",
-                "termios",
-                "pwd",
-                "syslog",
-            }
-        )
 
     return scraped
 

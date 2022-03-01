@@ -551,23 +551,10 @@ def is_stdlib_module(module: str) -> bool:
     True
 
     >>> is_stdlib_module("math.pi")
-    False
+    True
 
     """
     return place_module(module) == "STDLIB"
-
-
-def is_in_stdlib(name: str) -> bool:
-    """Return `True` if the basename of `name` referres an stdlib module.
-
-    >>> is_in_stdlib("math")
-    True
-
-    >>> is_in_stdlib("math.pi")
-    True
-
-    """
-    return is_stdlib_module(name.split(".")[0])
 
 
 def is_in_builtins(name_or_qualified_name: str) -> bool:
