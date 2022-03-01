@@ -10,7 +10,6 @@ from contextlib import contextmanager
 from copy import deepcopy
 from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
-from isort import place_module
 from os.path import isfile
 from string import ascii_lowercase
 from time import perf_counter
@@ -26,6 +25,8 @@ from typing import (
     Type,
     Union,
 )
+
+from isort import place_module
 
 from rattr import config, error
 from rattr.analyser.context.symbol import get_possible_module_names  # noqa
