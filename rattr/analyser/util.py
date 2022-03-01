@@ -540,7 +540,6 @@ def is_pip_module(module: str) -> bool:
     # No backslashes, bad windows!
     spec.origin = spec.origin.replace("\\", "/")
 
-    print(spec.origin)
     return any(re.fullmatch(p, spec.origin) for p in pip_install_locations)
 
 
