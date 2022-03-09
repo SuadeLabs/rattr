@@ -1,7 +1,6 @@
 import pathlib
 
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
@@ -15,9 +14,9 @@ with open(HERE / "requirements.txt") as f:
 
 
 setup(
-    name="ratter",
+    name="rattr",
     use_scm_version={
-        "write_to": "ratter/_version.py",
+        "write_to": "rattr/_version.py",
         "write_to_template": (
             'version = "{version}"  # this should be overwritten by setuptools_scm\n'
         ),
@@ -39,7 +38,7 @@ setup(
             "pytest==7.0.1",
         ],
     },
-    entry_points={"console_scripts": ["ratter = ratter.__main__:entry_point"]},
+    entry_points={"console_scripts": ["rattr = rattr.__main__:entry_point"]},
     keywords="automation linting type-checking attributes rats",
     url="https://github.com/SuadeLabs/ratter",
     license="MIT",

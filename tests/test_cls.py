@@ -1,23 +1,18 @@
-from ratter.analyser.context import (
-    RootContext,
-    Call,
-    Class,
-    Func,
-    Name,
-)
-from ratter.analyser.file import FileAnalyser
+from rattr.analyser.context import Call, Class, Func, Name, RootContext
+from rattr.analyser.file import FileAnalyser
 
 
 class TestClassAnalyser:
-
     def test_class_attributes(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             class Numbers(NotARealEnum):
                 One = 1
                 Two = 2
                 Three = 3
                 Four, Five = 4, 5
-        """)
+        """
+        )
         file_analyser = FileAnalyser(_ast, RootContext(_ast))
         file_analyser.analyse()
 
@@ -31,12 +26,14 @@ class TestClassAnalyser:
         )
 
     def test_class_initialiser(self, parse):
-        _ast = parse("""
+        _ast = parse(
+            """
             class SomeClass:
                 def __init__(self, some_arg):
                     self.whatever = some_arg.whatever
                     some_arg.good_number = 5    # 5 is a good number
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -57,7 +54,8 @@ class TestClassAnalyser:
 
     def test_class_initialiser_integration(self, parse):
         # Func -> __init__
-        _ast = parse("""
+        _ast = parse(
+            """
             def func(arg):
                 return SomeClass(arg)
 
@@ -65,7 +63,8 @@ class TestClassAnalyser:
                 def __init__(self, some_arg):
                     self.whatever = some_arg.whatever
                     some_arg.good_number = 5    # 5 is a good number
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         func = Func("func", ["arg"], None, None)
@@ -73,13 +72,9 @@ class TestClassAnalyser:
         expected = {
             func: {
                 "sets": set(),
-                "gets": {
-                    Name("arg")
-                },
+                "gets": {Name("arg")},
                 "dels": set(),
-                "calls": {
-                    Call("SomeClass()", ["@ReturnValue", "arg"], {}, target=cls)
-                },
+                "calls": {Call("SomeClass()", ["@ReturnValue", "arg"], {}, target=cls)},
             },
             cls: {
                 "sets": {
@@ -91,7 +86,7 @@ class TestClassAnalyser:
                 },
                 "dels": set(),
                 "calls": set(),
-            }
+            },
         }
 
         # HACK This has to be a repr, can't just compare, idk why
@@ -99,14 +94,16 @@ class TestClassAnalyser:
         assert repr(results._file_ir) == repr(expected)
 
         # __init__ -> Func
-        _ast = parse("""
+        _ast = parse(
+            """
             def func(fn_arg):
                 return fn_arg.some_attr
 
             class SomeClass:
                 def __init__(self, some_arg):
                     self.a_thing = func(some_arg)
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         func = Func("func", ["fn_arg"], None, None)
@@ -114,9 +111,7 @@ class TestClassAnalyser:
         expected = {
             func: {
                 "sets": set(),
-                "gets": {
-                    Name("fn_arg.some_attr", "fn_arg")
-                },
+                "gets": {Name("fn_arg.some_attr", "fn_arg")},
                 "dels": set(),
                 "calls": set(),
             },
@@ -128,22 +123,22 @@ class TestClassAnalyser:
                     Name("some_arg"),
                 },
                 "dels": set(),
-                "calls": {
-                    Call("func()", ["some_arg"], {}, target=func)
-                },
-            }
+                "calls": {Call("func()", ["some_arg"], {}, target=func)},
+            },
         }
 
         assert results == expected
 
     def test_staticmethod(self, parse):
         # Simple
-        _ast = parse("""
+        _ast = parse(
+            """
             class SomeClass:
                 @staticmethod
                 def method(a, b):
                     a.attr = b.attr
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         method = Func("SomeClass.method", ["a", "b"], None, None)
@@ -152,9 +147,7 @@ class TestClassAnalyser:
                 "sets": {
                     Name("a.attr", "a"),
                 },
-                "gets": {
-                    Name("b.attr", "b")
-                },
+                "gets": {Name("b.attr", "b")},
                 "dels": set(),
                 "calls": set(),
             }
@@ -163,7 +156,8 @@ class TestClassAnalyser:
         assert results == expected
 
         # Static method in "mixed" class
-        _ast = parse("""
+        _ast = parse(
+            """
             class SomeClass:
                 def __init__(self, arg):
                     self.attr = arg
@@ -171,19 +165,16 @@ class TestClassAnalyser:
                 @staticmethod
                 def method(a, b):
                     a.attr = b.attr
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         cls = Class("SomeClass", ["self", "arg"], None, None)
         method = Func("SomeClass.method", ["a", "b"], None, None)
         expected = {
             cls: {
-                "sets": {
-                    Name("self.attr", "self")
-                },
-                "gets": {
-                    Name("arg")
-                },
+                "sets": {Name("self.attr", "self")},
+                "gets": {Name("arg")},
                 "dels": set(),
                 "calls": set(),
             },
@@ -191,19 +182,18 @@ class TestClassAnalyser:
                 "sets": {
                     Name("a.attr", "a"),
                 },
-                "gets": {
-                    Name("b.attr", "b")
-                },
+                "gets": {Name("b.attr", "b")},
                 "dels": set(),
                 "calls": set(),
-            }
+            },
         }
 
         assert results == expected
 
     def test_class_full(self, parse):
         # Example 1
-        _ast = parse("""
+        _ast = parse(
+            """
             class FibIter:
                 N  = 0
                 N_ = 1
@@ -216,7 +206,8 @@ class TestClassAnalyser:
                     FibIter.N_ = FibIter.N_ + last
 
                     return FibIter.N
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         method = Func("FibIter.next", [], None, None)
@@ -241,12 +232,14 @@ class TestClassAnalyser:
 
     def test_enum(self, parse):
         # Explicit import
-        _ast = parse("""
+        _ast = parse(
+            """
             from enum import Enum
 
             class MyEnum(Enum):
                 LHS = "RHS"
-        """)
+        """
+        )
         _ctx = RootContext(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
 
@@ -265,12 +258,14 @@ class TestClassAnalyser:
         assert results == expected
 
         # Module import
-        _ast = parse("""
+        _ast = parse(
+            """
             import enum
 
             class MyEnum(enum.Enum):
                 LHS = "RHS"
-        """)
+        """
+        )
         _ctx = RootContext(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
 
@@ -289,12 +284,14 @@ class TestClassAnalyser:
         assert results == expected
 
         # Implicit import
-        _ast = parse("""
+        _ast = parse(
+            """
             from enum import *
 
             class MyEnum(Enum):
                 LHS = "RHS"
-        """)
+        """
+        )
         _ctx = RootContext(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
 
@@ -313,7 +310,8 @@ class TestClassAnalyser:
         assert results == expected
 
     def test_enum_call(self, parse, constant):
-        _ast = parse("""
+        _ast = parse(
+            """
             from enum import Enum
 
             class MyEnum(Enum):
@@ -327,7 +325,8 @@ class TestClassAnalyser:
 
             def get_none():
                 return 4
-        """)
+        """
+        )
         _ctx = RootContext(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
 
@@ -358,7 +357,7 @@ class TestClassAnalyser:
                 "gets": set(),
                 "calls": set(),
                 "dels": set(),
-            }
+            },
         }
 
         print(results)

@@ -1,8 +1,8 @@
 from unittest import mock
 
-from ratter.analyser.context import Call, Func, Name, Import
-from ratter.analyser.context.symbol import Class
-from ratter.analyser.results import generate_results_from_ir
+from rattr.analyser.context import Call, Func, Import, Name
+from rattr.analyser.context.symbol import Class
+from rattr.analyser.results import generate_results_from_ir
 
 
 class TestResults:
@@ -314,16 +314,18 @@ class TestResults:
     def test_imports_ir(self, file_ir_from_dict):
         # Simple
         imports_ir = {
-            "module": file_ir_from_dict({
-                Func("act", ["arg"], None, None): {
-                    "sets": set(),
-                    "gets": {
-                        Name("arg.attr", "arg"),
-                    },
-                    "dels": set(),
-                    "calls": set(),
+            "module": file_ir_from_dict(
+                {
+                    Func("act", ["arg"], None, None): {
+                        "sets": set(),
+                        "gets": {
+                            Name("arg.attr", "arg"),
+                        },
+                        "dels": set(),
+                        "calls": set(),
+                    }
                 }
-            })
+            )
         }
 
         _i = Import("act", "module.act")
@@ -335,9 +337,7 @@ class TestResults:
             "sets": set(),
             "gets": set(),
             "dels": set(),
-            "calls": {
-                Call("act()", ["ms"], {}, target=_i)
-            },
+            "calls": {Call("act()", ["ms"], {}, target=_i)},
         }
         file_ir = {
             fn: fn_ir,
@@ -346,13 +346,9 @@ class TestResults:
         expected = {
             "fn": {
                 "sets": set(),
-                "gets": {
-                    "ms.attr"
-                },
+                "gets": {"ms.attr"},
                 "dels": set(),
-                "calls": {
-                    "act()"
-                },
+                "calls": {"act()"},
             }
         }
 
@@ -364,26 +360,28 @@ class TestResults:
         _i_second.module_spec = mock.Mock()
 
         imports_ir = {
-            "module": file_ir_from_dict({
-                Func("first", ["arrg"], None, None): {
-                    "sets": set(),
-                    "gets": set(),
-                    "dels": set(),
-                    "calls": {
-                        Call("second", ["arrg"], {}, target=_i_second)
-                    },
+            "module": file_ir_from_dict(
+                {
+                    Func("first", ["arrg"], None, None): {
+                        "sets": set(),
+                        "gets": set(),
+                        "dels": set(),
+                        "calls": {Call("second", ["arrg"], {}, target=_i_second)},
+                    }
                 }
-            }),
-            "chained": file_ir_from_dict({
-                Func("second", ["blarg"], None, None): {
-                    "sets": set(),
-                    "gets": {
-                        Name("blarg._attr", "blarg"),
-                    },
-                    "dels": set(),
-                    "calls": set(),
+            ),
+            "chained": file_ir_from_dict(
+                {
+                    Func("second", ["blarg"], None, None): {
+                        "sets": set(),
+                        "gets": {
+                            Name("blarg._attr", "blarg"),
+                        },
+                        "dels": set(),
+                        "calls": set(),
+                    }
                 }
-            })
+            ),
         }
 
         _i_module = Import("first", "module.first")
@@ -395,9 +393,7 @@ class TestResults:
             "sets": set(),
             "gets": set(),
             "dels": set(),
-            "calls": {
-                Call("first()", ["flarg"], {}, target=_i_module)
-            },
+            "calls": {Call("first()", ["flarg"], {}, target=_i_module)},
         }
         file_ir = {
             fn: fn_ir,
@@ -406,9 +402,7 @@ class TestResults:
         expected = {
             "fn": {
                 "sets": set(),
-                "gets": {
-                    "flarg._attr"
-                },
+                "gets": {"flarg._attr"},
                 "dels": set(),
                 "calls": {
                     "first()",
@@ -483,8 +477,8 @@ class TestResults:
                 "calls": {
                     "SomeClass()",
                     "SomeClass.static()",
-                }
-            }
+                },
+            },
         }
 
         assert generate_results_from_ir(file_ir, dict()) == expected
