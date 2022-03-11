@@ -1,6 +1,6 @@
 # Rattr rats on your attrs.
 
-Rattr (pronounced 'ratter') is a tool to determine attribute usage in Python functions. It can parse python files, follow imports and then report to you about the attributes accessed by function calls in that file.
+Rattr (pronounced 'ratter') is a tool to determine attribute usage in python functions. It can parse python files, follow imports and then report to you about the attributes accessed by function calls in that file.
 
 # Status
 
