@@ -1,7 +1,47 @@
-# **Rattr**
+# Rattr rats on your attrs.
 
-Rattr is a tool to determine attribute usage in Python functions.
+Rattr is a tool to determine attribute usage in Python functions. It can parse python files, follow imports and then report to you about the attributes accessed by function calls in that file.
 
+# Status
+
+Currently this project is under active development and likely to change significantly in the future. However we hope it might be useful and interesting to the wider python community.
+
+# But why?
+
+We developed rattr to help with some analytics work in python where type checkers like mypy and pyre are cumbersome.
+In analytics work, we often have functions that look like this:
+```python
+def compute_cost_effectiveness(person):
+    return person.sales / person.salary
+```
+
+because we're pythonistas, the exact type of `person` is unimportant to us in this example - what's important is that it has a sales and salary attribute and that those are numbers. Annotating this function with that information for mypy would be cumbersome - and with thousands of functions it would be hard to do.
+
+Rattr is a tool that solves the first part of this - it can detect that `compute_cost_effectiveness` needs to access "sales" and "salary" attributes and so it could tell us that the following would fail:
+
+```python
+def create_report():
+    people = some_database.query(Person.name, Person.sales).all()
+    return {person.name: compute_cost_effectiveness(person) for person in people}
+```
+
+It can also effectively compute the provenance of attributes. Suppose that you have a wide array of functions for computing information about financial products - like
+```python
+def compute_some_complex_risk_metric_for(security, other_data):
+    # proprietary and complicated logic here
+    security.riskiness = bla
+    return security
+```
+
+and you have other functions that consume that information:
+```python
+def should_i_buy(security):
+    if security.riskiness > 5:
+        return False
+    # More logic here ...
+```
+
+rattr can help you determine which functions are required for a calculation. Effectively allowing you to build powerful directed graph structures for your function libraries.
 
 # Developer Notes
 
