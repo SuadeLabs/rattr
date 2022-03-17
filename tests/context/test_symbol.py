@@ -1,15 +1,15 @@
-from ratter.analyser.context.symbol import (
-    Symbol,
-    Name,
-    Import,
-    Func,
+from rattr.analyser.context.symbol import (
     Call,
     Class,
-    get_possible_module_names,
-    parse_name,
-    parse_call,
-    get_module_name_and_spec,
+    Func,
+    Import,
+    Name,
+    Symbol,
     find_spec,
+    get_module_name_and_spec,
+    get_possible_module_names,
+    parse_call,
+    parse_name,
 )
 
 
@@ -36,11 +36,16 @@ class TestSymbol:
             Class("a", None, None, None),
         ]
         symbol_types = [
-            [      Import, Func, Call, Class],  # noqa
-            [Name,         Func, Call, Class],  # noqa
-            [Name, Import,       Call, Class],  # noqa
-            [Name, Import, Func,       Class],  # noqa
-            [Name, Import, Func, Call,      ],  # noqa
+            [Import, Func, Call, Class],  # noqa
+            [Name, Func, Call, Class],  # noqa
+            [Name, Import, Call, Class],  # noqa
+            [Name, Import, Func, Class],  # noqa
+            [
+                Name,
+                Import,
+                Func,
+                Call,
+            ],  # noqa
         ]
 
         for symbol in symbols:
@@ -194,13 +199,12 @@ class TestSymbolUtils:
         expected = ("os.path", find_spec("os.path"))
         assert get_module_name_and_spec("os.path") == expected
 
-        assert get_module_name_and_spec("os") \
-            != get_module_name_and_spec("os.path")
+        assert get_module_name_and_spec("os") != get_module_name_and_spec("os.path")
 
-        m = "ratter.analyser"
+        m = "rattr.analyser"
         expected = (m, find_spec(m))
         assert get_module_name_and_spec(m) == expected
 
-        m = "ratter.analyser.util"
+        m = "rattr.analyser.util"
         expected = (m, find_spec(m))
         assert get_module_name_and_spec(f"{m}.get_module_spec") == expected

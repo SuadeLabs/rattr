@@ -1,34 +1,35 @@
 import ast
 import sys
-import mock
+from unittest import mock
+
 import pytest
 
-from ratter import error
-from ratter.analyser.context import (
-    Call,
-    Class,
-    Context,
-    Name,
-    RootContext,
-)
-from ratter.analyser.util import (
+from rattr import error
+from rattr.analyser.context import Call, Class, Context, Name, RootContext
+from rattr.analyser.util import (
     assignment_is_one_to_one,
     class_in_rhs,
+    get_annotation,
     get_assignment_targets,
     get_attrname,
-    get_basename_fullname_pair,
     get_basename,
+    get_basename_fullname_pair,
+    get_decorator_name,
     get_dynamic_name,
+    get_first_argument_name,
     get_function_body,
     get_function_call_args,
     get_function_def_args,
     get_function_form,
+    get_xattr_obj_name_pair,
     has_affect,
+    has_annotation,
     is_args,
     is_blacklisted_module,
     is_call_to,
     is_excluded_name,
     is_in_builtins,
+    is_in_stdlib,
     is_method_on_cast,
     is_method_on_constant,
     is_method_on_primitive,
@@ -37,18 +38,12 @@ from ratter.analyser.util import (
     is_relative_import,
     is_set_of_names,
     is_starred_import,
+    is_stdlib_module,
     lambda_in_rhs,
     parse_annotation,
+    parse_rattr_results_from_annotation,
     remove_call_brackets,
     unravel_names,
-    get_xattr_obj_name_pair,
-    get_decorator_name,
-    get_first_argument_name,
-    has_annotation,
-    get_annotation,
-    parse_ratter_results_from_annotation,
-    is_stdlib_module,
-    is_in_stdlib,
 )
 
 
@@ -69,7 +64,7 @@ class TestUtil:
         # Safety off
         nameable = ast.parse("(a, b)[0].attr").body[0].value
 
-        with pytest.raises(error.RatterLiteralInNameable):
+        with pytest.raises(error.RattrLiteralInNameable):
             get_basename_fullname_pair(nameable)
 
         # Safety on
@@ -107,48 +102,46 @@ class TestUtil:
         # UnaryOp
         nameable = ast.parse("(-a)").body[0].value
         expected = ("@UnaryOp", "@UnaryOp")
-        with pytest.raises(error.RatterUnaryOpInNameable):
+        with pytest.raises(error.RattrUnaryOpInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
         # BinOp
         nameable = ast.parse("(a + b)").body[0].value
         expected = ("@BinOp", "@BinOp")
-        with pytest.raises(error.RatterBinOpInNameable):
+        with pytest.raises(error.RattrBinOpInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
         # NameConstant
         nameable = ast.parse("True").body[0].value
         expected = (constant("NameConstant"), constant("NameConstant"))
-        with pytest.raises(error.RatterConstantInNameable):
+        with pytest.raises(error.RattrConstantInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
         # Literal
         nameable = ast.parse("(1).to_bytes()").body[0].value
         expected = (constant("Num"), f"{constant('Num')}.to_bytes()")
-        with pytest.raises(error.RatterConstantInNameable):
+        with pytest.raises(error.RattrConstantInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
         # Comprehension
         nameable = ast.parse("[a for a in list_of_as][0]").body[0].value
         expected = ("@ListComp", "@ListComp[]")
-        with pytest.raises(error.RatterComprehensionInNameable):
+        with pytest.raises(error.RattrComprehensionInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
     def test_get_basename_full_name_pair_regression(self, parse):
         # Nameable is a getattr, etc call #1
-        nameable = \
-            ast.parse("getattr(getattr(a, 'inner'), 'outer')").body[0].value
+        nameable = ast.parse("getattr(getattr(a, 'inner'), 'outer')").body[0].value
         expected = ("getattr", "a.inner.outer")
         assert get_basename_fullname_pair(nameable) == expected
 
         # Nameable is a getattr, etc call #2
-        nameable = \
-            ast.parse("getattr(a, 'inner').outer").body[0].value
+        nameable = ast.parse("getattr(a, 'inner').outer").body[0].value
         expected = ("getattr", "a.inner.outer")
         assert get_basename_fullname_pair(nameable) == expected
 
@@ -169,7 +162,7 @@ class TestUtil:
         nameable = ast.parse("(a, b)[0].attr").body[0].value
         expected = "@Tuple"
 
-        with pytest.raises(error.RatterLiteralInNameable):
+        with pytest.raises(error.RattrLiteralInNameable):
             assert get_basename(nameable) == expected
 
     def test_unravel_names(self):
@@ -186,8 +179,7 @@ class TestUtil:
         assert list(unravel_names(ravelled_names)) == expected
 
         # Complex
-        ravelled_names = \
-            ast.parse("(a, b), c, d.e = 1, 2, 3, 4").body[0].targets[0]
+        ravelled_names = ast.parse("(a, b), c, d.e = 1, 2, 3, 4").body[0].targets[0]
         expected = ["a", "b", "c", "d"]
 
         assert list(unravel_names(ravelled_names)) == expected
@@ -256,7 +248,7 @@ class TestUtil:
         xattr = ast.parse("getattr(a, some_string_variable)").body[0].value
         expected = ("a", "<some_string_variable>")
 
-        assert get_xattr_obj_name_pair('getattr', xattr, True) == expected
+        assert get_xattr_obj_name_pair("getattr", xattr, True) == expected
 
         output, _ = capfd.readouterr()
         assert "error" in output
@@ -266,7 +258,7 @@ class TestUtil:
         xattr = ast.parse("getattr(hasattr(a, 'b'), 'c')").body[0].value
 
         with mock.patch("sys.exit") as _exit:
-            get_xattr_obj_name_pair('getattr', xattr, True)
+            get_xattr_obj_name_pair("getattr", xattr, True)
 
         output, _ = capfd.readouterr()
 
@@ -459,10 +451,7 @@ class TestUtil:
         fn_def = _ast.body[3]
         assert get_annotation("absent", fn_def) is None
 
-        expected = (
-            "Call(func=Name(id='present', ctx=Load()), "
-            "args=[], keywords=[])"
-        )
+        expected = "Call(func=Name(id='present', ctx=Load()), " "args=[], keywords=[])"
         assert ast.dump(get_annotation("present", fn_def)) == expected
 
         # Called w/ args
@@ -670,9 +659,10 @@ class TestUtil:
         assert not is_args((["a", "b"], {111: "d"}))
         assert not is_args((["a", "b"], {"c": 111}))
 
-    def test_parse_ratter_results_from_annotation(self, parse):
-        _ast = parse("""
-            @ratter_results(
+    def test_parse_rattr_results_from_annotation(self, parse):
+        _ast = parse(
+            """
+            @rattr_results(
                 sets={"a"},
                 gets={"b"},
                 calls=[("c()", ([], {}))],
@@ -681,24 +671,25 @@ class TestUtil:
             def fn():
                 pass
 
-            @ratter_results(sets={"a", "b"})
+            @rattr_results(sets={"a", "b"})
             def fn():
                 pass
 
             # Illegal
 
-            @ratter_results("posarg")
+            @rattr_results("posarg")
             def fn():
                 pass
 
-            @ratter_results(invalid_key=1)
+            @rattr_results(invalid_key=1)
             def fn():
                 pass
 
-            @ratter_results(sets="invalid type")
+            @rattr_results(sets="invalid type")
             def fn():
                 pass
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         # Can set values
@@ -709,7 +700,7 @@ class TestUtil:
             "calls": {Call("c()", [], {})},
             "dels": {Name("d")},
         }
-        assert parse_ratter_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
 
         # Defaults
         fn_def = _ast.body[1]
@@ -719,30 +710,30 @@ class TestUtil:
             "calls": set(),
             "dels": set(),
         }
-        assert parse_ratter_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
 
         # Illegal: has pos arg
         fn_def = _ast.body[2]
         with mock.patch("sys.exit") as _exit:
-            parse_ratter_results_from_annotation(fn_def, _ctx)
+            parse_rattr_results_from_annotation(fn_def, _ctx)
         assert _exit.call_count == 1
 
         # Illegal: has invalid key
         fn_def = _ast.body[3]
         with mock.patch("sys.exit") as _exit:
-            parse_ratter_results_from_annotation(fn_def, _ctx)
+            parse_rattr_results_from_annotation(fn_def, _ctx)
         assert _exit.call_count == 1
 
         # Illegal: has invalid type
         fn_def = _ast.body[4]
         with mock.patch("sys.exit") as _exit:
-            parse_ratter_results_from_annotation(fn_def, _ctx)
+            parse_rattr_results_from_annotation(fn_def, _ctx)
         assert _exit.call_count == 1
 
-    def test_parse_ratter_results_from_annotation_complex(self, parse):
+    def test_parse_rattr_results_from_annotation_complex(self, parse):
         _ast = parse(
             """
-            @ratter_results(
+            @rattr_results(
                 sets={"s.attr"},
                 gets={"g.mth().res[]", "*g.attr"},
                 dels={"del_me"}
@@ -750,14 +741,15 @@ class TestUtil:
             def fn():
                 pass
 
-            @ratter_results(calls=[
+            @rattr_results(calls=[
                 ("fn_a()", ([], {})),
                 ("fn_b()", (["a", "b"], {})),
                 ("fn_c()", (["a", ], {"c": "@Str"})),
             ])
             def fn():
                 pass
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         # Complex names
@@ -768,7 +760,7 @@ class TestUtil:
             "dels": {Name("del_me")},
             "calls": set(),
         }
-        assert parse_ratter_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
 
         # Complex calls
         fn_def = _ast.body[1]
@@ -782,17 +774,19 @@ class TestUtil:
                 Call("fn_c()", ["a"], {"c": "@Str"}),
             },
         }
-        assert parse_ratter_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
 
-    def test_parse_ratter_results_from_annotation_follow_call(self, parse):
-        _ast = parse("""
+    def test_parse_rattr_results_from_annotation_follow_call(self, parse):
+        _ast = parse(
+            """
             def fn_a(a, b):
                 return a + b
 
-            @ratter_results(calls=[("fn_a()", (["alpha", "beta"], {}))])
+            @rattr_results(calls=[("fn_a()", (["alpha", "beta"], {}))])
             def ano():
                 return "it is a lie, i do nothing!"
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         target = _ctx.get("fn_a")
@@ -807,16 +801,16 @@ class TestUtil:
             },
         }
 
-        assert parse_ratter_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
 
     def test_is_blacklisted_module(self, stdlib_modules):
         for m in stdlib_modules:
             assert not is_blacklisted_module(m)
 
-        assert is_blacklisted_module("ratter")
-        assert is_blacklisted_module("ratter.analyser.error")
-        assert is_blacklisted_module("ratter.analyser.a.b.c.d.e")
-        assert is_blacklisted_module("ratter.assertors.argument_names")
+        assert is_blacklisted_module("rattr")
+        assert is_blacklisted_module("rattr.analyser.error")
+        assert is_blacklisted_module("rattr.analyser.a.b.c.d.e")
+        assert is_blacklisted_module("rattr.assertors.argument_names")
 
     def test_is_pip_module(self):
         # NOTE
@@ -850,10 +844,10 @@ class TestUtil:
         assert not is_stdlib_module("flake8")
         assert not is_stdlib_module("foobar")
 
-        assert not is_stdlib_module("ratter")
-        assert not is_stdlib_module("ratter.analyser.context")
-        assert not is_stdlib_module("ratter.analyser.context.context")
-        assert not is_stdlib_module("ratter.analyser.context.context.Context")
+        assert not is_stdlib_module("rattr")
+        assert not is_stdlib_module("rattr.analyser.context")
+        assert not is_stdlib_module("rattr.analyser.context.context")
+        assert not is_stdlib_module("rattr.analyser.context.context.Context")
 
     def test_is_in_stdlib(self, stdlib_modules):
         for m in stdlib_modules:
@@ -874,10 +868,10 @@ class TestUtil:
         assert not is_in_stdlib("flake8")
         assert not is_in_stdlib("foobar")
 
-        assert not is_in_stdlib("ratter")
-        assert not is_in_stdlib("ratter.analyser.context")
-        assert not is_in_stdlib("ratter.analyser.context.context")
-        assert not is_in_stdlib("ratter.analyser.context.context.Context")
+        assert not is_in_stdlib("rattr")
+        assert not is_in_stdlib("rattr.analyser.context")
+        assert not is_in_stdlib("rattr.analyser.context.context")
+        assert not is_in_stdlib("rattr.analyser.context.context.Context")
 
     def test_is_in_builtins(self, builtins):
         for b in builtins:
@@ -955,8 +949,10 @@ class TestUtil:
 
         # fn(a, b, c="val", d=e)
         fn_call = ast.parse("fn(a, b, c='val', d=e)").body[0].value
-        assert get_function_call_args(fn_call) == \
-            (["a", "b"], {"c": constant("Str"), "d": "e"})
+        assert get_function_call_args(fn_call) == (
+            ["a", "b"],
+            {"c": constant("Str"), "d": "e"},
+        )
 
         # fn(a=b)
         fn_call = ast.parse("fn(a=b)").body[0].value
@@ -1077,11 +1073,13 @@ class TestUtil:
 
     def test_class_in_rhs(self):
         _ctx = Context(None)
-        _ctx.add_all((
-            Name("x"),
-            Name("LooksLikeAClass"),
-            Class("MyClass", [], None, None),
-        ))
+        _ctx.add_all(
+            (
+                Name("x"),
+                Name("LooksLikeAClass"),
+                Class("MyClass", [], None, None),
+            )
+        )
 
         # No class in RHS
         assign = ast.parse("a = x").body[0]

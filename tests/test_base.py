@@ -1,14 +1,14 @@
-"""Ratter Base class tests."""
+"""Rattr Base class tests."""
 
-import mock
+from unittest import mock
+
 import pytest
 
-from ratter.analyser.base import (
+from rattr.analyser.base import (  # CustomFunctionAnalyser,
     Assertor,
-    # CustomFunctionAnalyser,
     CustomFunctionHandler,
 )
-from ratter.analyser.context.symbol import Call, Import, Name
+from rattr.analyser.context.symbol import Call, Import, Name
 
 
 class TestAssertor:
@@ -36,7 +36,6 @@ class TestAssertor:
 
 
 class TestCustomFunctionHandler:
-
     def test_register_builtin(self, PrintBuiltinAnalyser):
         handler = CustomFunctionHandler()
 

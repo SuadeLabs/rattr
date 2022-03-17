@@ -1,9 +1,10 @@
-import mock
+from unittest import mock
+
 import pytest
 
-from ratter.analyser.context import Builtin, Call, Func, Name, Import
-from ratter.analyser.context.symbol import Class
-from ratter.analyser.ir_dag import (
+from rattr.analyser.context import Builtin, Call, Func, Import, Name
+from rattr.analyser.context.symbol import Class
+from rattr.analyser.ir_dag import (
     IrDagNode,
     construct_swap,
     get_callee_target,
@@ -13,7 +14,6 @@ from ratter.analyser.ir_dag import (
 
 
 class TestIrDag_Utils:
-
     def test_get_callee_target(self):
         fn_a = Func("fn_a", [], None, None)
         fn_b = Func("fn_b", [], None, None)
@@ -103,17 +103,8 @@ class TestIrDag_Utils:
     def test_get_callee_target_imported_function(self, file_ir_from_dict, capfd):
         # TODO Imported class/method
         fn = Func("fn", [], None, None)
-        fn_ir = {
-            "sets": set(),
-            "gets": set(),
-            "dels": set(),
-            "calls": set()
-        }
-        imports_ir = {
-            "module": file_ir_from_dict({
-                fn: fn_ir
-            })
-        }
+        fn_ir = {"sets": set(), "gets": set(), "dels": set(), "calls": set()}
+        imports_ir = {"module": file_ir_from_dict({fn: fn_ir})}
 
         # Callee is imported
         _i = Import("fn", "module.fn")
@@ -360,9 +351,7 @@ class TestIrDagNode:
             "sets": {Name("a")},
             "gets": set(),
             "dels": set(),
-            "calls": {
-                Call("fn_b()", ["a"], {}, target=fn_b)
-            },
+            "calls": {Call("fn_b()", ["a"], {}, target=fn_b)},
         }
         fn_b_ir = {
             "sets": {Name("b")},

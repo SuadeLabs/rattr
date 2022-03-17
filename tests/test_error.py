@@ -1,11 +1,10 @@
-import mock
+from unittest import mock
 
-from ratter import error
-from ratter.analyser.util import enter_file
+from rattr import error
+from rattr.analyser.util import enter_file
 
 
 class TestError:
-
     def test_warning(self, capfd):
         with mock.patch("sys.exit") as _exit:
             error.warning("culprit doesn't matter")
@@ -35,21 +34,22 @@ class TestError:
 
 
 class TestError_Util:
-
     def test_get_file_and_line_info(self, parse):
-        _ast = parse("""
+        _ast = parse(
+            """
             # not on line 1!
             # not line 2,
             x = 4
             # but third time's the charm
-        """)
+        """
+        )
         culprit = _ast.body[0]
 
         file = "some_file_name.py"
-        line_info = "\033[1mline {}:{}: \033[0m"\
-            .format(culprit.lineno, culprit.col_offset)
-        file_info = "\033[1m{}: \033[0m"\
-            .format(file)
+        line_info = "\033[1mline {}:{}: \033[0m".format(
+            culprit.lineno, culprit.col_offset
+        )
+        file_info = "\033[1m{}: \033[0m".format(file)
 
         # No file, no culprit
         # No file, w/ culprit

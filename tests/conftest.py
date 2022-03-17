@@ -1,25 +1,22 @@
 import ast
 import os
 import sys
-import pytest
-
 from contextlib import contextmanager
 from os.path import dirname, join
 from typing import Iterable
 
-import ratter
+import pytest
 
-from ratter.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
-from ratter.analyser.context import Context, RootContext
-from ratter.analyser.context.symbol import Call, Name
-from ratter.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
-from ratter.analyser.util import LOCAL_VALUE_PREFIX
+import rattr
+from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
+from rattr.analyser.context import Context, RootContext
+from rattr.analyser.context.symbol import Call, Name
+from rattr.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
+from rattr.analyser.util import LOCAL_VALUE_PREFIX
 
 
 def pytest_configure(config):
-    config.addinivalue_line(
-        "markers", "pypy: mark test to run only under pypy"
-    )
+    config.addinivalue_line("markers", "pypy: mark test to run only under pypy")
     config.addinivalue_line(
         "markers", "py_3_8_plus: mark test to run only under Python 3.8+"
     )
@@ -52,6 +49,7 @@ def is_pypy():
     """Return `True` if running under pypy."""
     try:
         import __pypy__
+
         return True
     except ModuleNotFoundError:
         return False
@@ -99,7 +97,7 @@ def parse():
         # Strip whitespace from all lines
         for line in source_lines:
             if line.startswith(indent):
-                lines.append(line[len(indent):])
+                lines.append(line[len(indent) :])
             elif line == "":
                 lines.append(line)
             else:
@@ -126,16 +124,15 @@ def RootSymbolTable():
 
 @pytest.fixture
 def config():
-
     @contextmanager
     def _inner(attr, value):
-        if not hasattr(ratter.config, attr):
+        if not hasattr(rattr.config, attr):
             raise AttributeError
 
-        _previous = getattr(ratter.config, attr)
-        setattr(ratter.config, attr, value)
+        _previous = getattr(rattr.config, attr)
+        setattr(rattr.config, attr, value)
         yield
-        setattr(ratter.config, attr, _previous)
+        setattr(rattr.config, attr, _previous)
 
     return _inner
 
@@ -144,213 +141,217 @@ def config():
 def stdlib_modules():
     # Scraped from python.org
     scraped = {
-        'string',
-        're',
-        'difflib',
-        'textwrap',
-        'unicodedata',
-        'stringprep',
-        'rlcompleter',
-        'struct',
-        'codecs',
-        'datetime',
-        'calendar',
-        'collections',
-        'abc',
-        'heapq',
-        'bisect',
-        'array',
-        'weakref',
-        'types',
-        'copy',
-        'pprint',
-        'reprlib',
-        'enum',
-        'numbers',
-        'math',
-        'cmath',
-        'decimal',
-        'fractions',
-        'random',
-        'statistics',
-        'itertools',
-        'functools',
-        'operator',
-        'pathlib',
-        'fileinput',
-        'stat',
-        'filecmp',
-        'tempfile',
-        'glob',
-        'fnmatch',
-        'linecache',
-        'shutil',
-        'pickle',
-        'copyreg',
-        'shelve',
-        'dbm',
-        'sqlite3',
-        'zlib',
-        'gzip',
-        'bz2',
-        'lzma',
-        'zipfile',
-        'tarfile',
-        'csv',
-        'configparser',
-        'netrc',
-        'xdrlib',
-        'plistlib',
-        'hashlib',
-        'hmac',
-        'secrets',
-        'os',
-        'io',
-        'time',
-        'argparse',
-        'getopt',
-        'logging',
-        'getpass',
-        'curses',
-        'platform',
-        'errno',
-        'ctypes',
-        'threading',
-        'multiprocessing',
-        'concurrent',
-        'subprocess',
-        'sched',
-        'queue',
-        '_thread',
-        'asyncio',
-        'asyncio',
-        'socket',
-        'ssl',
-        'select',
-        'selectors',
-        'asyncore',
-        'asynchat',
-        'signal',
-        'mmap',
-        'email',
-        'json',
-        'mailcap',
-        'mailbox',
-        'mimetypes',
-        'base64',
-        'binhex',
-        'binascii',
-        'quopri',
-        'uu',
-        'html',
-        'webbrowser',
-        'cgi',
-        'cgitb',
-        'wsgiref',
-        'urllib',
-        'http',
-        'ftplib',
-        'poplib',
-        'imaplib',
-        'nntplib',
-        'smtplib',
-        'smtpd',
-        'telnetlib',
-        'uuid',
-        'socketserver',
-        'xmlrpc',
-        'ipaddress',
-        'audioop',
-        'aifc',
-        'sunau',
-        'wave',
-        'chunk',
-        'colorsys',
-        'imghdr',
-        'sndhdr',
-        'ossaudiodev',
-        'gettext',
-        'locale',
-        'turtle',
-        'cmd',
-        'shlex',
-        'typing',
-        'pydoc',
-        'doctest',
-        'unittest',
-        '2to3',
-        'test',
-        'bdb',
-        'faulthandler',
-        'pdb',
-        'timeit',
-        'trace',
-        'tracemalloc',
-        'distutils',
-        'venv',
-        'zipapp',
-        'sys',
-        'sysconfig',
-        'builtins',
-        'warnings',
-        'dataclasses',
-        'contextlib',
-        'abc',
-        'atexit',
-        'traceback',
-        'gc',
-        'inspect',
-        'site',
-        'code',
-        'codeop',
-        'pkgutil',
-        'modulefinder',
-        'runpy',
-        'importlib',
-        'ast',
-        'symtable',
-        'token',
-        'keyword',
-        'tokenize',
-        'tabnanny',
-        'pyclbr',
-        'py_compile',
-        'compileall',
-        'dis',
-        'pickletools',
-        'spwd',
-        'crypt',
-        'tty',
-        'pty',
-        'pipes',
-        'nis',
-        'optparse',
-        'imp',
-        'six',
+        "string",
+        "re",
+        "difflib",
+        "textwrap",
+        "unicodedata",
+        "stringprep",
+        "rlcompleter",
+        "struct",
+        "codecs",
+        "datetime",
+        "calendar",
+        "collections",
+        "abc",
+        "heapq",
+        "bisect",
+        "array",
+        "weakref",
+        "types",
+        "copy",
+        "pprint",
+        "reprlib",
+        "enum",
+        "numbers",
+        "math",
+        "cmath",
+        "decimal",
+        "fractions",
+        "random",
+        "statistics",
+        "itertools",
+        "functools",
+        "operator",
+        "pathlib",
+        "fileinput",
+        "stat",
+        "filecmp",
+        "tempfile",
+        "glob",
+        "fnmatch",
+        "linecache",
+        "shutil",
+        "pickle",
+        "copyreg",
+        "shelve",
+        "dbm",
+        "sqlite3",
+        "zlib",
+        "gzip",
+        "bz2",
+        "lzma",
+        "zipfile",
+        "tarfile",
+        "csv",
+        "configparser",
+        "netrc",
+        "xdrlib",
+        "plistlib",
+        "hashlib",
+        "hmac",
+        "secrets",
+        "os",
+        "io",
+        "time",
+        "argparse",
+        "getopt",
+        "logging",
+        "getpass",
+        "curses",
+        "platform",
+        "errno",
+        "ctypes",
+        "threading",
+        "multiprocessing",
+        "concurrent",
+        "subprocess",
+        "sched",
+        "queue",
+        "_thread",
+        "asyncio",
+        "asyncio",
+        "socket",
+        "ssl",
+        "select",
+        "selectors",
+        "asyncore",
+        "asynchat",
+        "signal",
+        "mmap",
+        "email",
+        "json",
+        "mailcap",
+        "mailbox",
+        "mimetypes",
+        "base64",
+        "binhex",
+        "binascii",
+        "quopri",
+        "uu",
+        "html",
+        "webbrowser",
+        "cgi",
+        "cgitb",
+        "wsgiref",
+        "urllib",
+        "http",
+        "ftplib",
+        "poplib",
+        "imaplib",
+        "nntplib",
+        "smtplib",
+        "smtpd",
+        "telnetlib",
+        "uuid",
+        "socketserver",
+        "xmlrpc",
+        "ipaddress",
+        "audioop",
+        "aifc",
+        "sunau",
+        "wave",
+        "chunk",
+        "colorsys",
+        "imghdr",
+        "sndhdr",
+        "ossaudiodev",
+        "gettext",
+        "locale",
+        "turtle",
+        "cmd",
+        "shlex",
+        "typing",
+        "pydoc",
+        "doctest",
+        "unittest",
+        "2to3",
+        "test",
+        "bdb",
+        "faulthandler",
+        "pdb",
+        "timeit",
+        "trace",
+        "tracemalloc",
+        "distutils",
+        "venv",
+        "zipapp",
+        "sys",
+        "sysconfig",
+        "builtins",
+        "warnings",
+        "dataclasses",
+        "contextlib",
+        "abc",
+        "atexit",
+        "traceback",
+        "gc",
+        "inspect",
+        "site",
+        "code",
+        "codeop",
+        "pkgutil",
+        "modulefinder",
+        "runpy",
+        "importlib",
+        "ast",
+        "symtable",
+        "token",
+        "keyword",
+        "tokenize",
+        "tabnanny",
+        "pyclbr",
+        "py_compile",
+        "compileall",
+        "dis",
+        "pickletools",
+        "spwd",
+        "crypt",
+        "tty",
+        "pty",
+        "pipes",
+        "nis",
+        "optparse",
+        "imp",
+        "six",
     }
 
     # Python 3.10 removed a lot of stdlib modules
     if sys.version_info.major == 3 and sys.version_info.minor <= 9:
-        scraped.union({
-            '_dummy_thread',
-            'dummy_threading',
-            'formatter',
-            'parser',
-            'symbol',
-        })
+        scraped.union(
+            {
+                "_dummy_thread",
+                "dummy_threading",
+                "formatter",
+                "parser",
+                "symbol",
+            }
+        )
 
     # Some stdlib modules are not on Windows
     if os.name != "nt":
-        scraped.union({
-            'posix',
-            'resource',
-            'grp',
-            'fcntl',
-            'readline',
-            'termios',
-            'pwd',
-            'syslog',
-        })
+        scraped.union(
+            {
+                "posix",
+                "resource",
+                "grp",
+                "fcntl",
+                "readline",
+                "termios",
+                "pwd",
+                "syslog",
+            }
+        )
 
     return scraped
 
@@ -358,77 +359,77 @@ def stdlib_modules():
 @pytest.fixture
 def builtins():
     generated = {
-        'abs',
-        'all',
-        'any',
-        'ascii',
-        'bin',
-        'bool',
-        'breakpoint',
-        'bytearray',
-        'bytes',
-        'callable',
-        'chr',
-        'classmethod',
-        'compile',
-        'complex',
-        'copyright',
-        'credits',
-        'delattr',
-        'dict',
-        'dir',
-        'divmod',
-        'enumerate',
-        'eval',
-        'exec',
-        'filter',
-        'float',
-        'format',
-        'frozenset',
-        'getattr',
-        'globals',
-        'hasattr',
-        'hash',
-        'help',
-        'hex',
-        'id',
-        'input',
-        'int',
-        'isinstance',
-        'issubclass',
-        'iter',
-        'len',
-        'license',
-        'list',
-        'locals',
-        'map',
-        'max',
-        'memoryview',
-        'min',
-        'next',
-        'object',
-        'oct',
-        'open',
-        'ord',
-        'pow',
-        'print',
-        'property',
-        'range',
-        'repr',
-        'reversed',
-        'round',
-        'set',
-        'setattr',
-        'slice',
-        'sorted',
-        'staticmethod',
-        'str',
-        'sum',
-        'super',
-        'tuple',
-        'type',
-        'vars',
-        'zip'
+        "abs",
+        "all",
+        "any",
+        "ascii",
+        "bin",
+        "bool",
+        "breakpoint",
+        "bytearray",
+        "bytes",
+        "callable",
+        "chr",
+        "classmethod",
+        "compile",
+        "complex",
+        "copyright",
+        "credits",
+        "delattr",
+        "dict",
+        "dir",
+        "divmod",
+        "enumerate",
+        "eval",
+        "exec",
+        "filter",
+        "float",
+        "format",
+        "frozenset",
+        "getattr",
+        "globals",
+        "hasattr",
+        "hash",
+        "help",
+        "hex",
+        "id",
+        "input",
+        "int",
+        "isinstance",
+        "issubclass",
+        "iter",
+        "len",
+        "license",
+        "list",
+        "locals",
+        "map",
+        "max",
+        "memoryview",
+        "min",
+        "next",
+        "object",
+        "oct",
+        "open",
+        "ord",
+        "pow",
+        "print",
+        "property",
+        "range",
+        "repr",
+        "reversed",
+        "round",
+        "set",
+        "setattr",
+        "slice",
+        "sorted",
+        "staticmethod",
+        "str",
+        "sum",
+        "super",
+        "tuple",
+        "type",
+        "vars",
+        "zip",
     }
 
     return generated
@@ -459,7 +460,6 @@ def file_ir_from_dict():
 
 
 class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
-
     @property
     def name(self) -> str:
         return "print"
@@ -507,7 +507,6 @@ def PrintBuiltinAnalyser():
 
 
 class _ExampleFuncAnalyser(CustomFunctionAnalyser):
-
     @property
     def name(self) -> str:
         return "example"
@@ -556,10 +555,7 @@ def ExampleFuncAnalyser():
 
 @pytest.fixture
 def handler():
-    handler = CustomFunctionHandler(
-        [_PrintBuiltinAnalyser()],
-        [_ExampleFuncAnalyser()]
-    )
+    handler = CustomFunctionHandler([_PrintBuiltinAnalyser()], [_ExampleFuncAnalyser()])
 
     return handler
 

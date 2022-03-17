@@ -1,4 +1,4 @@
-from ratter.analyser.context import SymbolTable, Name
+from rattr.analyser.context import Name, SymbolTable
 
 
 class TestSymbolTable:

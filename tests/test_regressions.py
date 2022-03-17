@@ -1,23 +1,18 @@
-from ratter.analyser.context import (
-    RootContext,
-    Builtin,
-    Call,
-    Func,
-    Name,
-)
-from ratter.analyser.file import FileAnalyser
+from rattr.analyser.context import Builtin, Call, Func, Name, RootContext
+from rattr.analyser.file import FileAnalyser
 
 
 class TestRegression:
-
     def test_highly_nested(self, parse):
-        _ast = parse("""
+        _ast = parse(
+            """
             def getter(a):
                 *a.b[0]().c
 
             def setter(a):
                 *a.b[0]().c = "a value"
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -27,7 +22,7 @@ class TestRegression:
                 "gets": {
                     Name("*a.b[]().c", "a"),
                 },
-                "sets": set()
+                "sets": set(),
             },
             Func("setter", ["a"], None, None): {
                 "calls": set(),
@@ -35,20 +30,22 @@ class TestRegression:
                 "gets": set(),
                 "sets": {
                     Name("*a.b[]().c", "a"),
-                }
+                },
             },
         }
 
         assert results == expected
 
     def test_tuple_assignment(self, parse):
-        _ast = parse("""
+        _ast = parse(
+            """
             def getter(a):
                 x, y = a.attr_a, a.attr_b
 
             def setter(a):
                 a.attr_a, a.attr_b = x, y
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -62,7 +59,7 @@ class TestRegression:
                 "sets": {
                     Name("x"),
                     Name("y"),
-                }
+                },
             },
             Func("setter", ["a"], None, None): {
                 "calls": set(),
@@ -74,21 +71,23 @@ class TestRegression:
                 "sets": {
                     Name("a.attr_a", "a"),
                     Name("a.attr_b", "a"),
-                }
+                },
             },
         }
 
         assert results == expected
 
     def test_operation_on_anonymous_return_value(self, parse, constant):
-        _ast = parse("""
+        _ast = parse(
+            """
             def test_1(a):
                 # i.e. b.c and b.d are of a type that implements __add__
                 a = max((b.c + b.d).method(), 0)
 
             def test_2(a):
                 return (-b).c
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         max_symbol = Builtin("max", has_affect=False)
@@ -102,7 +101,7 @@ class TestRegression:
                 "gets": set(),
                 "sets": {
                     Name("a"),
-                }
+                },
             },
             Func("test_2", ["a"], None, None): {
                 "calls": set(),
@@ -111,7 +110,7 @@ class TestRegression:
                     Name("b"),
                     Name("@UnaryOp.c", "@UnaryOp"),
                 },
-                "sets": set()
+                "sets": set(),
             },
         }
 
@@ -119,13 +118,15 @@ class TestRegression:
         assert results == expected
 
     def test_resolve_getattr_name(self, parse):
-        _ast = parse("""
+        _ast = parse(
+            """
             def act(on):
                 return on.attr
 
             def a_func(arg):
                 return act(getattr(arg, "attr"))
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         fn_act = Func("act", ["on"], None, None)
@@ -140,9 +141,7 @@ class TestRegression:
                 "sets": set(),
             },
             fn_a: {
-                "calls": {
-                    Call("act()", ["arg.attr"], {}, target=fn_act)
-                },
+                "calls": {Call("act()", ["arg.attr"], {}, target=fn_act)},
                 "dels": set(),
                 "gets": {
                     Name("arg.attr", "arg"),
@@ -160,24 +159,22 @@ class TestRegression:
         #   not cause a crash or a fatal error.
 
         # Procedural parameter
-        _ast = parse("""
+        _ast = parse(
+            """
             def bad_map(f, target):
                 # like map but... bad
                 return f(target)
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         bad_map = Func("bad_map", ["f", "target"], None, None)
         expected = {
             bad_map: {
                 "sets": set(),
-                "gets": {
-                    Name("target")
-                },
+                "gets": {Name("target")},
                 "dels": set(),
-                "calls": {
-                    Call("f()", ["target"], {}, target=Name("f"))
-                },
+                "calls": {Call("f()", ["target"], {}, target=Name("f"))},
             }
         }
 
@@ -187,7 +184,8 @@ class TestRegression:
         assert "likely a procedural parameter" in output
 
         # Procedural return value
-        _ast = parse("""
+        _ast = parse(
+            """
             def wrapper():
                 def inner():
                     return "some value"
@@ -195,7 +193,8 @@ class TestRegression:
 
             def actor():
                 return wrapper()()
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         wrapper = Func("wrapper", [], None, None)
@@ -203,9 +202,7 @@ class TestRegression:
         expected = {
             wrapper: {
                 "sets": set(),
-                "gets": {
-                    Name("inner")
-                },
+                "gets": {Name("inner")},
                 "dels": set(),
                 "calls": set(),
             },
@@ -213,10 +210,8 @@ class TestRegression:
                 "sets": set(),
                 "gets": set(),
                 "dels": set(),
-                "calls": {
-                    Call("wrapper()()", [], {}, target=wrapper)
-                },
-            }
+                "calls": {Call("wrapper()()", [], {}, target=wrapper)},
+            },
         }
 
         assert results == expected
@@ -226,7 +221,8 @@ class TestRegression:
 
         # Local function
         # Technically not higher-order, but w/e
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn_a(arg):
                 return arg.a
 
@@ -240,7 +236,8 @@ class TestRegression:
                     accumulator += f(argument)
 
                 return accumulator
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         fn_a = Func("fn_a", ["arg"], None, None)
@@ -249,17 +246,13 @@ class TestRegression:
         expected = {
             fn_a: {
                 "sets": set(),
-                "gets": {
-                    Name("arg.a", "arg")
-                },
+                "gets": {Name("arg.a", "arg")},
                 "dels": set(),
                 "calls": set(),
             },
             fn_b: {
                 "sets": set(),
-                "gets": {
-                    Name("arg.b", "arg")
-                },
+                "gets": {Name("arg.b", "arg")},
                 "dels": set(),
                 "calls": set(),
             },
@@ -275,9 +268,7 @@ class TestRegression:
                     Name("argument"),
                 },
                 "dels": set(),
-                "calls": {
-                    Call("f()", ["argument"], {}, target=Name("f"))
-                },
+                "calls": {Call("f()", ["argument"], {}, target=Name("f"))},
             },
         }
 
@@ -288,14 +279,16 @@ class TestRegression:
 
     def test_regression_generator_iterable_is_literal(self, parse):
         # List of many
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn():
                 list_of_tuples = [
                     ("first", [
                         e.whatever for e in [thing_one, thing_two]
                     ])
                 ]
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -316,14 +309,16 @@ class TestRegression:
         assert results == expected
 
         # List of one
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn():
                 list_of_tuples = [
                     ("first", [
                         e.whatever for e in [thing]
                     ])
                 ]
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -351,10 +346,12 @@ class TestRegression:
 
         # ALWAYS WORKED
         # Test if "arg.first" and "arg.second" are in "gets"
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn(arg):
                 return (arg.first + arg.second)
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -373,10 +370,12 @@ class TestRegression:
 
         # REGRESSION
         # Test if "arg.first" and "arg.second" are in "gets"
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn(arg):
                 return (arg.first + arg.second).some_property
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -397,10 +396,12 @@ class TestRegression:
         #
         # In Starred
         #
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn(arg):
                 return call(*[arg.first + arg.second])
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -423,10 +424,12 @@ class TestRegression:
         #
         # In Subscript
         #
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn(arg):
                 return (arg.first + arg.second)["index"]
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -447,10 +450,12 @@ class TestRegression:
 
     def test_regression_gets_in_method_call(self, parse):
         # ALWAYS WORKED
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn(arg):
                 return arg.attr
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -467,10 +472,12 @@ class TestRegression:
         assert results == expected
 
         # ALWAYS WORKED
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn(arg):
                 return arg.method()
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -488,10 +495,12 @@ class TestRegression:
         assert results == expected
 
         # REGRESSION 1
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn(arg):
                 return arg.attr.method()
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
@@ -511,10 +520,12 @@ class TestRegression:
         assert results == expected
 
         # REGRESSION 2
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn(arg):
                 return arg.a.b.c.d.method()
-        """)
+        """
+        )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {

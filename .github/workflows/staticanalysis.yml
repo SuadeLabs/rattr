@@ -27,11 +27,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade black
+          python -m pip install .[dev]
 
-      - name: Run black on ratter
-        run: black --check ratter/
+      - name: Run black on rattr
+        run: black --check rattr/
 
   lint:
     runs-on: ubuntu-latest
@@ -46,12 +45,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade flake8
-          python -m pip install --upgrade flake8-bugbear
+          python -m pip install .[dev]
 
-      - name: Run flake8 on ratter
-        run: flake8 ratter/
+      - name: Run flake8 on rattr
+        run: flake8 rattr/
 
   isort:
     runs-on: ubuntu-latest
@@ -66,9 +63,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade isort
+          python -m pip install .[dev]
 
-      - name: Run isort on ratter
-        run: isort -c ratter/
-
+      - name: Run isort on rattr
+        run: isort -c rattr/

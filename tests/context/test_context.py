@@ -1,16 +1,15 @@
 import ast
-import mock
+from unittest import mock
 
-
-from ratter.analyser.context import (
+from rattr.analyser.context import (
+    Builtin,
+    Class,
     Context,
+    Func,
+    Import,
+    Name,
     RootContext,
     SymbolTable,
-    Name,
-    Builtin,
-    Import,
-    Func,
-    Class,
 )
 
 
@@ -350,9 +349,11 @@ class TestContext:
 
 class TestRootContext_ContextFromPython:
     def test_module_level_attributes(self, parse):
-        _ast = parse("""
+        _ast = parse(
+            """
             # A blank context
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -373,9 +374,11 @@ class TestRootContext_ContextFromPython:
             assert attr in _ctx.symbol_table
 
     def test_builtins(self, parse):
-        _ast = parse("""
+        _ast = parse(
+            """
             # A blank context
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -390,27 +393,27 @@ class TestRootContext_ContextFromPython:
         assert "TypeError" in _ctx.symbol_table
 
     def test_affective_builtins(self, parse):
-        _ast = parse("""
+        _ast = parse(
+            """
             # A blank context
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
 
         assert _ctx.symbol_table.get("does_not_exist") is None
-        assert _ctx.symbol_table.get("print") == Builtin(
-            "print", has_affect=False
-        )
-        assert _ctx.symbol_table.get("setattr") == Builtin(
-            "setattr", has_affect=True
-        )
+        assert _ctx.symbol_table.get("print") == Builtin("print", has_affect=False)
+        assert _ctx.symbol_table.get("setattr") == Builtin("setattr", has_affect=True)
 
 
 class TestRootContext_Imports:
     def test_import(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             import math
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -419,9 +422,11 @@ class TestRootContext_Imports:
         )
 
     def test_import_as(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             import math as m
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -430,9 +435,11 @@ class TestRootContext_Imports:
         )
 
     def test_import_list(self, parse, RootSymbolTable, capfd, config):
-        _ast = parse("""
+        _ast = parse(
+            """
             import os, math
-        """)
+        """
+        )
         with config("show_low_priority_warnings", True):
             _ctx = RootContext(_ast)
 
@@ -446,10 +453,12 @@ class TestRootContext_Imports:
         assert "info" in output
 
     def test_from_import(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             from os.path import isfile
             from math import sin, cos
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -460,10 +469,12 @@ class TestRootContext_Imports:
         )
 
     def test_from_import_as(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             from os import path as path_utils
             from math import power as exp, some_func
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -474,18 +485,18 @@ class TestRootContext_Imports:
         )
 
     def test_from_import_star(self, parse, RootSymbolTable, capfd):
-        _ast = parse("""
+        _ast = parse(
+            """
             from math import *
-        """)
+        """
+        )
 
         _ctx = RootContext(_ast)
 
         # Were error.fatal not to be called,
         # assert that it would have been correct
         assert _ctx.parent is None
-        assert _ctx.symbol_table == RootSymbolTable(
-            Import("*", "math")
-        )
+        assert _ctx.symbol_table == RootSymbolTable(Import("*", "math"))
 
         output, _ = capfd.readouterr()
         assert "warning" in output and "*" in output
@@ -499,15 +510,15 @@ class TestRootContext_Imports:
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
-        assert _ctx.symbol_table == RootSymbolTable(
-            Import("join", "os.path.join")
-        )
+        assert _ctx.symbol_table == RootSymbolTable(Import("join", "os.path.join"))
 
     def test_multiple_starred_imports(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             from os import *
             from math import *
-        """)
+        """
+        )
 
         _ctx = RootContext(_ast)
 
@@ -517,10 +528,12 @@ class TestRootContext_Imports:
 
     def test_import_in_child_context(self, parse, RootSymbolTable):
         # In if, try, for, etc
-        _ast = parse("""
+        _ast = parse(
+            """
             if something:
                 from math import *
-        """)
+        """
+        )
 
         _ctx = RootContext(_ast)
 
@@ -530,10 +543,12 @@ class TestRootContext_Imports:
         )
 
         # In function, class, etc
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn():
                 from math import *
-        """)
+        """
+        )
 
         _ctx = RootContext(_ast)
 
@@ -546,14 +561,16 @@ class TestRootContext_Imports:
 
 class TestRootContext_Assigns:
     def test_assignment(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             a = 42
             a = "reassigned!"
 
             b = hhgttg()
 
             x, y, = 1, 2
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -565,10 +582,12 @@ class TestRootContext_Assigns:
         )
 
     def test_ann_assignment(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             a: int = 42
             b: str = "an string!"
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -578,12 +597,14 @@ class TestRootContext_Assigns:
         )
 
     def test_aug_assignment(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             a = 7
             a += 5
 
             b %= "fmt"
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -595,13 +616,15 @@ class TestRootContext_Assigns:
 
 class TestRootContext_FunctionDefs:
     def test_function_def(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             def fn_one(a, b):
                 pass
 
             def fn_two(c):
                 var = "i shouldn't be in the root context!"
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -611,13 +634,15 @@ class TestRootContext_FunctionDefs:
         )
 
     def test_async_function_def(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             async def fn_one(a, b):
                 pass
 
             async def fn_two(c):
                 var = "i shouldn't be in the root context!"
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -627,9 +652,11 @@ class TestRootContext_FunctionDefs:
         )
 
     def test_lambda_anonymous(self, parse, RootSymbolTable, capfd):
-        _ast = parse("""
+        _ast = parse(
+            """
             lambda: 1
-        """)
+        """
+        )
 
         with mock.patch("sys.exit") as _exit:
             RootContext(_ast)
@@ -640,11 +667,13 @@ class TestRootContext_FunctionDefs:
 
     def test_lambda_named(self, parse, RootSymbolTable, capfd):
         # Normal
-        _ast = parse("""
+        _ast = parse(
+            """
             x = lambda a, b: 1
             y: type = lambda: 1
             z = lambda *args: 1
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -655,9 +684,11 @@ class TestRootContext_FunctionDefs:
         )
 
         # Bad: Multiple LHS and RHS
-        _ast = parse("""
+        _ast = parse(
+            """
             x, y = lambda a, b: 1, 2
-        """)
+        """
+        )
 
         with mock.patch("sys.exit") as _exit:
             RootContext(_ast)
@@ -667,9 +698,11 @@ class TestRootContext_FunctionDefs:
         assert _exit.called
 
         # Bad: Multiple LHS
-        _ast = parse("""
+        _ast = parse(
+            """
             x, y = lambda a: 1
-        """)
+        """
+        )
 
         with mock.patch("sys.exit") as _exit:
             RootContext(_ast)
@@ -679,9 +712,11 @@ class TestRootContext_FunctionDefs:
         assert _exit.called
 
         # Bad: Multiple RHS
-        _ast = parse("""
+        _ast = parse(
+            """
             x = lambda a, b: 1, 2
-        """)
+        """
+        )
 
         with mock.patch("sys.exit") as _exit:
             RootContext(_ast)
@@ -693,13 +728,15 @@ class TestRootContext_FunctionDefs:
 
 class TestRootContext_If:
     def test_if(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             if some_variable == "some value":
                 def fn(a):
                     pass
 
                 global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -709,14 +746,16 @@ class TestRootContext_If:
         )
 
     def test_nested_if(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             if some_variable == "some value":
                 if some_other_variable == "some other value":
                     def fn(a):
                         pass
 
                     global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -728,13 +767,15 @@ class TestRootContext_If:
 
 class TestRootContext_For:
     def test_for(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             for i in ITER:
                 def fn(a):
                     pass
 
                 global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -744,14 +785,16 @@ class TestRootContext_For:
         )
 
     def test_nested_for(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             for iter in ITER_OF_ITERS:
                 for i in iter:
                     def fn(a):
                         pass
 
                     global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -761,13 +804,15 @@ class TestRootContext_For:
         )
 
     def test_async_for(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             async for i in ITER:
                 def fn(a):
                     pass
 
                 global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -779,13 +824,15 @@ class TestRootContext_For:
 
 class TestRootContext_While:
     def test_while(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             while True:
                 def fn(a):
                     pass
 
                 global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -795,14 +842,16 @@ class TestRootContext_While:
         )
 
     def test_nested_while(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             while True:
                 while True:
                     def fn(a):
                         pass
 
                     global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -814,7 +863,8 @@ class TestRootContext_While:
 
 class TestRootContext_Try:
     def test_try(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             try:
                 global_a = 1
             except TypeError:
@@ -825,7 +875,8 @@ class TestRootContext_Try:
                 global_d = 4
             finally:
                 global_e = 5
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -838,7 +889,8 @@ class TestRootContext_Try:
         )
 
     def test_nested_try(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             try:
                 try:
                     global_a = 1
@@ -852,7 +904,8 @@ class TestRootContext_Try:
                     global_e = 5
             finally:
                 global_z = 26
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -868,13 +921,15 @@ class TestRootContext_Try:
 
 class TestRootContext_With:
     def test_with(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             with context_manager() as ctx:
                 def fn(a):
                     pass
 
                 global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -884,14 +939,16 @@ class TestRootContext_With:
         )
 
     def test_nested_with(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             with context_manager() as ctx:
                 with ctx() as inner_ctx:
                     def fn(a):
                         pass
 
                     global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -901,13 +958,15 @@ class TestRootContext_With:
         )
 
     def test_async_with(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             async with context_manager() as ctx:
                 def fn(a):
                     pass
 
                 global_var = 40
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -919,7 +978,8 @@ class TestRootContext_With:
 
 class TestRootContext_ClassDefs:
     def test_class_def(self, parse, RootSymbolTable):
-        _ast = parse("""
+        _ast = parse(
+            """
             class TopLevel:
                 def __init__(self, a):
                     self.a = a
@@ -927,7 +987,8 @@ class TestRootContext_ClassDefs:
                 def method(self):
                     var = "i shouldn't be in the root context!"
                     return var + " see, i'm not!"
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -938,11 +999,13 @@ class TestRootContext_ClassDefs:
 
 class TestRootContext_Ignored:
     def test_class_def(self, parse, RootSymbolTable, capfd):
-        _ast = parse("""
+        _ast = parse(
+            """
             '''
             Docstring at module level.
             '''
-        """)
+        """
+        )
         _ctx = RootContext(_ast)
 
         assert _ctx.parent is None
@@ -957,7 +1020,8 @@ class TestRootContext:
     # Longer "end-to-end" style test -- i.e. context over a whole module
 
     def test_module(self, parse, RootSymbolTable, capfd):
-        _ast = parse("""
+        _ast = parse(
+            """
             import a_module
 
             from another_module import some_function
@@ -972,7 +1036,8 @@ class TestRootContext:
 
                 def get_data(self):
                     return self.data
-        """)
+        """
+        )
 
         with mock.patch("sys.exit") as _exit:
             _ctx = RootContext(_ast)
