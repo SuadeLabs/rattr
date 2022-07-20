@@ -26,6 +26,8 @@ from typing import (
     Union,
 )
 
+from isort import place_module
+
 from rattr import config, error
 from rattr.analyser.context.symbol import get_possible_module_names  # noqa
 from rattr.analyser.context.symbol import (
@@ -56,27 +58,6 @@ from rattr.analyser.types import (
 # or else code elsewhere may break
 LOCAL_VALUE_PREFIX = "@"
 
-
-# Modules in the stdlib for which `find_spec` raises a ValueError -- i.e.
-# not registered in `sys.modules`
-# See:
-# https://docs.python.org/3.7/library/importlib.html#importlib.util.find_spec
-STDLIB_MODULES_WITH_NO_SPEC = {
-    "ossaudiodev",
-    "2to3",
-    "spwd",
-    "nis",
-    "test",
-    "multiprocessing",
-    "string",
-}
-
-# Standard library modules in "/usr/lib/python.?/dist-packages/" may appear in
-# "site-packages/" in a virtual environment, however, "site-packages/" will
-# also contain pip installed packages
-STDLIB_MODULES_IN_DIST_PACKAGES = {
-    "six",
-}
 
 # RegEx patterns for blacklisted modules
 MODULE_BLACKLIST_PATTERNS = {
@@ -559,7 +540,6 @@ def is_pip_module(module: str) -> bool:
     # No backslashes, bad windows!
     spec.origin = spec.origin.replace("\\", "/")
 
-    print(spec.origin)
     return any(re.fullmatch(p, spec.origin) for p in pip_install_locations)
 
 
@@ -570,68 +550,10 @@ def is_stdlib_module(module: str) -> bool:
     True
 
     >>> is_stdlib_module("math.pi")
-    False
-
-    """
-    # FIXME
-    #    Is there a better way of determining the  install locations?
-    #    Possibly see how pip abd setuptools do it?
-    stdlib_patterns = (
-        # "math", etc -- not the same builtins as "print", etc
-        "built-in",
-        "frozen",
-        # Standard install locations
-        # NOTE
-        #    This means that if you have a directory in your source code called e.g.
-        #    'lib/pypy/' we might ignore it.
-        ".+/lib/(pypy|python).*",
-        ".+/pypy/lib_pypy.*",
-        # GitHub `setup-python` locations
-        "/opt/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
-        "/opt/.+/PyPy/.+/lib_pypy.*",
-        "/Users/.+/(PyPy|Python)/.+/lib(-|_|/)python.*",
-        "/Users/.+/PyPy/.+/lib_pypy.*",
-        "C:/.+/(PyPy|Python)/.+/(L|l)ib.*",
-        "C:/.+/(PyPy|Python)/.+/DLLs.*",
-    )
-
-    try:
-        spec = find_spec(module)
-    except (AttributeError, ModuleNotFoundError, ValueError):
-        spec = None
-
-    if module in sys.builtin_module_names:
-        return True
-
-    if module in STDLIB_MODULES_WITH_NO_SPEC:
-        return True
-
-    if module in STDLIB_MODULES_IN_DIST_PACKAGES:
-        return True
-
-    if spec is None or spec.origin is None:
-        return False
-
-    if "site-packages" in spec.origin:
-        return False
-
-    # No backslashes, bad windows!
-    spec.origin = spec.origin.replace("\\", "/")
-
-    return any(re.fullmatch(p, spec.origin) for p in stdlib_patterns)
-
-
-def is_in_stdlib(name: str) -> bool:
-    """Return `True` if the basename of `name` referres an stdlib module.
-
-    >>> is_in_stdlib("math")
-    True
-
-    >>> is_in_stdlib("math.pi")
     True
 
     """
-    return is_stdlib_module(name.split(".")[0])
+    return place_module(module) == "STDLIB"
 
 
 def is_in_builtins(name_or_qualified_name: str) -> bool:

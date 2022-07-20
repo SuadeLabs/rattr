@@ -29,7 +29,6 @@ from rattr.analyser.util import (
     is_call_to,
     is_excluded_name,
     is_in_builtins,
-    is_in_stdlib,
     is_method_on_cast,
     is_method_on_constant,
     is_method_on_primitive,
@@ -828,50 +827,32 @@ class TestUtil:
         assert not is_pip_module("string")
 
     def test_is_stdlib_module(self, stdlib_modules):
+        # Test against known stdlib modules
         for m in stdlib_modules:
             assert is_stdlib_module(m)
 
+        # Test against submodules of stdlib modules
         assert is_stdlib_module("os.path")
+        assert is_stdlib_module("os.path.join")
+        assert is_stdlib_module("math.sin")
+        assert is_stdlib_module("math.pi")
 
-        assert not is_stdlib_module("os.path.join")
-        assert not is_stdlib_module("math.sin")
-        assert not is_stdlib_module("math.pi")
+        # Technically false, but true to implementation
+        assert is_stdlib_module("math.this.is.not.in.the.stdlib")
 
-        assert not is_stdlib_module("anything.dotted.anything")
-
+        # Test against pip/thirdparty modules
         assert not is_stdlib_module("flask")
         assert not is_stdlib_module("numpy")
         assert not is_stdlib_module("flake8")
         assert not is_stdlib_module("foobar")
 
-        assert not is_stdlib_module("rattr")
-        assert not is_stdlib_module("rattr.analyser.context")
-        assert not is_stdlib_module("rattr.analyser.context.context")
-        assert not is_stdlib_module("rattr.analyser.context.context.Context")
+        # Test against ratter/firstparty modules
+        assert not is_stdlib_module("ratter")
+        assert not is_stdlib_module("ratter.analyser.context")
+        assert not is_stdlib_module("ratter.analyser.context.context")
+        assert not is_stdlib_module("ratter.analyser.context.context.Context")
 
-    def test_is_in_stdlib(self, stdlib_modules):
-        for m in stdlib_modules:
-            assert is_in_stdlib(m)
-
-        assert is_in_stdlib("os.path")
-        assert is_in_stdlib("os.path.join")
-        assert is_in_stdlib("math.sin")
-        assert is_in_stdlib("math.pi")
-
-        # Technically false, but true to implementation
-        assert is_in_stdlib("math.this.is.not.in.the.stdlib")
-
-        assert not is_in_stdlib("anything.dotted.anything")
-
-        assert not is_in_stdlib("flask")
-        assert not is_in_stdlib("numpy")
-        assert not is_in_stdlib("flake8")
-        assert not is_in_stdlib("foobar")
-
-        assert not is_in_stdlib("rattr")
-        assert not is_in_stdlib("rattr.analyser.context")
-        assert not is_in_stdlib("rattr.analyser.context.context")
-        assert not is_in_stdlib("rattr.analyser.context.context.Context")
+        assert not is_stdlib_module("anything.dotted.anything")
 
     def test_is_in_builtins(self, builtins):
         for b in builtins:

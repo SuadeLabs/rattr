@@ -31,6 +31,7 @@ setup(
     extras_require={
         "dev": [
             "black==22.1.0",
+            "click==8.0.2",
             "flake8-bugbear==22.1.11",
             "flake8==4.0.1",
             "flask==2.0.3",
