@@ -33,6 +33,7 @@ from rattr.analyser.util import (
     enter_file,
     get_absolute_module_name,
     get_assignment_targets,
+    get_contained_walruses,
     get_fullname,
     get_function_def_args,
     get_starred_imports,
@@ -467,6 +468,10 @@ class RootContext(Context):
                 self.add(Func(name, *get_function_def_args(node.value)))
             return
 
+        # Walrus operator in the right-hand side of containing assignment
+        for walrus in get_contained_walruses(node):
+            RootContext.register_NamedExpr(self, walrus)
+
         for target in targets:
             self.add_identifiers_to_context(target)
 
@@ -489,6 +494,9 @@ class RootContext(Context):
             "classes, etc)",
             node,
         )
+
+    def register_NamedExpr(self, node: ast.NamedExpr) -> None:
+        RootContext.register_AnyAssign(self, node)
 
     # ----------------------------------------------------------------------- #
     # Functions, classes, etc

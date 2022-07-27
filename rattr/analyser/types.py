@@ -90,6 +90,7 @@ AnyAssign = Union[
     ast.Assign,
     ast.AnnAssign,
     ast.AugAssign,
+    ast.NamedExpr,
 ]
 
 

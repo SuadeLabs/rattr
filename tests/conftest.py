@@ -844,3 +844,28 @@ def sys_args4():
 @pytest.fixture
 def sys_args5():
     return ["rattr", "rattr/cli/parser.py", "--permissive", "3"]
+
+
+@pytest.fixture
+def walrus():
+    def parse(expr: str):
+        return ast.parse(f"a = ({expr})").body[0].value
+
+    def _inner(*exprs):
+        if len(exprs) == 0:
+            raise ValueError
+
+        if len(exprs) == 1:
+            return parse(exprs[0])
+        else:
+            return [parse(e) for e in exprs]
+
+    return _inner
+
+
+@pytest.fixture
+def stringify_nodes():
+    def _inner(nodes: ast.AST):
+        return [ast.dump(n) for n in nodes]
+
+    return _inner

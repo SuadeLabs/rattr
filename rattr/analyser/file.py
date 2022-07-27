@@ -3,6 +3,7 @@
 import ast
 from collections import namedtuple
 from copy import deepcopy
+from dataclasses import replace as copy_dataclass
 from typing import List, NamedTuple, Set, Tuple
 
 from rattr import config, error
@@ -15,8 +16,10 @@ from rattr.analyser.util import (
     assignment_is_one_to_one,
     enter_file,
     get_assignment_targets,
+    get_contained_walruses,
     get_fullname,
     has_annotation,
+    ir_changes,
     is_blacklisted_module,
     is_excluded_name,
     is_pip_module,
@@ -220,19 +223,38 @@ class FileAnalyser(NodeVisitor):
     # Lambdas
     # ----------------------------------------------------------------------- #
 
-    def visit_AnyAssign(self, node: AnyAssign) -> None:
-        if not lambda_in_rhs(node):
-            return
-
+    def visit_LambdaAssign(self, node: AnyAssign) -> None:
         if not assignment_is_one_to_one(node):
-            error.fatal("lambda assignment must be one-to-one", node)
-            return
+            return error.fatal("lambda assignment must be one-to-one", node)
 
         targets = get_assignment_targets(node)
         name = get_fullname(targets[0])
 
         fn, context = self.context.get(name), self.context
         self.file_ir[fn] = FunctionAnalyser(node.value, context).analyse()
+
+    def visit_AnyAssign(self, node: AnyAssign) -> None:
+        if lambda_in_rhs(node):
+            self.visit_LambdaAssign(node)
+
+        # Walrus may obscure a lambda, so peak in and visit the nice walruses
+        for walrus in get_contained_walruses(node):
+            if lambda_in_rhs(walrus):
+                with ir_changes(self.file_ir) as ir:
+                    self.visit_AnyAssign(walrus)
+
+                # If the walrus is of the form "a = (b := lambda ...)" then "a" should
+                # have the same result as "b"
+                if len(ir.added) == 1 and node.value == walrus:
+                    rhs: Func = list(ir.added)[0]
+                    lhs: Func = copy_dataclass(
+                        rhs, name=get_fullname(get_assignment_targets(node)[0])
+                    )
+                    self.file_ir[lhs] = self.file_ir[rhs]
+                elif len(ir.added) > 1:
+                    raise NotImplementedError("Multiple deeply nested walruses")
+            else:
+                self.visit_AnyAssign(walrus)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         self.visit_AnyAssign(node)
@@ -243,13 +265,9 @@ class FileAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
+        self.visit_AnyAssign(node)
+
     def visit_Lambda(self, node: ast.Lambda) -> None:
         # NOTE Only reached when the lambda is an anonymous function
         return error.fatal("module level lambdas unsupported", node)
-
-    # ----------------------------------------------------------------------- #
-    # Walrus Operator
-    # ----------------------------------------------------------------------- #
-
-    def visit_NamedExpr(self, node) -> None:
-        return error.fatal("walrus operator is currently unsupported", node)
