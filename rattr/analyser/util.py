@@ -44,10 +44,8 @@ from rattr.analyser.types import (
     AstDef,
     Comprehension,
     Constant,
-    FileIR,
     FileResults,
     FuncOrAsyncFunc,
-    FuncOrClass,
     FunctionIR,
     Literal,
     Nameable,
@@ -665,26 +663,27 @@ class read:
         pass
 
 
-class ir_changes:
-    """Context manager to return the IR's changes across the block."""
+class changes:
+    """Context manager to return the dict-like's changes across the block."""
 
-    def __init__(self, ir: FileIR):
-        self.ir: FileIR = ir
+    def __init__(self, target, cb=lambda t: t.keys()):
+        self.target = target
+        self.cb = cb
 
     def __enter__(self):
-        self.antecedent: Set[FuncOrClass] = set(self.ir.keys())
+        self.antecedent: Set = set(self.cb(self.target))
         return self
 
     def __exit__(self, *_):
-        self.consequent: Set[FuncOrClass] = set(self.ir.keys())
+        self.consequent: Set = set(self.cb(self.target))
 
     @property
-    def added(self) -> Set[FuncOrClass]:
+    def added(self) -> Set:
         """Return the keys added to the IR."""
         return self.consequent - self.antecedent
 
     @property
-    def removed(self) -> Set[FuncOrClass]:
+    def removed(self) -> Set:
         """Return the keys removed from the IR, should be the empty set."""
         return self.antecedent - self.consequent
 

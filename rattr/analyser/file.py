@@ -20,12 +20,12 @@ from rattr.analyser.types import (
 )
 from rattr.analyser.util import (
     assignment_is_one_to_one,
+    changes,
     enter_file,
     get_assignment_targets,
     get_contained_walruses,
     get_fullname,
     has_annotation,
-    ir_changes,
     is_blacklisted_module,
     is_excluded_name,
     is_pip_module,
@@ -246,18 +246,18 @@ class FileAnalyser(NodeVisitor):
         # Walrus may obscure a lambda, so peak in and visit the nice walruses
         for walrus in get_contained_walruses(node):
             if lambda_in_rhs(walrus):
-                with ir_changes(self.file_ir) as ir:
+                with changes(self.file_ir) as diff:
                     self.visit_AnyAssign(walrus)
 
                 # If the walrus is of the form "a = (b := lambda ...)" then "a" should
                 # have the same result as "b"
-                if len(ir.added) == 1 and node.value == walrus:
-                    rhs: Func = list(ir.added)[0]
+                if len(diff.added) == 1 and node.value == walrus:
+                    rhs: Func = list(diff.added)[0]
                     lhs: Func = copy_dataclass(
                         rhs, name=get_fullname(get_assignment_targets(node)[0])
                     )
                     self.file_ir[lhs] = self.file_ir[rhs]
-                elif len(ir.added) > 1:
+                elif len(diff.added) > 1:
                     raise NotImplementedError("Multiple deeply nested walruses")
             else:
                 self.visit_AnyAssign(walrus)

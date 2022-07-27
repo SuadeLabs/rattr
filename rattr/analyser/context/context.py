@@ -11,6 +11,7 @@ functions such as `print`, etc.
 
 import ast
 from contextlib import contextmanager
+from dataclasses import replace as copy_dataclass
 from typing import Any, Generator, Iterable, Optional, Set, TypeVar, Union
 
 from rattr import config, error
@@ -30,6 +31,7 @@ from rattr.analyser.types import AnyAssign, Constant, Literal, ast_NamedExpr
 from rattr.analyser.util import (
     PYTHON_BUILTINS,
     assignment_is_one_to_one,
+    changes,
     enter_file,
     get_absolute_module_name,
     get_assignment_targets,
@@ -469,8 +471,24 @@ class RootContext(Context):
             return
 
         # Walrus operator in the right-hand side of containing assignment
+        # If we have "a = (b := lambda ...)" we must update "a"'s symbol to the function
+        # equivalent to "b" (with the name changed)
         for walrus in get_contained_walruses(node):
-            RootContext.register_NamedExpr(self, walrus)
+            if lambda_in_rhs(walrus):
+                with changes(self.symbol_table, cb=lambda t: t.values()) as diff:
+                    RootContext.register_NamedExpr(self, walrus)
+
+                if len(diff.added) == 1 and node.value == walrus:
+                    self.add(
+                        copy_dataclass(
+                            list(diff.added)[0],
+                            name=get_fullname(get_assignment_targets(node)[0]),
+                        )
+                    )
+                elif len(diff.added) > 1:
+                    raise NotImplementedError("Multiple deeply nested walruses")
+            else:
+                RootContext.register_NamedExpr(self, walrus)
 
         for target in targets:
             self.add_identifiers_to_context(target)

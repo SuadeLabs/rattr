@@ -8,6 +8,7 @@ from rattr import error
 from rattr.analyser.context import Call, Class, Context, Name, RootContext
 from rattr.analyser.util import (
     assignment_is_one_to_one,
+    changes,
     class_in_rhs,
     get_annotation,
     get_assignment_targets,
@@ -25,7 +26,6 @@ from rattr.analyser.util import (
     get_xattr_obj_name_pair,
     has_affect,
     has_annotation,
-    ir_changes,
     is_args,
     is_blacklisted_module,
     is_call_to,
@@ -1295,21 +1295,21 @@ class TestUtil:
         with pytest.raises(TypeError):
             assert get_attrname(attr)
 
-    def test_ir_changes(self):
+    def test_changes(self):
         ir = {"a": 1, "b": 2, "c": 3, "d": 4}
 
         # No changes
-        with ir_changes(ir) as changes:
+        with changes(ir) as diff:
             pass
 
-        assert not changes.added
-        assert not changes.removed
+        assert not diff.added
+        assert not diff.removed
 
         # Changes
-        with ir_changes(ir) as changes:
+        with changes(ir) as diff:
             ir["x"] = 99
             del ir["a"]
             del ir["b"]
 
-        assert changes.added == {"x"}
-        assert changes.removed == {"a", "b"}
+        assert diff.added == {"x"}
+        assert diff.removed == {"a", "b"}
