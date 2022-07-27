@@ -471,24 +471,20 @@ class RootContext(Context):
             return
 
         # Walrus operator in the right-hand side of containing assignment
-        # If we have "a = (b := lambda ...)" we must update "a"'s symbol to the function
-        # equivalent to "b" (with the name changed)
         for walrus in get_contained_walruses(node):
-            if lambda_in_rhs(walrus):
-                with changes(self.symbol_table, cb=lambda t: t.values()) as diff:
-                    RootContext.register_NamedExpr(self, walrus)
+            with changes(self.symbol_table, cb=lambda t: t.values()) as diff:
+                RootContext.register_NamedExpr(self, walrus)
 
+            # If we have "a = (b := lambda ...)" then "a" will have been registered as a
+            # Name when it just be a Func with the same signature as the just-added "b"
+            if lambda_in_rhs(walrus):
                 if len(diff.added) == 1 and node.value == walrus:
+                    lhs = get_assignment_targets(node)[0]
                     self.add(
-                        copy_dataclass(
-                            list(diff.added)[0],
-                            name=get_fullname(get_assignment_targets(node)[0]),
-                        )
+                        copy_dataclass(list(diff.added)[0], name=get_fullname(lhs))
                     )
                 elif len(diff.added) > 1:
                     raise NotImplementedError("Multiple deeply nested walruses")
-            else:
-                RootContext.register_NamedExpr(self, walrus)
 
         for target in targets:
             self.add_identifiers_to_context(target)

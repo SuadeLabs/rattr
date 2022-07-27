@@ -243,14 +243,14 @@ class FileAnalyser(NodeVisitor):
         if lambda_in_rhs(node):
             self.visit_LambdaAssign(node)
 
-        # Walrus may obscure a lambda, so peak in and visit the nice walruses
+        # Walrus may obscure a lambda, so peek in and visit the nice walruses
         for walrus in get_contained_walruses(node):
-            if lambda_in_rhs(walrus):
-                with changes(self.file_ir) as diff:
-                    self.visit_AnyAssign(walrus)
+            with changes(self.file_ir) as diff:
+                self.visit_AnyAssign(walrus)
 
-                # If the walrus is of the form "a = (b := lambda ...)" then "a" should
-                # have the same result as "b"
+            # If the walrus is of the form "a = (b := lambda ...)" then "a" should have
+            # the same result as "b" which would have just been registered
+            if lambda_in_rhs(walrus):
                 if len(diff.added) == 1 and node.value == walrus:
                     rhs: Func = list(diff.added)[0]
                     lhs: Func = copy_dataclass(
@@ -259,8 +259,6 @@ class FileAnalyser(NodeVisitor):
                     self.file_ir[lhs] = self.file_ir[rhs]
                 elif len(diff.added) > 1:
                     raise NotImplementedError("Multiple deeply nested walruses")
-            else:
-                self.visit_AnyAssign(walrus)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         self.visit_AnyAssign(node)
