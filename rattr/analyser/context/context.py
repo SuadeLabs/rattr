@@ -26,7 +26,7 @@ from rattr.analyser.context.symbol import (
     get_possible_module_names,
 )
 from rattr.analyser.context.symbol_table import SymbolTable
-from rattr.analyser.types import AnyAssign, Constant, Literal
+from rattr.analyser.types import AnyAssign, Constant, Literal, ast_NamedExpr
 from rattr.analyser.util import (
     PYTHON_BUILTINS,
     assignment_is_one_to_one,
@@ -495,7 +495,7 @@ class RootContext(Context):
             node,
         )
 
-    def register_NamedExpr(self, node: ast.NamedExpr) -> None:
+    def register_NamedExpr(self, node: ast_NamedExpr) -> None:
         RootContext.register_AnyAssign(self, node)
 
     # ----------------------------------------------------------------------- #

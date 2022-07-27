@@ -22,6 +22,7 @@ from rattr.analyser.types import (
     FunctionIR,
     Nameable,
     StrictlyNameable,
+    ast_NamedExpr,
 )
 from rattr.analyser.util import (
     LOCAL_VALUE_PREFIX,
@@ -282,7 +283,7 @@ class FunctionAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
+    def visit_NamedExpr(self, node: ast_NamedExpr) -> None:
         self.func_ir["sets"].add(Name(*get_basename_fullname_pair(node.target)))
 
         if lambda_in_rhs(node):

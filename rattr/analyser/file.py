@@ -11,7 +11,13 @@ from rattr.analyser.base import NodeVisitor
 from rattr.analyser.cls import ClassAnalyser
 from rattr.analyser.context import Context, Func, Import, RootContext
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import AnyAssign, AnyFunctionDef, FileIR, ImportsIR
+from rattr.analyser.types import (
+    AnyAssign,
+    AnyFunctionDef,
+    FileIR,
+    ImportsIR,
+    ast_NamedExpr,
+)
 from rattr.analyser.util import (
     assignment_is_one_to_one,
     enter_file,
@@ -265,7 +271,7 @@ class FileAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
+    def visit_NamedExpr(self, node: ast_NamedExpr) -> None:
         self.visit_AnyAssign(node)
 
     def visit_Lambda(self, node: ast.Lambda) -> None:

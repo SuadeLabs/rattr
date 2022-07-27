@@ -1003,6 +1003,8 @@ class TestUtil:
         assign = ast.parse("a += 1").body[0]
         assert get_assignment_targets(assign) == [assign.target]
 
+    @pytest.mark.py_3_8_plus()
+    def test_get_assignment_targets_walrus(self):
         # Walrus in assign
         assign = ast.parse("a = (b := 1)").body[0]
         assert get_assignment_targets(assign) == assign.targets

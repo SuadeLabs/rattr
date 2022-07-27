@@ -2,6 +2,7 @@
 
 import ast
 import json
+import sys
 from typing import (
     Dict,
     ItemsView,
@@ -9,6 +10,7 @@ from typing import (
     KeysView,
     Optional,
     Set,
+    Type,
     Union,
     ValuesView,
 )
@@ -90,9 +92,24 @@ AnyAssign = Union[
     ast.Assign,
     ast.AnnAssign,
     ast.AugAssign,
-    ast.NamedExpr,
 ]
 
+
+# --------------------------------------------------------------------------- #
+# Multi-version support
+# --------------------------------------------------------------------------- #
+
+
+class _TypeNotInPythonVersion:
+    pass
+
+
+# Walrus operator typing
+if sys.version_info.major == 3 and sys.version_info.minor >= 8:
+    ast_NamedExpr: Type[ast.NamedExpr] = ast.NamedExpr
+    AnyAssign = Union[ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr]
+else:
+    ast_NamedExpr = _TypeNotInPythonVersion
 
 # --------------------------------------------------------------------------- #
 # Results and intermediate representation (IR)
