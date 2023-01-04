@@ -43,6 +43,10 @@ def should_i_buy(security):
 
 rattr can help you determine which functions are required for a calculation. Effectively allowing you to build powerful directed graph structures for your function libraries.
 
+# How to use
+
+Placeholder.
+
 # Developer Notes
 
 ## Use of Undocumented Behaviour
