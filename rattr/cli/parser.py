@@ -1,10 +1,35 @@
+from typing import Dict, Any
+
 import argparse
 from abc import ABC, abstractstaticmethod
 from argparse import ArgumentError, ArgumentParser, Namespace
 from os.path import isfile, splitext
 
-from rattr import _version, error, load_config_from_project_toml # noqa: F401
+from rattr import _version, error
+from rattr.cli.toml_parser import load_config_from_project_toml  # noqa: F401
 from rattr.cli.util import multi_paragraph_wrap
+
+
+def translate_toml_cfg_dict_to_sys_args(toml_cfg: Dict[str, Any]) -> str:
+    """
+    Function translates pyproject.toml config dict into a a shell call string
+    (like: `$rattr --permissive 0 --show-warnings all --silent`)
+    and then this is passed to the argument parses which then validates the args
+    coming in from pyproject.toml.
+    """
+    shell_call_args = []
+    for k, v in toml_cfg.items():
+        arg_name = f"-{k}" if len(k) == 1 else f"--{k}"
+        if isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
+            shell_call_args.append(arg_name)
+            shell_call_args.append(f"{v}")
+        elif isinstance(v, list):
+            for arg_value in v:
+                shell_call_args.append(arg_name)
+                shell_call_args.append(f"{arg_value}")
+        elif isinstance(v, bool):
+            shell_call_args.append(arg_name)
+    return shell_call_args
 
 
 def parse_arguments() -> Namespace:
@@ -26,7 +51,8 @@ def parse_arguments() -> Namespace:
     exiting.
 
     """
-    parser: ArgumentParser = argparse.ArgumentParser(
+
+    cli_parser: ArgumentParser = argparse.ArgumentParser(
         prog="rattr",
         description=multi_paragraph_wrap(
             """\
@@ -47,9 +73,10 @@ def parse_arguments() -> Namespace:
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
+    toml_parser: ArgumentParser = argparse.ArgumentParser()
 
     # Version
-    version_group = parser.add_argument_group()
+    version_group = cli_parser.add_argument_group()
     version_group.add_argument(
         "-v",
         "--version",
@@ -72,22 +99,39 @@ def parse_arguments() -> Namespace:
     )
 
     for argument_group_parser in ARGUMENT_GROUP_PARSERS:
-        parser = argument_group_parser.register(parser)
+        cli_parser = argument_group_parser.register(cli_parser)
+        if argument_group_parser is not File:
+            toml_parser = argument_group_parser.register(toml_parser)
 
     # TODO
     #   One moved to Python 3.9+ add `exit_on_error=False` to the
     #   `ArgumentParser` constructor and catch the error the same as below --
     #   this will give consistent behaviour between parser and validator errors
-    arguments = parser.parse_args()
+    cli_arguments = cli_parser.parse_args()
+
+    project_cfg = load_config_from_project_toml()
+    toml_cfg_args = translate_toml_cfg_dict_to_sys_args(
+        toml_cfg=project_cfg if project_cfg else {}
+    )
+    toml_arguments = toml_parser.parse_args(toml_cfg_args)
 
     for argument_group_parser in ARGUMENT_GROUP_PARSERS:
         try:
-            arguments = argument_group_parser.validate(parser, arguments)
+            cli_arguments = argument_group_parser.validate(cli_parser, cli_arguments)
         except ArgumentError as e:
-            error.rattr(parser.format_usage())
+            error.rattr(cli_parser.format_usage())
             error.fatal(str(e))
 
-    return arguments
+        if argument_group_parser is not File:
+            try:
+                toml_arguments = argument_group_parser.validate(
+                    toml_parser, toml_arguments
+                )
+            except ArgumentError as e:
+                error.rattr(cli_parser.format_usage())
+                error.fatal(str(e))
+
+    return cli_arguments
 
 
 class ArgumentGroupParser(ABC):
