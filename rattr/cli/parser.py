@@ -3,7 +3,7 @@ from abc import ABC, abstractstaticmethod
 from argparse import ArgumentError, ArgumentParser, Namespace
 from os.path import isfile, splitext
 
-from rattr import _version, error
+from rattr import _version, error, load_config_from_project_toml # noqa: F401
 from rattr.cli.util import multi_paragraph_wrap
 
 
