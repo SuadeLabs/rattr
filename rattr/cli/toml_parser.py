@@ -3,7 +3,10 @@ import tomli as tomllib
 from pathlib import Path
 
 
-def load_config_from_project_toml() -> Optional[Dict]:
+def load_config_from_project_toml() -> Optional[Dict[str, Any]]:
+    """
+    Function finds project toml and parses it into a toml config dictionary.
+    """
     toml_cfg_path = find_project_toml()
     if toml_cfg_path:
         return parse_project_toml(config_path=toml_cfg_path)
@@ -11,6 +14,11 @@ def load_config_from_project_toml() -> Optional[Dict]:
 
 
 def find_project_root() -> Optional[Path]:
+    """
+    Function finds project root by starting search from cwd and
+    then exploring parent directories until it finds
+    pyproject.toml or .git or .hg file.
+    """
     srcs = [str(Path.cwd().resolve())]
     path_srcs = [Path(Path.cwd(), src).resolve() for src in srcs]
     src_parents = [
@@ -31,6 +39,10 @@ def find_project_root() -> Optional[Path]:
 
 
 def find_project_toml() -> Optional[str]:
+    """
+    Function finds pyproject.toml file by finding project root
+    first then looking pyproject.toml there.
+    """
     path_project_root = find_project_root()
     if not path_project_root:
         return None
@@ -41,7 +53,17 @@ def find_project_toml() -> Optional[str]:
 
 
 def parse_project_toml(config_path: str) -> Dict[str, Any]:
+    """
+    Function parses pyproject.toml file into a cfg dictionary.
+    """
     with open(config_path, "rb") as f:
         pyproject_toml_cfg = tomllib.load(f)
-    cfg = pyproject_toml_cfg.get("tool", {}).get("ruff", {})
-    return {k.replace("--", "").replace("-", "_"): v for k, v in cfg.items()}
+    cfg = pyproject_toml_cfg.get("tool", {}).get("rattr", {})
+    cfg_dict = {}
+    for k, v in cfg.items():
+        if k.startswith("--"):
+            k = k[2:]
+        elif k.startswith("-"):
+            k = k[1:]
+        cfg_dict[k] = v
+    return cfg_dict
