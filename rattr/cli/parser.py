@@ -1,16 +1,21 @@
-from typing import Dict, Any
+from copy import deepcopy
+from typing import Dict, Any, List
 
-import argparse
+from argparse import RawTextHelpFormatter
+from argparse import ArgumentError
 from abc import ABC, abstractstaticmethod
-from argparse import ArgumentError, ArgumentParser, Namespace
 from os.path import isfile, splitext
 
 from rattr import _version, error
 from rattr.cli.toml_parser import load_config_from_project_toml  # noqa: F401
 from rattr.cli.util import multi_paragraph_wrap
+from rattr.cli.arg_parser import (
+    _ArgumentParser as ArgumentParser,
+    _Namespace as Namespace,
+)
 
 
-def translate_toml_cfg_dict_to_sys_args(toml_cfg: Dict[str, Any]) -> str:
+def translate_toml_cfg_dict_to_sys_args(toml_cfg: Dict[str, Any]) -> List[str]:
     """
     Function translates pyproject.toml config dict into a a shell call string
     (like: `$rattr --permissive 0 --show-warnings all --silent`)
@@ -20,15 +25,13 @@ def translate_toml_cfg_dict_to_sys_args(toml_cfg: Dict[str, Any]) -> str:
     shell_call_args = []
     for k, v in toml_cfg.items():
         arg_name = f"-{k}" if len(k) == 1 else f"--{k}"
-        if isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
+        if isinstance(v, bool):
             shell_call_args.append(arg_name)
-            shell_call_args.append(f"{v}")
+        elif isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
+            shell_call_args += [arg_name, f"{v}"]
         elif isinstance(v, list):
             for arg_value in v:
-                shell_call_args.append(arg_name)
-                shell_call_args.append(f"{arg_value}")
-        elif isinstance(v, bool):
-            shell_call_args.append(arg_name)
+                shell_call_args += [arg_name, f"{arg_value}"]
     return shell_call_args
 
 
@@ -52,7 +55,7 @@ def parse_arguments() -> Namespace:
 
     """
 
-    cli_parser: ArgumentParser = argparse.ArgumentParser(
+    cli_parser: ArgumentParser = ArgumentParser(
         prog="rattr",
         description=multi_paragraph_wrap(
             """\
@@ -71,9 +74,9 @@ def parse_arguments() -> Namespace:
             Made with ❤️ by Suade Labs.
             """
         ),
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=RawTextHelpFormatter,
     )
-    toml_parser: ArgumentParser = argparse.ArgumentParser()
+    toml_parser: ArgumentParser = ArgumentParser()
 
     # Version
     version_group = cli_parser.add_argument_group()
@@ -100,20 +103,21 @@ def parse_arguments() -> Namespace:
 
     for argument_group_parser in ARGUMENT_GROUP_PARSERS:
         cli_parser = argument_group_parser.register(cli_parser)
-        if argument_group_parser is not File:
+        if argument_group_parser not in (File, FilterString):
             toml_parser = argument_group_parser.register(toml_parser)
 
     # TODO
     #   One moved to Python 3.9+ add `exit_on_error=False` to the
     #   `ArgumentParser` constructor and catch the error the same as below --
     #   this will give consistent behaviour between parser and validator errors
-    cli_arguments = cli_parser.parse_args()
+    cli_arguments = cli_parser.parse_args(namespace=Namespace())
 
     project_cfg = load_config_from_project_toml()
     toml_cfg_args = translate_toml_cfg_dict_to_sys_args(
         toml_cfg=project_cfg if project_cfg else {}
     )
-    toml_arguments = toml_parser.parse_args(toml_cfg_args)
+
+    toml_arguments = toml_parser.parse_args(args=toml_cfg_args, namespace=Namespace())
 
     for argument_group_parser in ARGUMENT_GROUP_PARSERS:
         try:
@@ -122,16 +126,25 @@ def parse_arguments() -> Namespace:
             error.rattr(cli_parser.format_usage())
             error.fatal(str(e))
 
-        if argument_group_parser is not File:
-            try:
-                toml_arguments = argument_group_parser.validate(
-                    toml_parser, toml_arguments
-                )
-            except ArgumentError as e:
-                error.rattr(cli_parser.format_usage())
-                error.fatal(str(e))
+        # don't validate file and filter string when checking the toml file args
+        if argument_group_parser in (File, FilterString):
+            continue
 
-    return cli_arguments
+        try:
+            toml_arguments = argument_group_parser.validate(toml_parser, toml_arguments)
+        except ArgumentError as e:
+            # TODO: construct different error message when validation fails \
+            # from .toml file
+            error.rattr(cli_parser.format_usage())
+            error.fatal(str(e))
+
+    # merge cli and .toml args
+    merged_args = deepcopy(toml_arguments)
+
+    for arg_name in cli_arguments.explicitly_set_args:
+        setattr(merged_args, arg_name, getattr(cli_arguments, arg_name))
+
+    return merged_args
 
 
 class ArgumentGroupParser(ABC):
