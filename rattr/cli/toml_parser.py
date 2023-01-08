@@ -1,16 +1,20 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import tomli as tomllib
 
 
-def load_config_from_project_toml() -> Dict[str, Any]:
+def load_config_from_project_toml(expected_fields: Tuple[str] = ()) -> Dict[str, Any]:
     """
-    Function finds project toml and parses it into a toml config dictionary.
+    Function finds project toml and parses it into a toml config dictionary
+    while only keeping expected fields (if expected fields is empty then
+    keep all fields).
     """
     toml_cfg_path = find_project_toml()
     if toml_cfg_path:
-        return parse_project_toml(config_path=toml_cfg_path)
+        return parse_project_toml(
+            config_path=toml_cfg_path, expected_fields=expected_fields
+        )
     return {}
 
 
@@ -53,15 +57,21 @@ def find_project_toml() -> Optional[str]:
     return None
 
 
-def parse_project_toml(config_path: str) -> Dict[str, Any]:
+def parse_project_toml(
+    config_path: str, expected_fields: Tuple[str] = ()
+) -> Dict[str, Any]:
     """
-    Function parses pyproject.toml file into a cfg dictionary.
+    Function parses pyproject.toml file into a cfg dictionary
+    while only keeping expected fields (if expected fields is empty
+    then keep all fields).
     """
     with open(config_path, "rb") as f:
         pyproject_toml_cfg = tomllib.load(f)
     cfg = pyproject_toml_cfg.get("tool", {}).get("rattr", {})
     cfg_dict = {}
     for k, v in cfg.items():
+        if expected_fields and k not in expected_fields:
+            continue
         if k.startswith("--"):
             k = k[2:]
         elif k.startswith("-"):
