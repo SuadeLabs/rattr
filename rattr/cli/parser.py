@@ -5,8 +5,11 @@ from argparse import (
     Namespace,
     RawTextHelpFormatter,
 )
+from itertools import chain
 from os.path import isfile, splitext
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
+
+from tomli import TOMLDecodeError
 
 from rattr import _version, error
 from rattr.cli.toml_parser import load_config_from_project_toml  # noqa: F401
@@ -15,22 +18,49 @@ from rattr.cli.util import multi_paragraph_wrap
 
 def translate_toml_cfg_dict_to_sys_args(toml_cfg: Dict[str, Any]) -> List[str]:
     """
-    Function translates pyproject.toml config dict into a a shell call string
-    (like: `$rattr --permissive 0 --show-warnings all --silent`)
-    and then this is passed to the argument parses which then validates the args
-    coming in from pyproject.toml.
+    Function translates pyproject.toml config dict into a sys.argv style list
+    of string args (like: ['--permissive', '0', '--show-warnings', 'all', '--silent'])
+    and then this is passed to the argument parses which then validates these args.
     """
     shell_call_args = []
     for k, v in toml_cfg.items():
         arg_name = f"-{k}" if len(k) == 1 else f"--{k}"
         if isinstance(v, bool):
-            shell_call_args.append(arg_name)
+            shell_call_args += [arg_name] if v else []
         elif isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
             shell_call_args += [arg_name, f"{v}"]
         elif isinstance(v, list):
             for arg_value in v:
                 shell_call_args += [arg_name, f"{arg_value}"]
     return shell_call_args
+
+
+def validate_toml_cfg_dict_arg_types(
+    toml_cfg: Dict[str, Any],
+    arg_group_parsers: Tuple[ABC],  # ArgumentGroupParser classes
+) -> Dict[str, Any]:
+    """
+    Function takes the 'toml_cfg' dictionary and checks each field against
+    its corresponding 'ArgumentGroupParser' class. Each ArgumentGroupParsers
+    class have a 'TOML_LONG_NAME_TYPE_MAP' dict property which is a map of
+    'toml field name' -> 'toml field type'.
+    """
+    for parser in arg_group_parsers:
+        arg_name_type_map = parser.TOML_LONG_NAME_TYPE_MAP
+        for arg_name, expected_arg_type in arg_name_type_map.items():
+            try:
+                toml_arg_val = toml_cfg[arg_name]
+                if not isinstance(toml_arg_val, expected_arg_type):
+                    message = (
+                        f"Error parsing pyproject.toml. arg: "
+                        f"'{arg_name}' is of wrong type: "
+                        f"'{type(toml_arg_val).__name__}'. "
+                        f"Expected type: '{expected_arg_type.__name__}'."
+                    )
+                    raise ArgumentError(None, message)
+            except KeyError:
+                pass
+    return toml_cfg
 
 
 def parse_arguments() -> Namespace:
@@ -74,7 +104,9 @@ def parse_arguments() -> Namespace:
         ),
         formatter_class=RawTextHelpFormatter,
     )
-    toml_parser: ArgumentParser = ArgumentParser()
+    # don't exit on error when .toml parser fails since we want
+    # to construct our own error message saying error is from .toml file
+    toml_parser: ArgumentParser = ArgumentParser(exit_on_error=False)
 
     # Version
     version_group = cli_parser.add_argument_group()
@@ -86,6 +118,9 @@ def parse_arguments() -> Namespace:
     )
 
     # TODO Allow user to add to this (will need config to respect this)
+
+    # only these should be configurable in .toml file (filter and file )
+    # should come from cli args
     TOML_ARG_GROUP_PARSERS = (
         FollowImports,
         ExcludeImports,
@@ -109,27 +144,66 @@ def parse_arguments() -> Namespace:
     #   `ArgumentParser` constructor and catch the error the same as below --
     #   this will give consistent behaviour between parser and validator errors
 
-    project_cfg = load_config_from_project_toml()
-    toml_cfg_args = translate_toml_cfg_dict_to_sys_args(
-        toml_cfg=project_cfg if project_cfg else {}
-    )
+    try:
+        project_toml_cfg = load_config_from_project_toml()
+    except TOMLDecodeError:
+        # TODO: maybe construct a more informative message.
+        error.fatal("Error parsing pyproject.toml file.")
+
+    try:
+        project_toml_cfg = validate_toml_cfg_dict_arg_types(
+            toml_cfg=project_toml_cfg,
+            arg_group_parsers=TOML_ARG_GROUP_PARSERS,
+        )
+    except ArgumentError as e:
+        error.fatal(e.message)
+
+    # extracting .toml expected field lists from 'TOML_ARG_GROUP_PARSERS'
+    toml_expected_fields = [
+        list(arg_group_parser.TOML_LONG_NAME_TYPE_MAP.keys())
+        for arg_group_parser in TOML_ARG_GROUP_PARSERS
+    ]
+    # flatten the list of lists into a simple list
+    toml_expected_fields = list(chain(*toml_expected_fields))
+    toml_unexpected_fields = set(project_toml_cfg.keys()) - set(toml_expected_fields)
+    # remove any unexpected arguments from 'project_toml_cfg'
+    for field in toml_unexpected_fields:
+        try:
+            del project_toml_cfg[field]
+        except KeyError:
+            pass
+
+    # construct 'sys.argv' style list of args from 'project_toml_cfg' dict
+    toml_cfg_arg_list = translate_toml_cfg_dict_to_sys_args(toml_cfg=project_toml_cfg)
 
     # namespace for collecting args from .toml file and cli args
     arguments = Namespace()
 
-    arguments = toml_parser.parse_args(args=toml_cfg_args, namespace=arguments)
+    # collect .toml args into 'Namespace' object first
+    try:
+        # parse args with toml_parser (which validates args at the same time),
+        # this way we don't need to create a custom validation module
+        # for the .toml config for cases such as mutex arg group validation etc...
+        arguments = toml_parser.parse_args(args=toml_cfg_arg_list, namespace=arguments)
+    except ArgumentError as e:
+        message = (
+            f"Error parsing pyproject.toml. Arg: "
+            f"'{e.argument_name}', Error: {e.message}."
+        )
+        error.fatal(message)
 
+    # validate .toml args against validators
     for argument_group_parser in TOML_ARG_GROUP_PARSERS:
         try:
             arguments = argument_group_parser.validate(toml_parser, arguments)
         except ArgumentError as e:
-            # TODO: construct different error message when validation fails \
-            # from .toml file
-            error.rattr(cli_parser.format_usage())
-            error.fatal(str(e))
+            message = f"Error parsing pyproject.toml. " f"Error: {e.message}."
+            error.fatal(message)
 
+    # then parse cli args and overwrite overlapping toml args
     arguments = cli_parser.parse_args(namespace=arguments)
 
+    # validate args once again
     for argument_group_parser in CLI_ARG_GROUP_PARSERS:
         try:
             arguments = argument_group_parser.validate(cli_parser, arguments)
@@ -137,12 +211,13 @@ def parse_arguments() -> Namespace:
             error.rattr(cli_parser.format_usage())
             error.fatal(str(e))
 
-        # don't validate file and filter string when checking the toml file args
-
     return arguments
 
 
 class ArgumentGroupParser(ABC):
+
+    TOML_LONG_NAME_TYPE_MAP = None
+
     @abstractstaticmethod
     def register(parser: ArgumentParser) -> ArgumentParser:
         return parser
@@ -153,11 +228,16 @@ class ArgumentGroupParser(ABC):
 
 
 class FollowImports(ArgumentGroupParser):
+
+    ARG_LONG_NAME = "follow-imports"
+
+    TOML_LONG_NAME_TYPE_MAP = {ARG_LONG_NAME: int}
+
     def register(parser: ArgumentParser) -> ArgumentParser:
         follow_imports_group = parser.add_argument_group()
         follow_imports_group.add_argument(
             "-f",
-            "--follow-imports",
+            f"--{FollowImports.ARG_LONG_NAME}",
             default=1,
             type=int,
             choices=[0, 1, 2, 3],
@@ -183,11 +263,16 @@ class FollowImports(ArgumentGroupParser):
 
 
 class ExcludeImports(ArgumentGroupParser):
+
+    ARG_LONG_NAME = "exclude-import"
+
+    TOML_LONG_NAME_TYPE_MAP = {ARG_LONG_NAME: list}
+
     def register(parser: ArgumentParser) -> ArgumentParser:
         exclude_imports_group = parser.add_argument_group()
         exclude_imports_group.add_argument(
             "-F",
-            "--exclude-import",
+            f"--{ExcludeImports.ARG_LONG_NAME}",
             action="append",
             type=str,
             help=multi_paragraph_wrap(
@@ -209,11 +294,16 @@ class ExcludeImports(ArgumentGroupParser):
 
 
 class ExcludePatterns(ArgumentGroupParser):
+
+    ARG_LONG_NAME = "exclude"
+
+    TOML_LONG_NAME_TYPE_MAP = {ARG_LONG_NAME: list}
+
     def register(parser: ArgumentParser) -> ArgumentParser:
         exclude_patterns_group = parser.add_argument_group()
         exclude_patterns_group.add_argument(
             "-x",
-            "--exclude",
+            f"--{ExcludePatterns.ARG_LONG_NAME}",
             action="append",
             type=str,
             help=multi_paragraph_wrap(
@@ -235,12 +325,17 @@ class ExcludePatterns(ArgumentGroupParser):
 
 
 class ShowWarnings(ArgumentGroupParser):
+
+    ARG_LONG_NAME = "show-warnings"
+
+    TOML_LONG_NAME_TYPE_MAP = {ARG_LONG_NAME: str}
+
     def register(parser: ArgumentParser) -> ArgumentParser:
         # TODO rename: all -> default, ALL -> all
         show_warnings_group = parser.add_argument_group()
         show_warnings_group.add_argument(
             "-w",
-            "--show-warnings",
+            f"--{ShowWarnings.ARG_LONG_NAME}",
             default="all",
             type=str,
             choices=["none", "file", "all", "ALL"],
@@ -263,11 +358,16 @@ class ShowWarnings(ArgumentGroupParser):
 
 
 class ShowPath(ArgumentGroupParser):
+
+    ARG_LONG_NAME = "show-path"
+
+    TOML_LONG_NAME_TYPE_MAP = {ARG_LONG_NAME: str}
+
     def register(parser: ArgumentParser) -> ArgumentParser:
         show_path_group = parser.add_argument_group()
         show_path_group.add_argument(
             "-p",
-            "--show-path",
+            f"--{ShowPath.ARG_LONG_NAME}",
             default="short",
             type=str,
             choices=["none", "short", "full"],
@@ -289,6 +389,15 @@ class ShowPath(ArgumentGroupParser):
 
 
 class StrictOrPermissive(ArgumentGroupParser):
+
+    STRICT_ARG_LONG_NAME = "strict"
+    PERMISSIVE_ARG_LONG_NAME = "permissive"
+
+    TOML_LONG_NAME_TYPE_MAP = {
+        STRICT_ARG_LONG_NAME: bool,
+        PERMISSIVE_ARG_LONG_NAME: int,
+    }
+
     def register(parser: ArgumentParser) -> ArgumentParser:
         strict_or_permissive_group = parser.add_argument_group()
         strict_or_permissive_mutex_group = (
@@ -296,7 +405,7 @@ class StrictOrPermissive(ArgumentGroupParser):
         )
 
         strict_or_permissive_mutex_group.add_argument(
-            "--strict",
+            f"--{StrictOrPermissive.STRICT_ARG_LONG_NAME}",
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
@@ -305,7 +414,7 @@ class StrictOrPermissive(ArgumentGroupParser):
             ),
         )
         strict_or_permissive_mutex_group.add_argument(
-            "--permissive",
+            f"--{StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME}",
             default=0,
             type=int,
             help=multi_paragraph_wrap(
@@ -344,11 +453,24 @@ class StrictOrPermissive(ArgumentGroupParser):
 
 
 class Output(ArgumentGroupParser):
+
+    SHOW_IR_ARG_LONG_NAME = "show-ir"
+    SHOW_RESULTS_ARG_LONG_NAME = "show-results"
+    SHOW_STATS_ARG_LONG_NAME = "show-stats"
+    SILENT_ARG_LONG_NAME = "silent"
+
+    TOML_LONG_NAME_TYPE_MAP = {
+        SHOW_IR_ARG_LONG_NAME: bool,
+        SHOW_RESULTS_ARG_LONG_NAME: bool,
+        SHOW_STATS_ARG_LONG_NAME: bool,
+        SILENT_ARG_LONG_NAME: bool,
+    }
+
     def register(parser: ArgumentParser) -> ArgumentParser:
         output_group = parser.add_argument_group()
         output_group.add_argument(
             "-i",
-            "--show-ir",
+            f"--{Output.SHOW_IR_ARG_LONG_NAME}",
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
@@ -358,7 +480,7 @@ class Output(ArgumentGroupParser):
         )
         output_group.add_argument(
             "-r",
-            "--show-results",
+            f"--{Output.SHOW_RESULTS_ARG_LONG_NAME}",
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
@@ -368,7 +490,7 @@ class Output(ArgumentGroupParser):
         )
         output_group.add_argument(
             "-s",
-            "--show-stats",
+            f"--{Output.SHOW_STATS_ARG_LONG_NAME}",
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
@@ -378,7 +500,7 @@ class Output(ArgumentGroupParser):
         )
         output_group.add_argument(
             "-S",
-            "--silent",
+            f"--{Output.SILENT_ARG_LONG_NAME}",
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
@@ -397,7 +519,13 @@ class Output(ArgumentGroupParser):
         # Output group mutual exclusion
         # [ [-irs] | -S ]
         if has_output and arguments.silent:
-            raise ArgumentError(None, "-irs and -S are mutually exclusive")
+            message = (
+                f"-irs ('--{Output.SHOW_IR_ARG_LONG_NAME}', "
+                f"'--{Output.SHOW_RESULTS_ARG_LONG_NAME}', "
+                f"'--{Output.SHOW_STATS_ARG_LONG_NAME}') "
+                f"and -S ('--{Output.SILENT_ARG_LONG_NAME}') are mutually exclusive"
+            )
+            raise ArgumentError(None, message)
 
         # Output group default to -r
         if not has_output and not arguments.silent:
@@ -466,10 +594,14 @@ class File(ArgumentGroupParser):
 
 
 class Cache(ArgumentGroupParser):
+
+    ARG_LONG_NAME = "cache"
+    TOML_LONG_NAME_TYPE_MAP = {ARG_LONG_NAME: str}
+
     def register(parser: ArgumentParser) -> ArgumentParser:
         cache_group = parser.add_argument_group()
         cache_group.add_argument(
-            "--cache",
+            f"--{Cache.ARG_LONG_NAME}",
             default="",
             type=str,
             help=multi_paragraph_wrap(
