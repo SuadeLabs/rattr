@@ -10,8 +10,10 @@ from argparse import (
 
 class _ArgumentParser(ArgumentParser):
     def __init__(self, *args, **kwargs):
+        exit_on_error = kwargs.get("exit_on_error", True)
+        kwargs.pop("exit_on_error", None)
         super(_ArgumentParser, self).__init__(*args, **kwargs)
-        self.exit_on_error = kwargs.get("exit_on_error", False)
+        self.exit_on_error = exit_on_error
 
     def parse_known_args(self, args=None, namespace=None):
         if args is None:
