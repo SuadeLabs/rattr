@@ -5,7 +5,6 @@ from argparse import (
     Namespace,
     RawTextHelpFormatter,
 )
-from itertools import chain
 from os.path import isfile, splitext
 from typing import Any, Dict, List, Tuple
 
@@ -144,8 +143,15 @@ def parse_arguments() -> Namespace:
     #   `ArgumentParser` constructor and catch the error the same as below --
     #   this will give consistent behaviour between parser and validator errors
 
+    # extracting .toml expected field lists from 'TOML_ARG_GROUP_PARSERS'
+    toml_expected_fields: Tuple[str] = ()
+    for arg_group_parser in TOML_ARG_GROUP_PARSERS:
+        toml_expected_fields += tuple(arg_group_parser.TOML_LONG_NAME_TYPE_MAP.keys())
+
     try:
-        project_toml_cfg = load_config_from_project_toml()
+        project_toml_cfg = load_config_from_project_toml(
+            expected_fields=toml_expected_fields
+        )
     except TOMLDecodeError:
         # TODO: maybe construct a more informative message.
         error.fatal("Error parsing pyproject.toml file.")
@@ -157,21 +163,6 @@ def parse_arguments() -> Namespace:
         )
     except ArgumentError as e:
         error.fatal(e.message)
-
-    # extracting .toml expected field lists from 'TOML_ARG_GROUP_PARSERS'
-    toml_expected_fields = [
-        list(arg_group_parser.TOML_LONG_NAME_TYPE_MAP.keys())
-        for arg_group_parser in TOML_ARG_GROUP_PARSERS
-    ]
-    # flatten the list of lists into a simple list
-    toml_expected_fields = list(chain(*toml_expected_fields))
-    toml_unexpected_fields = set(project_toml_cfg.keys()) - set(toml_expected_fields)
-    # remove any unexpected arguments from 'project_toml_cfg'
-    for field in toml_unexpected_fields:
-        try:
-            del project_toml_cfg[field]
-        except KeyError:
-            pass
 
     # construct 'sys.argv' style list of args from 'project_toml_cfg' dict
     toml_cfg_arg_list = translate_toml_cfg_dict_to_sys_args(toml_cfg=project_toml_cfg)
