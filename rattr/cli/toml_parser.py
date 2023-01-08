@@ -1,6 +1,7 @@
-from typing import Dict, Any, Optional
-import tomli as tomllib
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+import tomli as tomllib
 
 
 def load_config_from_project_toml() -> Optional[Dict[str, Any]]:

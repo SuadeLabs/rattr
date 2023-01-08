@@ -1,8 +1,12 @@
-from typing import Dict, Any, List
-
-from argparse import ArgumentError, Namespace, RawTextHelpFormatter, ArgumentParser
 from abc import ABC, abstractstaticmethod
+from argparse import (
+    ArgumentError,
+    ArgumentParser,
+    Namespace,
+    RawTextHelpFormatter,
+)
 from os.path import isfile, splitext
+from typing import Any, Dict, List
 
 from rattr import _version, error
 from rattr.cli.toml_parser import load_config_from_project_toml  # noqa: F401
