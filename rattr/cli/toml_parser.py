@@ -4,14 +4,14 @@ from typing import Any, Dict, Optional
 import tomli as tomllib
 
 
-def load_config_from_project_toml() -> Optional[Dict[str, Any]]:
+def load_config_from_project_toml() -> Dict[str, Any]:
     """
     Function finds project toml and parses it into a toml config dictionary.
     """
     toml_cfg_path = find_project_toml()
     if toml_cfg_path:
         return parse_project_toml(config_path=toml_cfg_path)
-    return None
+    return {}
 
 
 def find_project_root() -> Optional[Path]:
