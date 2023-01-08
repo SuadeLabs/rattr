@@ -1,16 +1,12 @@
 from abc import ABC, abstractstaticmethod
-from argparse import (
-    ArgumentError,
-    ArgumentParser,
-    Namespace,
-    RawTextHelpFormatter,
-)
+from argparse import ArgumentError, Namespace, RawTextHelpFormatter
 from os.path import isfile, splitext
 from typing import Any, Dict, List, Tuple
 
 from tomli import TOMLDecodeError
 
 from rattr import _version, error
+from rattr.cli.arg_parser import _ArgumentParser as ArgumentParser
 from rattr.cli.toml_parser import load_config_from_project_toml  # noqa: F401
 from rattr.cli.util import multi_paragraph_wrap
 
@@ -51,7 +47,7 @@ def validate_toml_cfg_dict_arg_types(
                 toml_arg_val = toml_cfg[arg_name]
                 if not isinstance(toml_arg_val, expected_arg_type):
                     message = (
-                        f"Error parsing pyproject.toml. arg: "
+                        f"Error parsing pyproject.toml. Arg: "
                         f"'{arg_name}' is of wrong type: "
                         f"'{type(toml_arg_val).__name__}'. "
                         f"Expected type: '{expected_arg_type.__name__}'."
