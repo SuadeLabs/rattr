@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Tuple
 import tomli as tomllib
 
 
-def load_config_from_project_toml(expected_fields: Tuple[str] = ()) -> Dict[str, Any]:
+def load_cfg_from_project_toml(expected_fields: Tuple[str] = ()) -> Dict[str, Any]:
     """
     Function finds project toml and parses it into a toml config dictionary
     while only keeping expected fields (if expected fields is empty then
@@ -67,8 +67,7 @@ def parse_project_toml(
     """
     with open(config_path, "rb") as f:
         pyproject_toml_cfg = tomllib.load(f)
-    cfg = pyproject_toml_cfg.get("tool", {}).get("rattr", {})
-    cfg_dict = {}
+    cfg, cleaned_cfg = pyproject_toml_cfg.get("tool", {}).get("rattr", {}), {}
     for k, v in cfg.items():
         if expected_fields and k not in expected_fields:
             continue
@@ -76,5 +75,5 @@ def parse_project_toml(
             k = k[2:]
         elif k.startswith("-"):
             k = k[1:]
-        cfg_dict[k] = v
-    return cfg_dict
+        cleaned_cfg[k] = v
+    return cleaned_cfg
