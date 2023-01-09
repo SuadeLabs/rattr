@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from tomli import TOMLDecodeError
 
 from rattr import _version, error
-from rattr.cli.arg_parser import _ArgumentParser as ArgumentParser
+from rattr.cli.argparse import _ArgumentParser as ArgumentParser
 from rattr.cli.toml_parser import load_cfg_from_project_toml  # noqa: F401
 from rattr.cli.util import multi_paragraph_wrap
 
