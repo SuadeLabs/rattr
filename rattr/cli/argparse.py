@@ -10,12 +10,11 @@ from argparse import (
 
 class _ArgumentParser(ArgumentParser):
     def __init__(self, *args, **kwargs):
-        exit_on_error = kwargs.get("exit_on_error", True)
+        exit_on_error = kwargs.pop("exit_on_error", True)
         # Make sure to remove 'exit_on_error' from 'kwargs'
         # when calling parent constructor since Python
         # 3.7 and 3.8 versions of 'ArgumentParser' don't
         # expect it.
-        kwargs.pop("exit_on_error", None)
         super(_ArgumentParser, self).__init__(*args, **kwargs)
         # Save 'exit_on_error' as an instance attribute
         # AFTER calling parent constructor. This also
