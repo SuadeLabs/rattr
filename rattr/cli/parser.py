@@ -1,7 +1,7 @@
 from abc import ABC, abstractstaticmethod
 from argparse import ArgumentError, Namespace, RawTextHelpFormatter
 from os.path import isfile, splitext
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from tomli import TOMLDecodeError
 
@@ -19,7 +19,7 @@ def translate_toml_cfg_to_sys_args(toml_cfg: Dict[str, Any]) -> List[str]:
     """
     toml_sys_args = []
     for k, v in toml_cfg.items():
-        arg_name = f"-{k}" if len(k) == 1 else f"--{k}"
+        arg_name = f"-{k}" if len(str(k)) == 1 else f"--{k}"
         if isinstance(v, bool):
             toml_sys_args += [arg_name] if v else []
         elif isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
@@ -58,7 +58,11 @@ def validate_toml_cfg_arg_types(
     return toml_cfg
 
 
-def parse_arguments() -> Namespace:
+def parse_arguments(
+    sys_args: Optional[List[str]] = None,
+    project_toml_cfg: Optional[Dict[str, Any]] = None,
+    exit_on_error: bool = True,
+) -> Namespace:
     """Return the parsed and validated CLI arguments.
 
     The parser is constructed and validated using the registered
@@ -146,13 +150,20 @@ def parse_arguments() -> Namespace:
             arg_group_parser.TOML_ARG_NAME_ARG_TYPE_MAP.keys()
         )
 
-    try:
-        project_toml_cfg = load_cfg_from_project_toml(
-            expected_fields=toml_expected_fields
-        )
-    except TOMLDecodeError:
-        # TODO: maybe construct a more informative message.
-        error.fatal("Error parsing pyproject.toml file.")
+    if project_toml_cfg:
+        project_toml_cfg = {
+            k: v for k, v in project_toml_cfg.items() if k in toml_expected_fields
+        }
+    else:
+        try:
+            project_toml_cfg = load_cfg_from_project_toml(
+                expected_fields=toml_expected_fields
+            )
+        except TOMLDecodeError as e:
+            # TODO: maybe construct a more informative message.
+            if exit_on_error:
+                error.fatal("Error parsing pyproject.toml file.")
+            raise e
 
     try:
         project_toml_cfg = validate_toml_cfg_arg_types(
@@ -160,7 +171,9 @@ def parse_arguments() -> Namespace:
             arg_group_parsers=TOML_ARG_GROUP_PARSERS,
         )
     except ArgumentError as e:
-        error.fatal(e.message)
+        if exit_on_error:
+            error.fatal(e.message)
+        raise e
 
     # construct 'sys.argv' style list of args from 'project_toml_cfg' dict
     toml_cfg_arg_list = translate_toml_cfg_to_sys_args(toml_cfg=project_toml_cfg)
@@ -179,26 +192,32 @@ def parse_arguments() -> Namespace:
             f"Error parsing pyproject.toml. Arg: "
             f"'{e.argument_name}', Error: {e.message}."
         )
-        error.fatal(message)
+        if exit_on_error:
+            error.fatal(message)
+        raise e
 
     # validate .toml args against validators
     for argument_group_parser in TOML_ARG_GROUP_PARSERS:
         try:
             arguments = argument_group_parser.validate(toml_parser, arguments)
         except ArgumentError as e:
-            message = f"Error parsing pyproject.toml. Error: {e.message}."
-            error.fatal(message)
+            if exit_on_error:
+                message = f"Error parsing pyproject.toml. Error: {e.message}."
+                error.fatal(message)
+            raise e
 
     # then parse cli args and overwrite overlapping toml args
-    arguments = cli_parser.parse_args(namespace=arguments)
+    arguments = cli_parser.parse_args(args=sys_args, namespace=arguments)
 
     # validate args once again
     for argument_group_parser in CLI_ARG_GROUP_PARSERS:
         try:
             arguments = argument_group_parser.validate(cli_parser, arguments)
         except ArgumentError as e:
-            error.rattr(cli_parser.format_usage())
-            error.fatal(str(e))
+            if exit_on_error:
+                error.rattr(cli_parser.format_usage())
+                error.fatal(str(e))
+            raise e
 
     return arguments
 
