@@ -151,20 +151,19 @@ def parse_arguments(
             arg_group_parser.TOML_ARG_NAME_ARG_TYPE_MAP.keys()
         )
 
-    if project_toml_cfg:
-        project_toml_cfg = {
-            k: v for k, v in project_toml_cfg.items() if k in toml_expected_fields
-        }
-    else:
+    if not project_toml_cfg:
         try:
-            project_toml_cfg = load_cfg_from_project_toml(
-                expected_fields=toml_expected_fields
-            )
+            project_toml_cfg = load_cfg_from_project_toml()
         except TOMLDecodeError as e:
             # TODO: maybe construct a more informative message.
             if exit_on_error:
                 error.fatal("Error parsing pyproject.toml file.")
             raise e
+
+    # only keep expected fields in toml cfg dict
+    project_toml_cfg = {
+        k: v for k, v in project_toml_cfg.items() if k in toml_expected_fields
+    }
 
     try:
         project_toml_cfg = validate_toml_cfg_arg_types(
@@ -450,6 +449,10 @@ class StrictOrPermissive(ArgumentGroupParser):
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
 
         if not arguments.strict:
+            # only set threshold and reset permissive when threshold
+            # attribute doesn't exist. this is because threshold will
+            # already be set when we parse cli args into namespace
+            # and that will make 'arguments.threshold' = True or 0 (= True)
             if not hasattr(arguments, "threshold"):
                 arguments.threshold = arguments.permissive or 0
                 arguments.permissive = True
