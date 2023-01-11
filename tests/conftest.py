@@ -1,6 +1,5 @@
 import ast
 import sys
-from argparse import Namespace
 from contextlib import contextmanager
 from os.path import dirname, join
 from typing import Iterable
@@ -610,7 +609,7 @@ def toml_dict_with_bad_field_types_and_error1():
     }, (
         f"Error parsing pyproject.toml. Arg: '{FollowImports.ARG_LONG_NAME}' "
         f"is of wrong type: 'str'. Expected type: "
-        f"'{FollowImports.TOML_ARG_NAME_ARG_TYPE_MAP[FollowImports.ARG_LONG_NAME].__name__}'."
+        f"'{FollowImports.TOML_ARG_NAME_ARG_TYPE_MAP[FollowImports.ARG_LONG_NAME].__name__}'."  # noqa: E501
     )
 
 
@@ -652,7 +651,7 @@ def toml_dict_with_bad_field_types_and_error3():
         ExcludePatterns.ARG_LONG_NAME: True,  # bad field type
         ShowWarnings.ARG_LONG_NAME: "all",
         ShowPath.ARG_LONG_NAME: "full",
-        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: "+1",
+        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
         Output.SHOW_IR_ARG_LONG_NAME: True,
         Output.SHOW_RESULTS_ARG_LONG_NAME: True,
         Output.SHOW_STATS_ARG_LONG_NAME: True,
@@ -660,7 +659,7 @@ def toml_dict_with_bad_field_types_and_error3():
     }, (
         f"Error parsing pyproject.toml. Arg: '{ExcludePatterns.ARG_LONG_NAME}' "
         f"is of wrong type: 'bool'. Expected type: "
-        f"'{ExcludePatterns.TOML_ARG_NAME_ARG_TYPE_MAP[ExcludePatterns.ARG_LONG_NAME].__name__}'."
+        f"'{ExcludePatterns.TOML_ARG_NAME_ARG_TYPE_MAP[ExcludePatterns.ARG_LONG_NAME].__name__}'."  # noqa: E501
     )
 
 
