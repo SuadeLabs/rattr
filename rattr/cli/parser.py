@@ -102,6 +102,7 @@ def parse_arguments(
             """
         ),
         formatter_class=RawTextHelpFormatter,
+        exit_on_error=exit_on_error,
     )
     # don't exit on error when .toml parser fails since we want
     # to construct our own error message saying error is from .toml file
@@ -447,9 +448,11 @@ class StrictOrPermissive(ArgumentGroupParser):
         return parser
 
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
+
         if not arguments.strict:
-            arguments.threshold = arguments.permissive or 0
-            arguments.permissive = True
+            if not hasattr(arguments, "threshold"):
+                arguments.threshold = arguments.permissive or 0
+                arguments.permissive = True
         else:
             arguments.threshold = 0
             arguments.permissive = False
