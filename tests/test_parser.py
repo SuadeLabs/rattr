@@ -33,7 +33,7 @@ class TestParser:
                 parse_arguments(project_toml_cfg=toml_dict, exit_on_error=False)
             assert str(exc_info.value) == error_message
 
-    def test_toml_dict_without_file_cli_call(self, correct_toml_dict1):
+    def test_toml_dict_without_file_from_cli_call(self, correct_toml_dict1):
         with pytest.raises(ArgumentError) as exc_info:
             parse_arguments(
                 # empty 'sys_args' imply no file specified in cli call
@@ -104,7 +104,7 @@ class TestParser:
         assert args == exp_args
 
     def test_toml_dict_with_overwrites_from_cli_call(
-        self, correct_toml_dict1, sys_args2
+        self, sys_args2, correct_toml_dict1
     ):
         args = parse_arguments(
             sys_args=sys_args2[1:],
@@ -167,8 +167,8 @@ class TestParser:
 
         assert args == exp_args
 
-    def test_toml_dict_with_overwrite_and_mutex_arg_switch(
-        self, correct_toml_dict2, sys_args2
+    def test_toml_dict_with_overwrites_and_mutex_arg_switch(
+        self, sys_args2, correct_toml_dict2
     ):
         args = parse_arguments(
             sys_args=sys_args2[1:],
@@ -197,7 +197,7 @@ class TestParser:
         assert args == exp_args
 
     def test_toml_dict_with_mutex_violation_cli_overwrite(
-        self, correct_toml_dict3, sys_args4
+        self, sys_args4, correct_toml_dict3
     ):
 
         with pytest.raises(ArgumentError) as exc_info:
