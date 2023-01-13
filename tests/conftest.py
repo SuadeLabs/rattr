@@ -832,6 +832,7 @@ def sys_args3():
         "*exclude-import*",
         "-x",
         "*exclude-pattern*",
+        "-S",
     ]
 
 
