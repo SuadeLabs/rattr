@@ -199,7 +199,11 @@ def parse_arguments(
     # validate .toml args against validators
     for argument_group_parser in TOML_ARG_GROUP_PARSERS:
         try:
-            arguments = argument_group_parser.validate(toml_parser, arguments)
+            if argument_group_parser is not Output:
+                arguments = argument_group_parser.validate(toml_parser, arguments)
+                continue
+            # turn of show-results defaulting behaviour from toml file
+            arguments = argument_group_parser.validate(cli_parser, arguments, toml=True)
         except ArgumentError as e:
             if exit_on_error:
                 message = f"Error parsing pyproject.toml. Error: {e.message}."
@@ -207,11 +211,17 @@ def parse_arguments(
             raise e
 
     # then parse cli args and overwrite overlapping toml args
-    arguments = cli_parser.parse_args(args=sys_args, namespace=arguments)
+    arguments = cli_parser.parse_args(
+        # use empty arg Namespace (without set defaults from toml arg parsing)
+        # when project_toml_cfg is empty
+        namespace=arguments if project_toml_cfg else Namespace(),
+        args=sys_args,
+    )
 
     # validate args once again
     for argument_group_parser in CLI_ARG_GROUP_PARSERS:
         try:
+
             arguments = argument_group_parser.validate(cli_parser, arguments)
         except ArgumentError as e:
             if exit_on_error:
@@ -525,7 +535,9 @@ class Output(ArgumentGroupParser):
 
         return parser
 
-    def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
+    def validate(
+        parser: ArgumentParser, arguments: Namespace, toml: bool = False
+    ) -> Namespace:
         has_output = any(
             (arguments.show_ir, arguments.show_results, arguments.show_stats)
         )
@@ -541,8 +553,11 @@ class Output(ArgumentGroupParser):
             )
             raise ArgumentError(None, message)
 
-        # Output group default to -r
-        if not has_output and not arguments.silent:
+        # don't default to show-results = True when
+        # output isn't configured in .toml since
+        # if later cli parser brings silent mode (-S)
+        # there will be a mutex validation error
+        if not has_output and not arguments.silent and not toml:
             arguments.show_results = True
 
         return arguments
