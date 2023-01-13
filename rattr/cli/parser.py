@@ -221,7 +221,6 @@ def parse_arguments(
     # validate args once again
     for argument_group_parser in CLI_ARG_GROUP_PARSERS:
         try:
-
             arguments = argument_group_parser.validate(cli_parser, arguments)
         except ArgumentError as e:
             if exit_on_error:
