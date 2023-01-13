@@ -156,9 +156,9 @@ class TestParser:
             strict=True,
             permissive=False,
             show_ir=False,
-            show_results=True,
+            show_results=False,
             show_stats=False,
-            silent=False,
+            silent=True,
             cache="cache.json",
             threshold=0,
             filter_string="",
@@ -207,5 +207,33 @@ class TestParser:
                 exit_on_error=False,
             )
 
-        error_message = "-irs ('--show-ir', '--show-results', '--show-stats') and -S ('--silent') are mutually exclusive"   # noqa: E501
+        error_message = "-irs ('--show-ir', '--show-results', '--show-stats') and -S ('--silent') are mutually exclusive"  # noqa: E501
         assert str(exc_info.value) == error_message
+
+    def test_empty_toml_dict_with_only_cli_call(self, sys_args4):
+        args = parse_arguments(
+            # empty 'sys_args' imply no file specified in cli call
+            sys_args=sys_args4[1:],
+            project_toml_cfg={},
+            exit_on_error=False,
+        )
+
+        exp_args = Namespace(
+            follow_imports=1,
+            exclude_import=[],
+            exclude=[],
+            show_warnings="all",
+            show_path="short",
+            strict=False,
+            permissive=True,
+            show_ir=False,
+            show_results=False,
+            show_stats=False,
+            silent=True,
+            cache="",
+            filter_string="",
+            file="rattr/cli/parser.py",
+            threshold=0,
+        )
+
+        assert args == exp_args
