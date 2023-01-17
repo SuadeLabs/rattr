@@ -4,13 +4,13 @@ from typing import Any, Dict, Optional
 import tomli as tomllib
 
 
-def load_cfg_from_project_toml() -> Dict[str, Any]:
+def load_cfg_from_project_toml(toml_cfg_path: Optional[Path]) -> Dict[str, Any]:
     """
     Function finds project toml and parses it into a toml config dictionary
     while only keeping expected fields (if expected fields is empty then
     keep all fields).
     """
-    toml_cfg_path = find_project_toml()
+    toml_cfg_path = find_project_toml() if not toml_cfg_path else toml_cfg_path
     if toml_cfg_path:
         return parse_project_toml(config_path=toml_cfg_path)
     return {}
