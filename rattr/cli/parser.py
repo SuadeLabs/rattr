@@ -7,7 +7,7 @@ from tomli import TOMLDecodeError
 
 from rattr import _version, error
 from rattr.cli.argparse import _ArgumentParser as ArgumentParser
-from rattr.cli.toml_parser import load_cfg_from_project_toml, find_project_toml
+from rattr.cli.toml_parser import find_project_toml, load_cfg_from_project_toml
 from rattr.cli.util import multi_paragraph_wrap
 
 
