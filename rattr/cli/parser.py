@@ -7,7 +7,7 @@ from tomli import TOMLDecodeError
 
 from rattr import _version, error
 from rattr.cli.argparse import _ArgumentParser as ArgumentParser
-from rattr.cli.toml_parser import load_cfg_from_project_toml  # noqa: F401
+from rattr.cli.toml_parser import load_cfg_from_project_toml, find_project_toml
 from rattr.cli.util import multi_paragraph_wrap
 
 
@@ -153,11 +153,13 @@ def parse_arguments(
 
     if not project_toml_cfg:
         try:
-            project_toml_cfg = load_cfg_from_project_toml()
+            toml_cfg_path = find_project_toml()
+            project_toml_cfg = load_cfg_from_project_toml(toml_cfg_path=toml_cfg_path)
         except TOMLDecodeError as e:
-            # TODO: maybe construct a more informative message.
             if exit_on_error:
-                error.fatal("Error parsing pyproject.toml file.")
+                error.fatal(
+                    f"Error decoding pyproject.toml file: {toml_cfg_path}. Error: {e}."
+                )
             raise e
 
     # only keep expected fields in toml cfg dict
@@ -188,11 +190,11 @@ def parse_arguments(
         # for the .toml config for cases such as mutex arg group validation etc...
         arguments = toml_parser.parse_args(args=toml_cfg_arg_list, namespace=arguments)
     except ArgumentError as e:
-        message = (
-            f"Error parsing pyproject.toml. Arg: "
-            f"'{e.argument_name}', Error: {e.message}."
-        )
         if exit_on_error:
+            message = (
+                f"Error parsing pyproject.toml. Arg: "
+                f"'{e.argument_name}', Error: {e.message}."
+            )
             error.fatal(message)
         raise e
 
