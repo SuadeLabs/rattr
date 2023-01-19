@@ -12,6 +12,16 @@ from rattr.analyser.context import Context, RootContext
 from rattr.analyser.context.symbol import Call, Name
 from rattr.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
 from rattr.analyser.util import LOCAL_VALUE_PREFIX
+from rattr.cli.parser import (
+    Cache,
+    ExcludeImports,
+    ExcludePatterns,
+    FollowImports,
+    Output,
+    ShowPath,
+    ShowWarnings,
+    StrictOrPermissive,
+)
 
 
 def pytest_configure(config):
@@ -550,3 +560,282 @@ def constant():
             return f"{LOCAL_VALUE_PREFIX}Constant"
 
     return _inner
+
+
+@pytest.fixture
+def illegal_field_name():
+    return "illegal-field"
+
+
+@pytest.fixture
+def toml_dict_with_illegal_fields():
+    return {
+        FollowImports.ARG_LONG_NAME: 3,
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.b\\.c",
+            "a\\.b.*",
+            "a\\.b\\.c\\.e",
+            "a\\.b\\.c.*",
+        ],
+        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
+        ShowWarnings.ARG_LONG_NAME: "all",
+        illegal_field_name: "full",  # bad field name
+        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
+        Output.SHOW_IR_ARG_LONG_NAME: True,
+        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
+        Output.SHOW_STATS_ARG_LONG_NAME: True,
+        Cache.ARG_LONG_NAME: "cache.json",
+    }
+
+
+@pytest.fixture
+def toml_dict_with_bad_field_types_and_error1():
+    return {
+        FollowImports.ARG_LONG_NAME: "abcd",  # bad field type
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.b\\.c",
+            "a\\.b.*",
+            "a\\.b\\.c\\.e",
+            "a\\.b\\.c.*",
+        ],
+        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
+        ShowWarnings.ARG_LONG_NAME: "all",
+        ShowPath.ARG_LONG_NAME: "full",
+        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
+        Output.SHOW_IR_ARG_LONG_NAME: True,
+        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
+        Output.SHOW_STATS_ARG_LONG_NAME: True,
+        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
+    }, (
+        f"Error parsing pyproject.toml. Arg: '{FollowImports.ARG_LONG_NAME}' "
+        f"is of wrong type: 'str'. Expected type: "
+        f"'{FollowImports.TOML_ARG_NAME_ARG_TYPE_MAP[FollowImports.ARG_LONG_NAME].__name__}'."  # noqa: E501
+    )
+
+
+@pytest.fixture
+def toml_dict_with_bad_field_types_and_error2():
+    return {
+        FollowImports.ARG_LONG_NAME: 3,
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.b\\.c",
+            "a\\.b.*",
+            "a\\.b\\.c\\.e",
+            "a\\.b\\.c.*",
+        ],
+        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
+        ShowWarnings.ARG_LONG_NAME: "all",
+        ShowPath.ARG_LONG_NAME: "full",
+        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
+        Output.SHOW_IR_ARG_LONG_NAME: 4,  # bad field type
+        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
+        Output.SHOW_STATS_ARG_LONG_NAME: True,
+        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
+    }, (
+        f"Error parsing pyproject.toml. Arg: '{Output.SHOW_IR_ARG_LONG_NAME}' "
+        f"is of wrong type: 'int'. Expected type: "
+        f"'{Output.TOML_ARG_NAME_ARG_TYPE_MAP[Output.SHOW_IR_ARG_LONG_NAME].__name__}'."
+    )
+
+
+@pytest.fixture
+def toml_dict_with_bad_field_types_and_error3():
+    return {
+        FollowImports.ARG_LONG_NAME: 3,
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.b\\.c",
+            "a\\.b.*",
+            "a\\.b\\.c\\.e",
+            "a\\.b\\.c.*",
+        ],
+        ExcludePatterns.ARG_LONG_NAME: True,  # bad field type
+        ShowWarnings.ARG_LONG_NAME: "all",
+        ShowPath.ARG_LONG_NAME: "full",
+        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
+        Output.SHOW_IR_ARG_LONG_NAME: True,
+        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
+        Output.SHOW_STATS_ARG_LONG_NAME: True,
+        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
+    }, (
+        f"Error parsing pyproject.toml. Arg: '{ExcludePatterns.ARG_LONG_NAME}' "
+        f"is of wrong type: 'bool'. Expected type: "
+        f"'{ExcludePatterns.TOML_ARG_NAME_ARG_TYPE_MAP[ExcludePatterns.ARG_LONG_NAME].__name__}'."  # noqa: E501
+    )
+
+
+@pytest.fixture
+def toml_dicts_with_bad_field_types_and_errors(
+    toml_dict_with_bad_field_types_and_error1,
+    toml_dict_with_bad_field_types_and_error2,
+    toml_dict_with_bad_field_types_and_error3,
+):
+    return [
+        toml_dict_with_bad_field_types_and_error1,
+        toml_dict_with_bad_field_types_and_error2,
+        toml_dict_with_bad_field_types_and_error3,
+    ]
+
+
+@pytest.fixture
+def toml_dict_with_mutex_arg_violation_and_error1():
+    return {
+        FollowImports.ARG_LONG_NAME: 3,
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.b\\.c",
+            "a\\.b.*",
+            "a\\.b\\.c\\.e",
+            "a\\.b\\.c.*",
+        ],
+        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
+        ShowWarnings.ARG_LONG_NAME: "all",
+        ShowPath.ARG_LONG_NAME: "full",
+        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
+        Output.SHOW_IR_ARG_LONG_NAME: True,  # mutex violation
+        Output.SILENT_ARG_LONG_NAME: True,  # mutex violation
+        Cache.ARG_LONG_NAME: "cache.json",
+    }, (
+        f"-irs "
+        f"('--{Output.SHOW_IR_ARG_LONG_NAME}', "
+        f"'--{Output.SHOW_RESULTS_ARG_LONG_NAME}', "
+        f"'--{Output.SHOW_STATS_ARG_LONG_NAME}') "
+        f"and -S ('--{Output.SILENT_ARG_LONG_NAME}') are mutually exclusive"
+    )
+
+
+@pytest.fixture
+def toml_dict_with_mutex_arg_violation_and_error2():
+    return {
+        FollowImports.ARG_LONG_NAME: 3,
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.b\\.c",
+            "a\\.b.*",
+            "a\\.b\\.c\\.e",
+            "a\\.b\\.c.*",
+        ],
+        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
+        ShowWarnings.ARG_LONG_NAME: "all",
+        ShowPath.ARG_LONG_NAME: "full",
+        StrictOrPermissive.STRICT_ARG_LONG_NAME: True,  # mutex violation
+        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,  # mutex violation
+        Output.SHOW_IR_ARG_LONG_NAME: True,
+        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
+        Output.SHOW_STATS_ARG_LONG_NAME: True,
+        Cache.ARG_LONG_NAME: "cache.json",
+    }, (
+        f"argument --{StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME}: not allowed "
+        f"with argument --{StrictOrPermissive.STRICT_ARG_LONG_NAME}"
+    )
+
+
+@pytest.fixture
+def toml_dicts_with_mutex_arg_violation_and_errors(
+    toml_dict_with_mutex_arg_violation_and_error1,
+    toml_dict_with_mutex_arg_violation_and_error2,
+):
+    return [
+        toml_dict_with_mutex_arg_violation_and_error1,
+        toml_dict_with_mutex_arg_violation_and_error2,
+    ]
+
+
+@pytest.fixture
+def correct_toml_dict1():
+    return {
+        FollowImports.ARG_LONG_NAME: 3,
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.a\\.a",
+            "b\\.b.*",
+            "c\\.c\\.c\\.c",
+            "d\\d\\.d.*",
+        ],
+        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "c_.*"],
+        ShowWarnings.ARG_LONG_NAME: "all",
+        StrictOrPermissive.STRICT_ARG_LONG_NAME: True,
+        Cache.ARG_LONG_NAME: "cache.json",
+    }
+
+
+@pytest.fixture
+def correct_toml_dict2():
+    return {
+        FollowImports.ARG_LONG_NAME: 3,
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.a\\.a",
+            "b\\.b.*",
+            "c\\.c\\.c\\.c",
+            "d\\d\\.d.*",
+        ],
+        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "c_.*"],
+        ShowWarnings.ARG_LONG_NAME: "all",
+        ShowPath.ARG_LONG_NAME: "full",
+        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
+        Cache.ARG_LONG_NAME: "cache.json",
+    }
+
+
+@pytest.fixture
+def correct_toml_dict3():
+    return {
+        FollowImports.ARG_LONG_NAME: 1,
+        ExcludeImports.ARG_LONG_NAME: [
+            "a\\.b\\.c",
+            "a\\.b.*",
+            "a\\.b\\.c\\.e",
+            "a\\.b\\.c.*",
+        ],
+        ShowWarnings.ARG_LONG_NAME: "all",
+        ShowPath.ARG_LONG_NAME: "full",
+        StrictOrPermissive.STRICT_ARG_LONG_NAME: True,
+        Output.SHOW_IR_ARG_LONG_NAME: True,
+        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
+        Output.SHOW_STATS_ARG_LONG_NAME: True,
+        Cache.ARG_LONG_NAME: "cache.json",
+    }
+
+
+@pytest.fixture
+def sys_args1():
+    return [
+        "rattr",
+        "rattr/cli/parser.py",
+    ]
+
+
+@pytest.fixture
+def sys_args2():
+    return [
+        "rattr",
+        "--follow-imports",
+        "2",
+        "--strict",
+        "-w",
+        "file",
+        "rattr/cli/argparse.py",
+        "-p",
+        "short",
+    ]
+
+
+@pytest.fixture
+def sys_args3():
+    return [
+        "rattr",
+        "--follow-imports",
+        "2",
+        "--strict",
+        "-w",
+        "file",
+        "rattr/cli/argparse.py",
+        "-p",
+        "short",
+        "-F",
+        "*exclude-import*",
+        "-x",
+        "*exclude-pattern*",
+        "-S",
+    ]
+
+
+@pytest.fixture
+def sys_args4():
+    return ["rattr", "rattr/cli/parser.py", "-S"]
