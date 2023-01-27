@@ -297,7 +297,7 @@ class ExcludeImports(ArgumentGroupParser):
             type=str,
             help=multi_paragraph_wrap(
                 """\
-                >do not follow imports to modules matching the given pattern, 
+                >do not follow imports to modules matching the given pattern,
                 >regardless of the level of \033[1m-f\033[0m
                 >TOML example: exclude-imports=['a', 'b']
                 """
@@ -329,7 +329,7 @@ class ExcludePatterns(ArgumentGroupParser):
             type=str,
             help=multi_paragraph_wrap(
                 """\
-                >exclude functions and classes matching the 
+                >exclude functions and classes matching the
                 >given regular expression from being analysed
                 >TOML example: exclude=['a', 'b']
                 """
@@ -454,7 +454,7 @@ class StrictOrPermissive(ArgumentGroupParser):
                 >    +5 - error
                 >    +∞ - fatal
 
-                >NB: badness is only contributed to by the target <file> and 
+                >NB: badness is only contributed to by the target <file> and
                 >by the simplification stage (e.g. resolving function calls, etc)
                 >TOML example: permissive=10
                 """
