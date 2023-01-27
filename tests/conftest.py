@@ -839,3 +839,8 @@ def sys_args3():
 @pytest.fixture
 def sys_args4():
     return ["rattr", "rattr/cli/parser.py", "-S"]
+
+
+@pytest.fixture
+def sys_args5():
+    return ["rattr", "rattr/cli/parser.py", "--permissive", "3"]
