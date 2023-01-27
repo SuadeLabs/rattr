@@ -460,11 +460,9 @@ class StrictOrPermissive(ArgumentGroupParser):
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
 
         if not arguments.strict:
-            # only set threshold and reset permissive when threshold
-            # attribute doesn't exist. this is because threshold will
-            # already be set when we parse cli args into namespace
-            # and that will make 'arguments.threshold' = True or 0 (= True)
-            if not hasattr(arguments, "threshold"):
+            # only set threshold and permissive
+            # when permissive is freshly set to an int
+            if isinstance(arguments.permissive, int):
                 arguments.threshold = arguments.permissive or 0
                 arguments.permissive = True
         else:

@@ -237,3 +237,30 @@ class TestParser:
         )
 
         assert args == exp_args
+
+    def test_permissive_cli_call_overwrite(self, sys_args5, correct_toml_dict2):
+        args = parse_arguments(
+            sys_args=sys_args5[1:],
+            project_toml_cfg=correct_toml_dict2,
+            exit_on_error=False,
+        )
+
+        exp_args = Namespace(
+            follow_imports=3,
+            exclude_import=["a\\.a\\.a", "b\\.b.*", "c\\.c\\.c\\.c", "d\\d\\.d.*"],
+            exclude=["a_.*", "b_.*", "c_.*"],
+            show_warnings="all",
+            show_path="full",
+            strict=False,
+            permissive=True,
+            show_ir=False,
+            show_results=True,
+            show_stats=False,
+            silent=False,
+            cache="cache.json",
+            threshold=3,
+            filter_string="",
+            file="rattr/cli/parser.py",
+        )
+
+        assert args == exp_args
