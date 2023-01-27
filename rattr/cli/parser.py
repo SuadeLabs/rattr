@@ -268,6 +268,7 @@ class FollowImports(ArgumentGroupParser):
                 >    2 - follow imports to local and pip installed modules
                 >    3 - follow imports to local, pip installed, and stdlib modules
                 >NB: following stdlib imports when using CPython will cause issues
+                >TOML example: follow-imports=1
                 """
             ),
         )
@@ -296,8 +297,9 @@ class ExcludeImports(ArgumentGroupParser):
             type=str,
             help=multi_paragraph_wrap(
                 """\
-                do not follow imports to modules matching the given pattern,
-                regardless of the level of \033[1m-f\033[0m
+                >do not follow imports to modules matching the given pattern, 
+                >regardless of the level of \033[1m-f\033[0m
+                >TOML example: exclude-imports=['a', 'b']
                 """
             ),
             metavar="PATTERN",
@@ -327,8 +329,9 @@ class ExcludePatterns(ArgumentGroupParser):
             type=str,
             help=multi_paragraph_wrap(
                 """\
-                exclude functions and classes matching the given regular
-                expression from being analysed
+                >exclude functions and classes matching the 
+                >given regular expression from being analysed
+                >TOML example: exclude=['a', 'b']
                 """
             ),
             metavar="PATTERN",
@@ -366,6 +369,7 @@ class ShowWarnings(ArgumentGroupParser):
                 >    all  - show warnings for all files \033[1m(default)\033[0m
                 >    All  - show warnings for all files, including low-priority
                 >NB: errors and fatal errors are always shown
+                >TOML example: show-warnings='all'
                 """
             ),
         )
@@ -397,6 +401,7 @@ class ShowPath(ArgumentGroupParser):
                 >    short - show an abbreviated path \033[1m(default)\033[0m
                 >    full  - show the full path
                 >E.g.: "/home/user/very/deep/dir/path/file" becomes "~/.../dir/path/file"  # noqa
+                >TOML example: show-path='short'
                 """
             ),
         )
@@ -428,7 +433,8 @@ class StrictOrPermissive(ArgumentGroupParser):
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
-                run rattr in strict mode, i.e. fail on any error
+                >run rattr in strict mode, i.e. fail on any error
+                >TOML example: strict=true
                 """
             ),
         )
@@ -448,8 +454,9 @@ class StrictOrPermissive(ArgumentGroupParser):
                 >    +5 - error
                 >    +∞ - fatal
 
-                NB: badness is only contributed to by the target <file> and by
-                the simplification stage (e.g. resolving function calls, etc).
+                >NB: badness is only contributed to by the target <file> and 
+                >by the simplification stage (e.g. resolving function calls, etc)
+                >TOML example: permissive=10
                 """
             ),
             metavar="THRESHOLD",
@@ -497,7 +504,8 @@ class Output(ArgumentGroupParser):
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
-                show the IR for the file and imports
+                >show the IR for the file and imports
+                >TOML example: show-ir=true\n
                 """
             ),
         )
@@ -507,7 +515,8 @@ class Output(ArgumentGroupParser):
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
-                show the results of analysis
+                >show the results of analysis
+                >TOML example: show-results=true\n
                 """
             ),
         )
@@ -517,7 +526,8 @@ class Output(ArgumentGroupParser):
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
-                show stats Rattr statisitics
+                >show stats Rattr statisitics
+                >TOML example: show-stats=true\n
                 """
             ),
         )
@@ -527,7 +537,8 @@ class Output(ArgumentGroupParser):
             action="store_true",
             help=multi_paragraph_wrap(
                 """\
-                show only errors and warnings
+                >show only errors and warnings
+                >TOML example: silent=true
                 """
             ),
         )
@@ -572,8 +583,8 @@ class FilterString(ArgumentGroupParser):
             type=str,
             help=multi_paragraph_wrap(
                 """\
-                filter the output to functions matching the given regular
-                expression
+                >filter the output to functions matching the given regular expression
+                >can't be specified in .toml
                 """
             ),
             metavar="<filter-string>",
@@ -597,7 +608,8 @@ class File(ArgumentGroupParser):
             type=str,
             help=multi_paragraph_wrap(
                 """\
-                the Python source file to analyse
+                >the Python source file to analyse
+                >can't be specified in .toml
                 """
             ),
             metavar="<file>",
@@ -634,7 +646,8 @@ class Cache(ArgumentGroupParser):
             type=str,
             help=multi_paragraph_wrap(
                 """\
-                the file to cache the results to, if successful
+                >the file to cache the results to, if successful
+                >TOML example: cache='cache.json'
                 """
             ),
         )
