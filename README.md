@@ -43,6 +43,120 @@ def should_i_buy(security):
 
 rattr can help you determine which functions are required for a calculation. Effectively allowing you to build powerful directed graph structures for your function libraries.
 
+# Configuration
+
+Rattr is configurable both via pyproject.toml and the command line.
+
+## Command Line Args:
+
+```
+  -h, --help            show this help message and exit
+
+  -v, --version         show program's version number and exit
+
+  -f {0,1,2,3}, --follow-imports {0,1,2,3}
+                        follow imports level meanings:
+                        0 - do not follow imports
+                        1 - follow imports to local modules (default)
+                        2 - follow imports to local and pip installed modules
+                        3 - follow imports to local, pip installed, and stdlib modules
+                        NB: following stdlib imports when using CPython will cause issues
+
+  -F PATTERN, --exclude-import PATTERN
+                        do not follow imports to modules matching the given pattern, regardless of the
+                        level of -f
+
+  -x PATTERN, --exclude PATTERN
+                        exclude functions and classes matching the given regular expression from being
+                        analysed
+
+  -w {none,file,all,ALL}, --show-warnings {none,file,all,ALL}
+                        show warnings level meaning:
+                        none - do not show warnings
+                        file - show warnings for <file>
+                        all  - show warnings for all files (default)
+                        All  - show warnings for all files, including low-priority
+                        NB: errors and fatal errors are always shown
+
+  -p {none,short,full}, --show-path {none,short,full}
+                        show path level meaning:
+                        none  - do not show the file path in errors/warnings
+                        short - show an abbreviated path (default)
+                        full  - show the full path
+                        E.g.: "/home/user/very/deep/dir/path/file" becomes "~/.../dir/path/file"
+
+  --strict              run rattr in strict mode, i.e. fail on any error
+  --permissive THRESHOLD
+                        run rattr in permissive mode, with the given badness threshold (when threshold
+                        is zero or omitted, it is taken as infinite) (default: --permissive 0 when
+                        group omitted)
+                        
+                        typical badness values:
+                        +0 - info
+                        +1 - warning
+                        +5 - error
+                        +∞ - fatal
+                        
+                        NB: badness is only contributed to by the target <file> and by the
+                        simplification stage (e.g. resolving function calls, etc).
+
+  -i, --show-ir         show the IR for the file and imports
+  -r, --show-results    show the results of analysis
+  -s, --show-stats      show stats Rattr statisitics
+  -S, --silent          show only errors and warnings
+
+  --cache CACHE         the file to cache the results to, if successful
+
+  <filter-string>       filter the output to functions matching the given regular expression
+
+  <file>                the Python source file to analyse
+
+```
+## pyproject.toml
+
+Example toml config:
+
+```toml
+[tool.rattr]
+follow-imports = 0      # options are: (0, 1, 2, 3)
+strict = true
+# permissive = 1        # (can be any positive int & mutex with 'strict = true')
+silent = true
+# show-ir = true        # (mutex with 'silent = true')
+# show-results = true   # (mutex with 'silent = true')
+# show-stats = true     # (mutex with 'silent = true')
+show-path = 'none'      # options are: ('none', 'short', 'full')
+show-warnings = 'none'  # options are ('none', 'file', 'all', 'ALL')
+exclude-import = [    
+    'a\.b\.c.*',
+    'd\..*',
+    '^e$'
+]
+exclude = [
+    'a_.*',
+    'b_.*',
+    '_c.*',
+]
+cache = 'cache.json'
+```
+
+Without setting any command line or toml arguments specifically, the default configuration for rattr is the following:
+
+```toml
+[tool.rattr]
+follow-imports = 1
+permissive = 0
+show-ir = false
+show-results = true
+show-stats = false
+show-path = 'short'
+show-warnings = 'all'
+exclude-import = []
+exclude = []
+cache = ''
+```
+
+
 # Developer Notes
 
 ## Use of Undocumented Behaviour
