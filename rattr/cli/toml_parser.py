@@ -1,7 +1,12 @@
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import tomli as tomllib
+try:
+    # python >= 3.11
+    import tomllib
+except ImportError:
+    # python < 3.11
+    import tomli as tomlib  # noqa: F401
 
 
 def load_cfg_from_project_toml(toml_cfg_path: Optional[Path]) -> Dict[str, Any]:
