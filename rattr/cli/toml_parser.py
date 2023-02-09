@@ -6,7 +6,7 @@ try:
     import tomllib
 except ImportError:
     # python < 3.11
-    import tomli as tomlib  # noqa: F401
+    import tomli as tomllib
 
 
 def load_cfg_from_project_toml(toml_cfg_path: Optional[Path]) -> Dict[str, Any]:
