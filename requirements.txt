@@ -1,1 +1,2 @@
 isort>=5
+tomli==1.2.3; python_version < '3.11'

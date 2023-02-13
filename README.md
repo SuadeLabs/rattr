@@ -126,7 +126,7 @@ silent = true
 # show-results = true   # (mutex with 'silent = true')
 # show-stats = true     # (mutex with 'silent = true')
 show-path = 'none'      # options are: ('none', 'short', 'full')
-show-warnings = 'none'  # options are ('none', 'file', 'all', 'ALL')
+show-warnings = 'none'  # options are: ('none', 'file', 'all', 'ALL')
 exclude-import = [    
     'a\.b\.c.*',
     'd\..*',
