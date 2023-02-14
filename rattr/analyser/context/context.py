@@ -472,7 +472,7 @@ class RootContext(Context):
 
         # Walrus operator in the right-hand side of containing assignment
         for walrus in get_contained_walruses(node):
-            with Changes(self.symbol_table, cb=lambda t: t.values()) as diff:
+            with Changes(self.symbol_table, keys_fn=lambda t: t.values()) as diff:
                 RootContext.register_NamedExpr(self, walrus)
 
             # If we have "a = (b := lambda ...)" then "a" will have been registered as a

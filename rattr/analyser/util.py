@@ -666,16 +666,16 @@ class read:
 class Changes:
     """Context manager to return the dict-like's changes across the block."""
 
-    def __init__(self, target, cb=lambda t: t.keys()):
+    def __init__(self, target, keys_fn=lambda t: t.keys()):
         self.target = target
-        self.cb = cb
+        self.keys_fn = keys_fn
 
     def __enter__(self):
-        self.antecedent: Set = set(self.cb(self.target))
+        self.antecedent: Set = set(self.keys_fn(self.target))
         return self
 
     def __exit__(self, *_):
-        self.consequent: Set = set(self.cb(self.target))
+        self.consequent: Set = set(self.keys_fn(self.target))
 
     @property
     def added(self) -> Set:
