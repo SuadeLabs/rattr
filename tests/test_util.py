@@ -7,8 +7,8 @@ import pytest
 from rattr import error
 from rattr.analyser.context import Call, Class, Context, Name, RootContext
 from rattr.analyser.util import (
+    Changes,
     assignment_is_one_to_one,
-    changes,
     class_in_rhs,
     get_annotation,
     get_assignment_targets,
@@ -1299,14 +1299,14 @@ class TestUtil:
         ir = {"a": 1, "b": 2, "c": 3, "d": 4}
 
         # No changes
-        with changes(ir) as diff:
+        with Changes(ir) as diff:
             pass
 
         assert not diff.added
         assert not diff.removed
 
         # Changes
-        with changes(ir) as diff:
+        with Changes(ir) as diff:
             ir["x"] = 99
             del ir["a"]
             del ir["b"]

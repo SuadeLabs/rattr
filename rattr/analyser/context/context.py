@@ -30,8 +30,8 @@ from rattr.analyser.context.symbol_table import SymbolTable
 from rattr.analyser.types import AnyAssign, Constant, Literal, ast_NamedExpr
 from rattr.analyser.util import (
     PYTHON_BUILTINS,
+    Changes,
     assignment_is_one_to_one,
-    changes,
     enter_file,
     get_absolute_module_name,
     get_assignment_targets,
@@ -472,7 +472,7 @@ class RootContext(Context):
 
         # Walrus operator in the right-hand side of containing assignment
         for walrus in get_contained_walruses(node):
-            with changes(self.symbol_table, cb=lambda t: t.values()) as diff:
+            with Changes(self.symbol_table, cb=lambda t: t.values()) as diff:
                 RootContext.register_NamedExpr(self, walrus)
 
             # If we have "a = (b := lambda ...)" then "a" will have been registered as a

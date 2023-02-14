@@ -19,8 +19,8 @@ from rattr.analyser.types import (
     ast_NamedExpr,
 )
 from rattr.analyser.util import (
+    Changes,
     assignment_is_one_to_one,
-    changes,
     enter_file,
     get_assignment_targets,
     get_contained_walruses,
@@ -245,7 +245,7 @@ class FileAnalyser(NodeVisitor):
 
         # Walrus may obscure a lambda, so peek in and visit the nice walruses
         for walrus in get_contained_walruses(node):
-            with changes(self.file_ir) as diff:
+            with Changes(self.file_ir) as diff:
                 self.visit_AnyAssign(walrus)
 
             # If the walrus is of the form "a = (b := lambda ...)" then "a" should have

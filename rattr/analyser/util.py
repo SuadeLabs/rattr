@@ -663,7 +663,7 @@ class read:
         pass
 
 
-class changes:
+class Changes:
     """Context manager to return the dict-like's changes across the block."""
 
     def __init__(self, target, cb=lambda t: t.keys()):
@@ -1007,7 +1007,7 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
     >>> get_dynamic_name("get_sub_attr", call, "{first}.sub.{second}")
     Name("obj.sub.attr", "obj")
 
-    >>> call = ast.parse("get_sub_attr(get_sub_attr(o, 'in'), 'out')").body[0].value # noqa
+    >>> call = ast.parse("get_sub_attr(get_sub_attr(o, 'in'), 'out')").body[0].value
     >>> get_dynamic_name("get_sub_attr", call, "{first}.mid.{second}")
     Name("o.in.mid.out", "o")
 
