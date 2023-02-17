@@ -1,6 +1,8 @@
 import ast
 from unittest import mock
 
+import pytest
+
 from rattr.analyser.context import (
     Builtin,
     Class,
@@ -611,6 +613,54 @@ class TestRootContext_Assigns:
         assert _ctx.symbol_table == RootSymbolTable(
             Name("a"),
             Name("b"),
+        )
+
+    @pytest.mark.py_3_8_plus()
+    def test_walrus(self, parse, RootSymbolTable):
+        _ast = parse(
+            """
+            a = (b := 5)
+            x = (y, z := 10)
+            """
+        )
+        _ctx = RootContext(_ast)
+
+        assert _ctx.parent is None
+        assert _ctx.symbol_table == RootSymbolTable(
+            Name("a"),
+            Name("b"),
+            Name("x"),
+            Name("z"),
+        )
+
+    @pytest.mark.py_3_8_plus()
+    def test_walrus_lambda(self, parse, RootSymbolTable):
+        # Double lambda
+        _ast = parse(
+            """
+            outer_lambda = (inner_lambda := lambda *a, **k: 0)
+            """
+        )
+        _ctx = RootContext(_ast)
+
+        assert _ctx.parent is None
+        assert _ctx.symbol_table == RootSymbolTable(
+            Func("inner_lambda", [], "a", "k", False, None),
+            Func("outer_lambda", [], "a", "k", False, None),
+        )
+
+        # Faux double lambda
+        _ast = parse(
+            """
+            outer_lambda = (a, inner_lambda := lambda *a, **k: 0)
+            """
+        )
+        _ctx = RootContext(_ast)
+
+        assert _ctx.parent is None
+        assert _ctx.symbol_table == RootSymbolTable(
+            Func("inner_lambda", [], "a", "k", False, None),
+            Name("outer_lambda"),
         )
 
 

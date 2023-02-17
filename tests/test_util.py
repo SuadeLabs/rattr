@@ -7,6 +7,7 @@ import pytest
 from rattr import error
 from rattr.analyser.context import Call, Class, Context, Name, RootContext
 from rattr.analyser.util import (
+    Changes,
     assignment_is_one_to_one,
     class_in_rhs,
     get_annotation,
@@ -14,6 +15,7 @@ from rattr.analyser.util import (
     get_attrname,
     get_basename,
     get_basename_fullname_pair,
+    get_contained_walruses,
     get_decorator_name,
     get_dynamic_name,
     get_first_argument_name,
@@ -43,6 +45,7 @@ from rattr.analyser.util import (
     parse_rattr_results_from_annotation,
     remove_call_brackets,
     unravel_names,
+    walrus_in_rhs,
 )
 
 
@@ -1000,6 +1003,34 @@ class TestUtil:
         assign = ast.parse("a += 1").body[0]
         assert get_assignment_targets(assign) == [assign.target]
 
+    @pytest.mark.py_3_8_plus()
+    def test_get_assignment_targets_walrus(self):
+        # Walrus in assign
+        assign = ast.parse("a = (b := 1)").body[0]
+        assert get_assignment_targets(assign) == assign.targets
+
+        # Walrus
+        assign = ast.parse("a = (b := 1)").body[0].value
+        assert get_assignment_targets(assign) == [assign.target]
+
+    @pytest.mark.py_3_8_plus()
+    def test_get_contained_walruses(self, stringify_nodes, walrus):
+        walruses = get_contained_walruses(ast.parse("a = b").body[0])
+        assert stringify_nodes(walruses) == []
+
+        walruses = get_contained_walruses(ast.parse("a = (b := c)").body[0])
+        assert stringify_nodes(walruses) == stringify_nodes([walrus("b := c")])
+
+        walruses = get_contained_walruses(ast.parse("a = (x := y, m := n)").body[0])
+        assert stringify_nodes(walruses) == stringify_nodes(walrus("x := y", "m := n"))
+
+        walruses = get_contained_walruses(ast.parse("a = (b, x := y)").body[0])
+        assert stringify_nodes(walruses) == stringify_nodes([walrus("x := y")])
+
+        # Does not nest (node visitor should recurse)
+        walruses = get_contained_walruses(ast.parse("a = (b, (c, x := y))").body[0])
+        assert stringify_nodes(walruses) == []
+
     def test_assignment_is_one_to_one(self):
         is_one_to_one = {
             "x = 1",
@@ -1051,6 +1082,40 @@ class TestUtil:
         # AugAssign, not
         assign = ast.parse("a += 1").body[0]
         assert not lambda_in_rhs(assign)
+
+    @pytest.mark.py_3_8_plus()
+    def test_walrus_in_rhs(self):
+        # Single
+        assign = ast.parse("a = (b := c)").body[0]
+        assert walrus_in_rhs(assign)
+
+        # Multi
+        assign = ast.parse("a = 1, (b := c)").body[0]
+        assert walrus_in_rhs(assign)
+
+        # AnnAssign
+        assign = ast.parse("a: SomeType = (b := c)").body[0]
+        assert walrus_in_rhs(assign)
+
+        # AugAssign
+        assign = ast.parse("a += (b := c)").body[0]
+        assert walrus_in_rhs(assign)
+
+        # Single, not
+        assign = ast.parse("a = 1").body[0]
+        assert not walrus_in_rhs(assign)
+
+        # Multi, not
+        assign = ast.parse("a = 1, 2").body[0]
+        assert not walrus_in_rhs(assign)
+
+        # AnnAssign, not
+        assign = ast.parse("a: SomeType = SomeType()").body[0]
+        assert not walrus_in_rhs(assign)
+
+        # AugAssign, not
+        assign = ast.parse("a += 1").body[0]
+        assert not walrus_in_rhs(assign)
 
     def test_class_in_rhs(self):
         _ctx = Context(None)
@@ -1229,3 +1294,22 @@ class TestUtil:
         attr = ast.parse("def fn(): pass").body[0]
         with pytest.raises(TypeError):
             assert get_attrname(attr)
+
+    def test_changes(self):
+        ir = {"a": 1, "b": 2, "c": 3, "d": 4}
+
+        # No changes
+        with Changes(ir) as diff:
+            pass
+
+        assert not diff.added
+        assert not diff.removed
+
+        # Changes
+        with Changes(ir) as diff:
+            ir["x"] = 99
+            del ir["a"]
+            del ir["b"]
+
+        assert diff.added == {"x"}
+        assert diff.removed == {"a", "b"}

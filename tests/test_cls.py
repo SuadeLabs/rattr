@@ -1,3 +1,5 @@
+import pytest
+
 from rattr.analyser.context import Call, Class, Func, Name, RootContext
 from rattr.analyser.file import FileAnalyser
 
@@ -358,6 +360,116 @@ class TestClassAnalyser:
                 "calls": set(),
                 "dels": set(),
             },
+        }
+
+        print(results)
+        assert results == expected
+
+    @pytest.mark.py_3_8_plus()
+    def test_walrus(self, parse, RootSymbolTable):
+        # "Normal"
+        _ast = parse(
+            """
+            class IAmTheWalrus:
+                cls_attr_a = (cls_attr_b := 0)  # Yuck
+
+                def __init__(self):
+                    inst_attr_a = (inst_attr_b := 0)  # Just as yuck
+            """
+        )
+        file_analyser = FileAnalyser(_ast, RootContext(_ast))
+        results = file_analyser.analyse()
+
+        wally = Class("IAmTheWalrus", ["self"], None, None)
+        cls_attr_a = Name("IAmTheWalrus.cls_attr_a", "IAmTheWalrus")
+        cls_attr_b = Name("IAmTheWalrus.cls_attr_b", "IAmTheWalrus")
+
+        assert file_analyser.context.symbol_table == RootSymbolTable(
+            wally, cls_attr_a, cls_attr_b
+        )
+
+        expected = {
+            wally: {
+                "sets": {
+                    Name("inst_attr_a"),
+                    Name("inst_attr_b"),
+                },
+                "gets": set(),
+                "dels": set(),
+                "calls": set(),
+            }
+        }
+
+        print(results)
+        assert results == expected
+
+        # Tuple'd
+        _ast = parse(
+            """
+            class IAmTheWalrus:
+                cls_attr_a = (a, cls_attr_b := 0)
+
+                def __init__(self):
+                    inst_attr_a = (a, inst_attr_b := 0)
+            """
+        )
+        file_analyser = FileAnalyser(_ast, RootContext(_ast))
+        results = file_analyser.analyse()
+
+        wally = Class("IAmTheWalrus", ["self"], None, None)
+        cls_attr_a = Name("IAmTheWalrus.cls_attr_a", "IAmTheWalrus")
+        cls_attr_b = Name("IAmTheWalrus.cls_attr_b", "IAmTheWalrus")
+
+        assert file_analyser.context.symbol_table == RootSymbolTable(
+            wally, cls_attr_a, cls_attr_b
+        )
+
+        expected = {
+            wally: {
+                "sets": {
+                    Name("inst_attr_a"),
+                    Name("inst_attr_b"),
+                },
+                "gets": {
+                    Name("a"),
+                },
+                "dels": set(),
+                "calls": set(),
+            }
+        }
+
+        print(results)
+        assert results == expected
+
+    @pytest.mark.py_3_8_plus()
+    def test_walrus_method(self, parse):
+        _ast = parse(
+            """
+            class IAmTheWalrus:
+                def contrived(self):
+                    this_is = (a_very_contrived := self.operation)
+
+                @staticmethod
+                def more_contrived():
+                    if (alias := this_is_just_so_long_i_will_alias_it):
+                        return alias
+            """
+        )
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        static = Func("IAmTheWalrus.more_contrived", [], None, None, False, None)
+        expected = {
+            static: {
+                "sets": {
+                    Name("alias"),
+                },
+                "gets": {
+                    Name("this_is_just_so_long_i_will_alias_it"),
+                    Name("alias"),
+                },
+                "dels": set(),
+                "calls": set(),
+            }
         }
 
         print(results)

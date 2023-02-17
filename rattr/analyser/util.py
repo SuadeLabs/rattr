@@ -50,6 +50,7 @@ from rattr.analyser.types import (
     Literal,
     Nameable,
     StrictlyNameable,
+    ast_NamedExpr,
 )
 
 # The prefix given to local constants, literals, etc to produce a name
@@ -662,6 +663,31 @@ class read:
         pass
 
 
+class Changes:
+    """Context manager to return the dict-like's changes across the block."""
+
+    def __init__(self, target, keys_fn=lambda t: t.keys()):
+        self.target = target
+        self.keys_fn = keys_fn
+
+    def __enter__(self):
+        self.antecedent: Set = set(self.keys_fn(self.target))
+        return self
+
+    def __exit__(self, *_):
+        self.consequent: Set = set(self.keys_fn(self.target))
+
+    @property
+    def added(self) -> Set:
+        """Return the keys added to the IR."""
+        return self.consequent - self.antecedent
+
+    @property
+    def removed(self) -> Set:
+        """Return the keys removed from the IR, should be the empty set."""
+        return self.antecedent - self.consequent
+
+
 def get_starred_imports(
     symbols: List[Symbol],
     seen: Iterable[Import],
@@ -709,10 +735,30 @@ def get_assignment_targets(node: AnyAssign) -> List[ast.expr]:
     if isinstance(node, ast.Assign):
         return node.targets
 
-    if isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+    if isinstance(node, (ast.AnnAssign, ast.AugAssign, ast_NamedExpr)):
         return [node.target]
 
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
+
+
+def get_contained_walruses(node: AnyAssign) -> List[ast_NamedExpr]:
+    """Return the walruses in the RHS of the given assignment.
+
+    >>> get_nested_walruses(ast.parse("a = (b := c)"))
+    [NamedExpr(target=Name(id='b', ctx=Store()), value=Name(id='c', ctx=Load())), ]
+
+    >>> get_nested_walruses(ast.parse("a = (b, c := d)"))
+    [NamedExpr(target=Name(id='c', ctx=Store()), value=Name(id='d', ctx=Load())), ]
+    """
+    if not walrus_in_rhs(node):
+        return list()
+
+    if isinstance(node.value, (ast.Tuple, ast.List)):
+        rhs_values = node.value.elts
+    else:
+        rhs_values = [node.value]
+
+    return list(filter(lambda v: isinstance(v, ast_NamedExpr), rhs_values))
 
 
 def assignment_is_one_to_one(node: AnyAssign) -> bool:
@@ -736,6 +782,18 @@ def lambda_in_rhs(node: AnyAssign) -> bool:
         return True
     elif isinstance(node.value, _iterable):
         return any(isinstance(v, ast.Lambda) for v in node.value.elts)
+    else:
+        return False
+
+
+def walrus_in_rhs(node: AnyAssign) -> bool:
+    """Return `True` if the RHS contains a walrus operator."""
+    _iterable = (ast.Tuple, ast.List)
+
+    if isinstance(node.value, ast_NamedExpr):
+        return True
+    elif isinstance(node.value, _iterable):
+        return any(isinstance(v, ast_NamedExpr) for v in node.value.elts)
     else:
         return False
 
@@ -949,7 +1007,7 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
     >>> get_dynamic_name("get_sub_attr", call, "{first}.sub.{second}")
     Name("obj.sub.attr", "obj")
 
-    >>> call = ast.parse("get_sub_attr(get_sub_attr(o, 'in'), 'out')").body[0].value # noqa
+    >>> call = ast.parse("get_sub_attr(get_sub_attr(o, 'in'), 'out')").body[0].value
     >>> get_dynamic_name("get_sub_attr", call, "{first}.mid.{second}")
     Name("o.in.mid.out", "o")
 

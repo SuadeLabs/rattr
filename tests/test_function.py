@@ -1,3 +1,5 @@
+import pytest
+
 from rattr.analyser.context import (
     Builtin,
     Call,
@@ -486,6 +488,7 @@ class TestFunctionAnalyser:
             },
         }
 
+        print(results)
         assert results == expected
 
     def test_class_init(self, parse, capfd):
@@ -528,7 +531,7 @@ class TestFunctionAnalyser:
             """
             def a_func(blarg):
                 return
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -687,6 +690,185 @@ class TestFunctionAnalyser:
                 },
                 "calls": set(),
                 "dels": set(),
+            },
+        }
+
+        print(results)
+        assert results == expected
+
+    @pytest.mark.py_3_8_plus()
+    def test_walrus(self, parse):
+        # General walrus use
+        _ast = parse(
+            """
+            def fn(arg):
+                if (a := arg.attr):
+                    return a
+                else:
+                    return (b := arg.another_attr)
+            """
+        )
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        a_func = Func("fn", ["arg"], None, None)
+        expected = {
+            a_func: {
+                "sets": {
+                    Name("a"),
+                    Name("b"),
+                },
+                "gets": {
+                    Name("a"),
+                    Name("arg.attr", "arg"),
+                    Name("arg.another_attr", "arg"),
+                },
+                "dels": set(),
+                "calls": set(),
+            },
+        }
+
+        print(results)
+        assert results == expected
+
+        # Basic
+        _ast = parse(
+            """
+            def fn(arg):
+                thing = (a, b := arg.attr)
+            """
+        )
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        a_func = Func("fn", ["arg"], None, None)
+        expected = {
+            a_func: {
+                "sets": {
+                    Name("b"),
+                    Name("thing"),
+                },
+                "gets": {
+                    Name("a"),
+                    Name("arg.attr", "arg"),
+                },
+                "dels": set(),
+                "calls": set(),
+            },
+        }
+
+        print(results)
+        assert results == expected
+
+        # Multiple assignment
+        _ast = parse(
+            """
+            def fn(arg):
+                x, y = (a, b := c)
+            """
+        )
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        a_func = Func("fn", ["arg"], None, None)
+        expected = {
+            a_func: {
+                "sets": {
+                    Name("x"),
+                    Name("y"),
+                    Name("b"),
+                },
+                "gets": {
+                    Name("a"),
+                    Name("c"),
+                },
+                "dels": set(),
+                "calls": set(),
+            },
+        }
+
+        print(results)
+        assert results == expected
+
+    @pytest.mark.py_3_8_plus()
+    def test_walrus_lambda(self, parse, capfd):
+        # Walrus'd Lambda
+        _ast = parse(
+            """
+            def fn(arg):
+                other = (name := lambda *a, **k: a.attr)
+            """
+        )
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        output, _ = capfd.readouterr()
+        assert "unable to unbind lambdas defined in functions" in output
+
+        a_func = Func("fn", ["arg"], None, None)
+        expected = {
+            a_func: {
+                "sets": {
+                    Name("other"),
+                    Name("name"),
+                },
+                "gets": {
+                    Name("a.attr", "a"),
+                },
+                "dels": set(),
+                "calls": set(),
+            },
+        }
+
+        print(results)
+        assert results == expected
+
+        # Walrus multi assign w/ lambda
+        _ast = parse(
+            """
+            def fn(arg):
+                other = (alpha, beta := lambda *a, **k: a.attr)
+            """
+        )
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        a_func = Func("fn", ["arg"], None, None)
+        expected = {
+            a_func: {
+                "sets": {
+                    Name("other"),
+                    Name("beta"),
+                },
+                "gets": {
+                    Name("alpha"),
+                    Name("a.attr", "a"),
+                },
+                "dels": set(),
+                "calls": set(),
+            },
+        }
+
+        print(results)
+        assert results == expected
+
+        # Walrus multi assign w/ lambda as list
+        _ast = parse(
+            """
+            def fn(arg):
+                other = [alpha, beta := lambda *a, **k: a.attr]
+            """
+        )
+        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+
+        a_func = Func("fn", ["arg"], None, None)
+        expected = {
+            a_func: {
+                "sets": {
+                    Name("other"),
+                    Name("beta"),
+                },
+                "gets": {
+                    Name("alpha"),
+                    Name("a.attr", "a"),
+                },
+                "dels": set(),
+                "calls": set(),
             },
         }
 

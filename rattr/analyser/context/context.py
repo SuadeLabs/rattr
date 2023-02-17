@@ -11,6 +11,7 @@ functions such as `print`, etc.
 
 import ast
 from contextlib import contextmanager
+from dataclasses import replace as copy_dataclass
 from typing import Any, Generator, Iterable, Optional, Set, TypeVar, Union
 
 from rattr import config, error
@@ -26,13 +27,15 @@ from rattr.analyser.context.symbol import (
     get_possible_module_names,
 )
 from rattr.analyser.context.symbol_table import SymbolTable
-from rattr.analyser.types import AnyAssign, Constant, Literal
+from rattr.analyser.types import AnyAssign, Constant, Literal, ast_NamedExpr
 from rattr.analyser.util import (
     PYTHON_BUILTINS,
+    Changes,
     assignment_is_one_to_one,
     enter_file,
     get_absolute_module_name,
     get_assignment_targets,
+    get_contained_walruses,
     get_fullname,
     get_function_def_args,
     get_starred_imports,
@@ -467,6 +470,22 @@ class RootContext(Context):
                 self.add(Func(name, *get_function_def_args(node.value)))
             return
 
+        # Walrus operator in the right-hand side of containing assignment
+        for walrus in get_contained_walruses(node):
+            with Changes(self.symbol_table, keys_fn=lambda t: t.values()) as diff:
+                RootContext.register_NamedExpr(self, walrus)
+
+            # If we have "a = (b := lambda ...)" then "a" will have been registered as a
+            # Name when it just be a Func with the same signature as the just-added "b"
+            if lambda_in_rhs(walrus):
+                if len(diff.added) == 1 and node.value == walrus:
+                    lhs = get_assignment_targets(node)[0]
+                    self.add(
+                        copy_dataclass(list(diff.added)[0], name=get_fullname(lhs))
+                    )
+                elif len(diff.added) > 1:
+                    raise NotImplementedError("Multiple deeply nested walruses")
+
         for target in targets:
             self.add_identifiers_to_context(target)
 
@@ -489,6 +508,9 @@ class RootContext(Context):
             "classes, etc)",
             node,
         )
+
+    def register_NamedExpr(self, node: ast_NamedExpr) -> None:
+        RootContext.register_AnyAssign(self, node)
 
     # ----------------------------------------------------------------------- #
     # Functions, classes, etc
