@@ -11,7 +11,7 @@ class TestImportClobberingAssertor:
             from math import pi as pie
 
             pi = 3.2 - 0.06 + 0.001 # ...
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -27,7 +27,7 @@ class TestImportClobberingAssertor:
             import math
 
             math = "this is very bad"
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -47,7 +47,7 @@ class TestImportClobberingAssertor:
             def func():
                 join = "this" + "joined with" + "this"
                 return join
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -66,7 +66,7 @@ class TestImportClobberingAssertor:
 
             def func():
                 a, b, join, d = 1, 2, 3, 4
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -84,7 +84,7 @@ class TestImportClobberingAssertor:
             import math
 
             math: str = "this is very bad"
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -102,7 +102,7 @@ class TestImportClobberingAssertor:
             from math import pi
 
             pi += 1.0   # that's not pi!
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -122,7 +122,7 @@ class TestImportClobberingAssertor:
 
             def fn():
                 del pi
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -141,7 +141,7 @@ class TestImportClobberingAssertor:
 
             def fn():
                 del a, b, pi
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -161,7 +161,7 @@ class TestImportClobberingAssertor:
 
             def join(*args):
                 return "/".join(args)
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -181,7 +181,7 @@ class TestImportClobberingAssertor:
             def wrapper():
                 def join(*args):
                     return "/".join(args)
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -201,7 +201,7 @@ class TestImportClobberingAssertor:
 
             async def join(*args):
                 return "/".join(args)
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -220,7 +220,7 @@ class TestImportClobberingAssertor:
 
             class SomeClass:
                 pass
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -248,7 +248,7 @@ class TestImportClobberingAssertor:
             @rattr_ignore
             class SomeClass:
                 pass
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -273,7 +273,7 @@ class TestImportClobberingAssertor:
             @rattr_results
             class SomeClass:
                 pass
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -290,7 +290,7 @@ class TestImportClobberingAssertor:
 
             def area(r, pi):
                 return pi * r * r
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -310,7 +310,7 @@ class TestImportClobberingAssertor:
             def wrapped():
                 def area(r, pi):
                     return pi * r * r
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -329,7 +329,7 @@ class TestImportClobberingAssertor:
 
             async def area(r, pi):
                 return pi * r * r
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -347,7 +347,7 @@ class TestImportClobberingAssertor:
             from math import pi
 
             x = lambda pi: 3.14
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -367,7 +367,7 @@ class TestImportClobberingAssertor:
 
             for pi in pies:
                 eat(pi)
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -386,7 +386,7 @@ class TestImportClobberingAssertor:
 
             for a, pi in pies:
                 eat(pi)
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -405,7 +405,7 @@ class TestImportClobberingAssertor:
 
             async for pi in pies:
                 eat(pi)
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -425,7 +425,7 @@ class TestImportClobberingAssertor:
 
             with whatever as pi:
                 pass
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -444,7 +444,7 @@ class TestImportClobberingAssertor:
 
             with whatever as we, whenever as pi:
                 pass
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -463,7 +463,7 @@ class TestImportClobberingAssertor:
 
             async with whatever as pi:
                 pass
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -482,7 +482,7 @@ class TestImportClobberingAssertor:
             from math import pi
 
             l = [pi for pi in pies]
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -500,7 +500,7 @@ class TestImportClobberingAssertor:
             from math import pi
 
             s = {pi for _, pi in pastries_and_pies}
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -518,7 +518,7 @@ class TestImportClobberingAssertor:
             from math import pi
 
             is_any = any(pi for pi in pies)
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -536,7 +536,7 @@ class TestImportClobberingAssertor:
             from math import pi
 
             d = {pi: filling for pi, filling in pies}
-        """
+            """
         )
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(
@@ -546,4 +546,41 @@ class TestImportClobberingAssertor:
         output, _ = capfd.readouterr()
 
         assert "redefinition of imported name" in output
+        assert _exit.called
+
+    def test_do_not_fail_on_write_to_attribute(self, parse, capfd):
+        # Direct
+        _ast = parse(
+            """
+            from my_module import MyClass
+
+            MyClass.attr = "value"
+            """
+        )
+        with mock.patch("sys.exit") as _exit:
+            ImportClobberingAssertor(is_strict=True).assert_holds(
+                _ast, RootContext(_ast)
+            )
+
+        output, _ = capfd.readouterr()
+
+        assert "redefinition of imported name" not in output
+        assert _exit.called
+
+        # Indirect
+        _ast = parse(
+            """
+            from my_module import MyClass
+
+            thing = MyClass.attr = "value"
+            """
+        )
+        with mock.patch("sys.exit") as _exit:
+            ImportClobberingAssertor(is_strict=True).assert_holds(
+                _ast, RootContext(_ast)
+            )
+
+        output, _ = capfd.readouterr()
+
+        assert "redefinition of imported name" not in output
         assert _exit.called
