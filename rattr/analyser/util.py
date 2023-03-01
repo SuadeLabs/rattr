@@ -15,6 +15,7 @@ from string import ascii_lowercase
 from time import perf_counter
 from typing import (
     Any,
+    Callable,
     Dict,
     Generator,
     Iterable,
@@ -196,7 +197,11 @@ def get_attrname(node: Nameable) -> str:
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def unravel_names(node: Nameable) -> Iterable[str]:
+def unravel_names(
+    node: Nameable,
+    *,
+    get_name: Callable[[Nameable], str] = get_basename,
+) -> Iterable[str]:
     """Return the basename of each nameable in the given node.
 
     >>> ravelled_names = ast.parse("a, b = 1, 2").body[0].targets[0]
@@ -207,12 +212,19 @@ def unravel_names(node: Nameable) -> Iterable[str]:
     >>> list(unravel_names(ravelled_names))
     ["a", "b", "c", "d"]
 
+    The name getter can be overridden for example as `get_fullname`:
+    >>> ravelled_names = ast.parse("a.attr = 1").body[0].targets[0]
+    >>> list(unravel_names(ravelled_names))
+    ["a"]
+    >>> list(unravel_names(ravelled_names, get_name=get_fullname))
+    ["a.attr"]
+
     """
     if isinstance(node, StrictlyNameable.__args__):
-        return [get_basename(node)]
+        return [get_name(node)]
 
     if isinstance(node, (ast.Tuple, ast.List)):
-        ravelled = [unravel_names(i) for i in node.elts]
+        ravelled = [unravel_names(i, get_name=get_name) for i in node.elts]
         return chain.from_iterable(ravelled)
 
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")

@@ -19,6 +19,7 @@ from rattr.analyser.util import (
     get_decorator_name,
     get_dynamic_name,
     get_first_argument_name,
+    get_fullname,
     get_function_body,
     get_function_call_args,
     get_function_def_args,
@@ -185,6 +186,25 @@ class TestUtil:
         expected = ["a", "b", "c", "d"]
 
         assert list(unravel_names(ravelled_names)) == expected
+
+    def test_unravel_names_by_fullname(self):
+        # Simple
+        ravelled_names = ast.parse("a, b = 1, 2").body[0].targets[0]
+        expected = ["a", "b"]
+
+        assert list(unravel_names(ravelled_names, get_name=get_fullname)) == expected
+
+        # Simple
+        ravelled_names = ast.parse("(a, b), c = [1, 2], 3").body[0].targets[0]
+        expected = ["a", "b", "c"]
+
+        assert list(unravel_names(ravelled_names, get_name=get_fullname)) == expected
+
+        # Complex
+        ravelled_names = ast.parse("(a, b), c, d.e = 1, 2, 3, 4").body[0].targets[0]
+        expected = ["a", "b", "c", "d.e"]
+
+        assert list(unravel_names(ravelled_names, get_name=get_fullname)) == expected
 
     def test_is_call_to(self):
         not_a_call = ast.parse("def f(): pass").body[0]

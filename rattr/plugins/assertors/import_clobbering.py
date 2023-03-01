@@ -1,15 +1,26 @@
 """Assert that there are no assignment to names that identify imports."""
 
 import ast
-from typing import Union
+from typing import List, Union
 
 from rattr.analyser.base import Assertor
-from rattr.analyser.types import AnyFunctionDef, Comprehension
+from rattr.analyser.types import AnyAssign, AnyFunctionDef, Comprehension
 from rattr.analyser.util import (
+    get_fullname,
     get_function_def_args,
     has_annotation,
     unravel_names,
 )
+
+
+def get_lhs_names(lhs: AnyAssign) -> List[str]:
+    """Return the names in the lhs of the given assignemnt."""
+    if hasattr(lhs, "targets"):
+        targets = lhs.targets
+    else:
+        targets = [lhs.target]
+
+    return [n for t in targets for n in unravel_names(t, get_name=get_fullname)]
 
 
 class ImportClobberingAssertor(Assertor):
@@ -20,33 +31,25 @@ class ImportClobberingAssertor(Assertor):
         self.failed(f"attempt to delete imported name '{name}'", node)
 
     def visit_Assign(self, node: ast.Assign) -> None:
-        names = [n for t in node.targets for n in unravel_names(t)]
-
-        for name in filter(lambda n: self.context.is_import(n), names):
+        for name in filter(self.context.is_import, get_lhs_names(node)):
             self.__clobbered(name, node)
 
         return super().generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        names = unravel_names(node.target)
-
-        for name in filter(lambda n: self.context.is_import(n), names):
+        for name in filter(self.context.is_import, get_lhs_names(node)):
             self.__clobbered(name, node)
 
         return super().generic_visit(node)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
-        names = unravel_names(node.target)
-
-        for name in filter(lambda n: self.context.is_import(n), names):
+        for name in filter(self.context.is_import, get_lhs_names(node)):
             self.__clobbered(name, node)
 
         return super().generic_visit(node)
 
     def visit_Delete(self, node: ast.Delete) -> None:
-        names = [n for t in node.targets for n in unravel_names(t)]
-
-        for name in filter(lambda n: self.context.is_import(n), names):
+        for name in filter(self.context.is_import, get_lhs_names(node)):
             self.__deleted(name, node)
 
         return super().generic_visit(node)
