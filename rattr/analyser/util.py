@@ -27,7 +27,7 @@ from typing import (
     Union,
 )
 
-from isort import place_module
+from isort.api import place_module
 
 from rattr import config, error
 from rattr.analyser.context.symbol import get_possible_module_names  # noqa
