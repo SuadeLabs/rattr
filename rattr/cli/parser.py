@@ -172,7 +172,9 @@ def parse_arguments(
             arg_group_parser.TOML_ARG_NAME_ARG_TYPE_MAP.keys()
         )
 
-    if (toml_config_override := get_toml_override(cli_parser, sys_args)) is not None:
+    toml_config_override = get_toml_override(cli_parser, sys_args)
+
+    if toml_config_override is not None:
         project_toml_cfg = load_cfg_from_project_toml(toml_config_override)
 
     if project_toml_cfg is None:
