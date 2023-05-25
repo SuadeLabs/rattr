@@ -1,4 +1,5 @@
 from argparse import ArgumentError, Namespace
+from pathlib import Path
 
 import pytest
 
@@ -55,6 +56,7 @@ class TestParser:
         )
 
         exp_args = Namespace(
+            config=None,
             follow_imports=3,
             exclude_import=["a\\.a\\.a", "b\\.b.*", "c\\.c\\.c\\.c", "d\\d\\.d.*"],
             exclude=["a_.*", "b_.*", "c_.*"],
@@ -84,6 +86,7 @@ class TestParser:
         )
 
         exp_args = Namespace(
+            config=None,
             follow_imports=3,
             exclude_import=["a\\.a\\.a", "b\\.b.*", "c\\.c\\.c\\.c", "d\\d\\.d.*"],
             exclude=["a_.*", "b_.*", "c_.*"],
@@ -113,6 +116,7 @@ class TestParser:
         )
 
         exp_args = Namespace(
+            config=None,
             follow_imports=2,
             exclude_import=["a\\.a\\.a", "b\\.b.*", "c\\.c\\.c\\.c", "d\\d\\.d.*"],
             exclude=["a_.*", "b_.*", "c_.*"],
@@ -142,6 +146,7 @@ class TestParser:
         )
 
         exp_args = Namespace(
+            config=None,
             follow_imports=2,
             exclude_import=[
                 "a\\.a\\.a",
@@ -177,6 +182,7 @@ class TestParser:
         )
 
         exp_args = Namespace(
+            config=None,
             follow_imports=2,
             exclude_import=["a\\.a\\.a", "b\\.b.*", "c\\.c\\.c\\.c", "d\\d\\.d.*"],
             exclude=["a_.*", "b_.*", "c_.*"],
@@ -219,6 +225,7 @@ class TestParser:
         )
 
         exp_args = Namespace(
+            config=None,
             follow_imports=1,
             exclude_import=[],
             exclude=[],
@@ -246,6 +253,7 @@ class TestParser:
         )
 
         exp_args = Namespace(
+            config=None,
             follow_imports=3,
             exclude_import=["a\\.a\\.a", "b\\.b.*", "c\\.c\\.c\\.c", "d\\d\\.d.*"],
             exclude=["a_.*", "b_.*", "c_.*"],
@@ -258,6 +266,34 @@ class TestParser:
             show_stats=False,
             silent=False,
             cache="cache.json",
+            threshold=3,
+            filter_string="",
+            file="rattr/cli/parser.py",
+        )
+
+        assert args == exp_args
+
+    def test_toml_config_override(self, sys_args6):
+        args = parse_arguments(
+            sys_args=sys_args6[1:],
+            project_toml_cfg={},
+            exit_on_error=False,
+        )
+
+        exp_args = Namespace(
+            config=Path(__file__).resolve().parent / "data" / "config_1.toml",
+            follow_imports=1,
+            exclude_import=[],
+            exclude=[],
+            show_warnings="all",
+            show_path="full",
+            strict=False,
+            permissive=True,
+            show_ir=True,
+            show_results=False,
+            show_stats=False,
+            silent=False,
+            cache="",
             threshold=3,
             filter_string="",
             file="rattr/cli/parser.py",
