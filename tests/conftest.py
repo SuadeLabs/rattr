@@ -2,8 +2,8 @@ import ast
 import sys
 from contextlib import contextmanager
 from os.path import dirname, join
-from typing import Iterable
 from pathlib import Path
+from typing import Iterable
 
 import pytest
 

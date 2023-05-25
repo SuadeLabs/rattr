@@ -1,8 +1,8 @@
 from abc import ABC, abstractstaticmethod
 from argparse import ArgumentError, Namespace, RawTextHelpFormatter
 from os.path import isfile, splitext
-from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from tomli import TOMLDecodeError
 
