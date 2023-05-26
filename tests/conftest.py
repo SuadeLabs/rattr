@@ -2,6 +2,7 @@ import ast
 import sys
 from contextlib import contextmanager
 from os.path import dirname, join
+from pathlib import Path
 from typing import Iterable
 
 import pytest
@@ -844,6 +845,20 @@ def sys_args4():
 @pytest.fixture
 def sys_args5():
     return ["rattr", "rattr/cli/parser.py", "--permissive", "3"]
+
+
+@pytest.fixture
+def sys_args6():
+    here = Path(__file__).resolve().parent / "data" / "config_1.toml"
+
+    return [
+        "rattr",
+        "rattr/cli/parser.py",
+        "--permissive",
+        "3",
+        "--config",
+        str(here),
+    ]
 
 
 @pytest.fixture

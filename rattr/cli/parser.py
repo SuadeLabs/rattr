@@ -1,6 +1,7 @@
 from abc import ABC, abstractstaticmethod
 from argparse import ArgumentError, Namespace, RawTextHelpFormatter
 from os.path import isfile, splitext
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from tomli import TOMLDecodeError
@@ -58,6 +59,22 @@ def validate_toml_cfg_arg_types(
     return toml_cfg
 
 
+def get_toml_override(
+    cli_parser: ArgumentParser,
+    sys_args: Optional[List[str]] = None,
+) -> Optional[Path]:
+    """Return the toml config override from the CLI if given, otherwise `None`."""
+    # Parse a throwaway copy of the cli arguments to see if the user specified a toml
+    # override, if he did and it is an extant file we ought to return it.
+    cli_arguments = cli_parser.parse_args(namespace=Namespace(), args=sys_args)
+    config: Optional[Path] = cli_arguments.config
+
+    if config is not None and not config.is_file():
+        return None
+
+    return config
+
+
 def parse_arguments(
     sys_args: Optional[List[str]] = None,
     project_toml_cfg: Optional[Dict[str, Any]] = None,
@@ -81,7 +98,6 @@ def parse_arguments(
     exiting.
 
     """
-
     cli_parser: ArgumentParser = ArgumentParser(
         prog="rattr",
         description=multi_paragraph_wrap(
@@ -132,7 +148,12 @@ def parse_arguments(
         Cache,
     )
 
-    CLI_ARG_GROUP_PARSERS = TOML_ARG_GROUP_PARSERS + (FilterString, File)
+    CLI_ARG_GROUP_PARSERS = (
+        TomlConfigPath,
+        *TOML_ARG_GROUP_PARSERS,
+        FilterString,
+        File,
+    )
 
     for argument_group_parser in CLI_ARG_GROUP_PARSERS:
         cli_parser = argument_group_parser.register(cli_parser)
@@ -151,7 +172,12 @@ def parse_arguments(
             arg_group_parser.TOML_ARG_NAME_ARG_TYPE_MAP.keys()
         )
 
-    if not project_toml_cfg:
+    toml_config_override = get_toml_override(cli_parser, sys_args)
+
+    if toml_config_override is not None:
+        project_toml_cfg = load_cfg_from_project_toml(toml_config_override)
+
+    if project_toml_cfg is None:
         try:
             toml_cfg_path = find_project_toml()
             project_toml_cfg = load_cfg_from_project_toml(toml_cfg_path=toml_cfg_path)
@@ -242,6 +268,28 @@ class ArgumentGroupParser(ABC):
         return parser
 
     @abstractstaticmethod
+    def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
+        return arguments
+
+
+class TomlConfigPath(ArgumentGroupParser):
+    def register(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument(
+            "-c",
+            "--config",
+            default=None,
+            type=Path,
+            required=False,
+            help=multi_paragraph_wrap(
+                """\
+                >override the default toml config
+                >can't be specified in .toml
+                """
+            ),
+        )
+
+        return parser
+
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
         return arguments
 
