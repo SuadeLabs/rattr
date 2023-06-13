@@ -1,16 +1,9 @@
-import pathlib
-
+from pathlib import Path
 from setuptools import find_packages, setup
 
-HERE = pathlib.Path(__file__).parent.resolve()
-
-# Copy description from README.md
-with open(HERE / "README.md") as f:
-    DESCRIPTION = f.read()
-
-# Copy requirements from requirements.txt
-with open(HERE / "requirements.txt") as f:
-    INSTALL_REQUIRES = [line.strip() for line in f.readlines()]
+HERE = Path(__file__).parent.resolve()
+README = HERE / "README.md"
+REQUIREMENTS = HERE / "requirements.txt"
 
 
 setup(
@@ -25,9 +18,9 @@ setup(
     author="Suade Labs",
     packages=find_packages(),
     description="Rattr rats on your attrs.",
-    long_description=DESCRIPTION,
+    long_description=README.read_text(),
     long_description_content_type="text/markdown",
-    install_requires=INSTALL_REQUIRES,
+    install_requires=[r.strip() for r in REQUIREMENTS.read_text().splitlines()],
     extras_require={
         "dev": [
             "black==22.1.0",
@@ -41,7 +34,7 @@ setup(
     },
     entry_points={"console_scripts": ["rattr = rattr.__main__:entry_point"]},
     keywords="automation linting type-checking attributes rats",
-    url="https://github.com/SuadeLabs/ratter",
+    url="https://github.com/SuadeLabs/rattr",
     license="MIT",
     python_requires=">=3.7",
     classifiers=[

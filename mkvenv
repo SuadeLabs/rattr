@@ -1,0 +1,13 @@
+#!/bin/bash
+
+venvdir="venv"
+
+python3 -m pip install --upgrade pip
+
+deactivate 2> /dev/null
+
+rm -rf $venvdir
+python3 -m venv $venvdir
+
+source venv/bin/activate
+python -m pip install -r requirements.txt
