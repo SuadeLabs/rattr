@@ -30,6 +30,7 @@ ignore = [
 force-exclude = true
 extend-exclude = [
   'venv',
+  'rattr/_version.py',
   'tests/snippets/*',
 ]
 
