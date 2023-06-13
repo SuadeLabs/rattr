@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rattr.plugins.analysers.builtins import (
     DelattrAnalyser,
     GetattrAnalyser,

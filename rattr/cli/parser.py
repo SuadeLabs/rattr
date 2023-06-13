@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractstaticmethod
 from argparse import ArgumentError, Namespace, RawTextHelpFormatter
 from os.path import isfile, splitext
@@ -448,7 +450,7 @@ class ShowPath(ArgumentGroupParser):
                 >    none  - do not show the file path in errors/warnings
                 >    short - show an abbreviated path \033[1m(default)\033[0m
                 >    full  - show the full path
-                >E.g.: "/home/user/very/deep/dir/path/file" becomes "~/.../dir/path/file"  # noqa
+                >E.g.: "/home/user/very/deep/dir/to/file" becomes "~/.../dir/to/file"
                 >TOML example: show-path='short'
                 """
             ),

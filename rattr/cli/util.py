@@ -1,4 +1,5 @@
 """Rattr CLI parser util functions."""
+from __future__ import annotations
 
 from argparse import Namespace
 from textwrap import dedent, fill

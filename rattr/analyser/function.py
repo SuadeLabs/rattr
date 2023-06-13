@@ -1,4 +1,5 @@
 """Rattr function analyser."""
+from __future__ import annotations
 
 import ast
 from itertools import accumulate
@@ -18,11 +19,11 @@ from rattr.analyser.context import (
 from rattr.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
+    AstNamedExpr,
     CompoundStrictlyNameable,
     FunctionIR,
     Nameable,
     StrictlyNameable,
-    ast_NamedExpr,
 )
 from rattr.analyser.util import (
     LOCAL_VALUE_PREFIX,
@@ -283,7 +284,7 @@ class FunctionAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: ast_NamedExpr) -> None:
+    def visit_NamedExpr(self, node: AstNamedExpr) -> None:
         self.func_ir["sets"].add(Name(*get_basename_fullname_pair(node.target)))
 
         if lambda_in_rhs(node):

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rattr.analyser.context.symbol import (
     Call,
     Class,

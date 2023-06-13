@@ -1,4 +1,5 @@
 """Rattr symbol table."""
+from __future__ import annotations
 
 from typing import KeysView, ValuesView
 

@@ -6,6 +6,7 @@ context.
 Symbol `name` is the Python `_identifier` for the given symbol.
 
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 from importlib.machinery import ModuleSpec

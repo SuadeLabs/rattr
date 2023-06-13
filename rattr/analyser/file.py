@@ -1,4 +1,5 @@
 """Rattr file analyser."""
+from __future__ import annotations
 
 import ast
 from collections import namedtuple
@@ -14,9 +15,9 @@ from rattr.analyser.function import FunctionAnalyser
 from rattr.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
+    AstNamedExpr,
     FileIR,
     ImportsIR,
-    ast_NamedExpr,
 )
 from rattr.analyser.util import (
     Changes,
@@ -269,7 +270,7 @@ class FileAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: ast_NamedExpr) -> None:
+    def visit_NamedExpr(self, node: AstNamedExpr) -> None:
         self.visit_AnyAssign(node)
 
     def visit_Lambda(self, node: ast.Lambda) -> None:

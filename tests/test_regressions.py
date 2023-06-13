@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rattr.analyser.context import Builtin, Call, Func, Name, RootContext
 from rattr.analyser.file import FileAnalyser
 

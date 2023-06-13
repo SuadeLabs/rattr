@@ -1,10 +1,12 @@
 """Tests for module/file level features."""
+from __future__ import annotations
+
 from unittest import mock
 
 import pytest
 
 from rattr.analyser.context import RootContext
-from rattr.analyser.context.symbol import Call, Func, Name
+from rattr.analyser.context.symbol import Func, Name
 from rattr.analyser.file import FileAnalyser
 
 

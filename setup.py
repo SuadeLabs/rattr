@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
+
 from setuptools import find_packages, setup
 
 HERE = Path(__file__).parent.resolve()
