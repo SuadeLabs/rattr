@@ -841,7 +841,8 @@ class TestUtil:
         #   However, as this test is testing code that if checking for that
         #   exact property I see no better way of testing it -- a mock would
         #   mock away the tested feature.
-        assert is_pip_module("flask")
+        assert is_pip_module("isort")
+        assert is_pip_module("pytest")
 
         assert not is_pip_module("numpy")
         assert not is_pip_module("pandas")
