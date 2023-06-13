@@ -19,11 +19,11 @@ ignore = [
   'E741',  # Ambiguous variable name: https://beta.ruff.rs/docs/rules/ambiguous-variable-name/
   'B905',  # Zip without strict flag
   'N801',  # Class names should use the CapWords convention (clashes with TestBlah_X and TestBlah_Y)
-  'N802',  # Function name should be lowercase (FIXME: #12801)
-  'N803',  # Argument name should be lowercase (FIXME: #12802)
+  'N802',  # Function name should be lowercase
+  'N803',  # Argument name should be lowercase
   'N805',  # First argument of a method should be named `self` (abstractstaticmethod clashes with this)
   'N806',  # Variable in function should be lowercase (MyClass = type(...))
-  'N818',  # Error suffix in exception names (potentially FIXME)
+  'N818',  # Error suffix in exception names
 ]
 
 # Files
