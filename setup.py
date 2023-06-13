@@ -1,10 +1,9 @@
 from pathlib import Path
-from typing import Final
 from setuptools import find_packages, setup
 
-HERE: Final = Path(__file__).parent.resolve()
-README: Final = HERE / "README.md"
-REQUIREMENTS: Final = HERE / "requirements.txt"
+HERE = Path(__file__).parent.resolve()
+README = HERE / "README.md"
+REQUIREMENTS = HERE / "requirements.txt"
 
 
 setup(
