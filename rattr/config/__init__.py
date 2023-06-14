@@ -55,8 +55,8 @@ class Config:
     # NOTE See `util.py::enter_file`
     current_file: Optional[str] = None
 
-    # Cache file
-    cache: str = ""
+    # Results file
+    save_results: str = ""
 
 
 config = Config()

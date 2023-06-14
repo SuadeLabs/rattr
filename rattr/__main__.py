@@ -42,7 +42,7 @@ def main(arguments: Namespace) -> None:
     if config.show_stats:
         show_stats(stats)
 
-    if config.cache:
+    if config.save_results:
         write_cache(results, file_ir, imports_ir)
 
 
@@ -179,8 +179,8 @@ def show_stats(stats: RattrStats) -> None:
 
 def write_cache(results: FileResults, file_ir: FileIR, imports_ir: ImportsIR) -> None:
     """Save the file results to the file cache."""
-    if cache_is_valid(config.file, config.cache):
-        return error.rattr(f"cache for '{config.file}' is already up to date")
+    if cache_is_valid(config.file, config.save_results):
+        return error.rattr(f"results for '{config.file}' is already up to date")
 
     imports: Set[str] = set()
 
@@ -232,7 +232,7 @@ def load_config(arguments: Namespace) -> None:
     config.filter_string = arguments.filter_string
     config.file = arguments.file
 
-    config.cache = arguments.cache
+    config.save_results = arguments.save_results
 
 
 def entry_point():

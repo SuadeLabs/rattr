@@ -18,11 +18,11 @@ from rattr.analyser.results import generate_results_from_ir
 from rattr.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
 from rattr.analyser.util import LOCAL_VALUE_PREFIX, has_affect
 from rattr.cli.parser import (
-    Cache,
     ExcludeImports,
     ExcludePatterns,
     FollowImports,
     Output,
+    SaveResults,
     ShowPath,
     ShowWarnings,
     StrictOrPermissive,
@@ -687,7 +687,7 @@ def toml_dict_with_illegal_fields():
         Output.SHOW_IR_ARG_LONG_NAME: True,
         Output.SHOW_RESULTS_ARG_LONG_NAME: True,
         Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "cache.json",
+        SaveResults.ARG_LONG_NAME: "results.json",
     }
 
 
@@ -708,7 +708,7 @@ def toml_dict_with_bad_field_types_and_error1():
         Output.SHOW_IR_ARG_LONG_NAME: True,
         Output.SHOW_RESULTS_ARG_LONG_NAME: True,
         Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
+        SaveResults.ARG_LONG_NAME: "rattr/cli/parser.py",
     }, (
         f"Error parsing pyproject.toml. Arg: '{FollowImports.ARG_LONG_NAME}' "
         f"is of wrong type: 'str'. Expected type: "
@@ -733,7 +733,7 @@ def toml_dict_with_bad_field_types_and_error2():
         Output.SHOW_IR_ARG_LONG_NAME: 4,  # bad field type
         Output.SHOW_RESULTS_ARG_LONG_NAME: True,
         Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
+        SaveResults.ARG_LONG_NAME: "rattr/cli/parser.py",
     }, (
         f"Error parsing pyproject.toml. Arg: '{Output.SHOW_IR_ARG_LONG_NAME}' "
         f"is of wrong type: 'int'. Expected type: "
@@ -758,7 +758,7 @@ def toml_dict_with_bad_field_types_and_error3():
         Output.SHOW_IR_ARG_LONG_NAME: True,
         Output.SHOW_RESULTS_ARG_LONG_NAME: True,
         Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
+        SaveResults.ARG_LONG_NAME: "rattr/cli/parser.py",
     }, (
         f"Error parsing pyproject.toml. Arg: '{ExcludePatterns.ARG_LONG_NAME}' "
         f"is of wrong type: 'bool'. Expected type: "
@@ -795,7 +795,7 @@ def toml_dict_with_mutex_arg_violation_and_error1():
         StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
         Output.SHOW_IR_ARG_LONG_NAME: True,  # mutex violation
         Output.SILENT_ARG_LONG_NAME: True,  # mutex violation
-        Cache.ARG_LONG_NAME: "cache.json",
+        SaveResults.ARG_LONG_NAME: "results.json",
     }, (
         f"-irs "
         f"('--{Output.SHOW_IR_ARG_LONG_NAME}', "
@@ -823,7 +823,7 @@ def toml_dict_with_mutex_arg_violation_and_error2():
         Output.SHOW_IR_ARG_LONG_NAME: True,
         Output.SHOW_RESULTS_ARG_LONG_NAME: True,
         Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "cache.json",
+        SaveResults.ARG_LONG_NAME: "results.json",
     }, (
         f"argument --{StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME}: not allowed "
         f"with argument --{StrictOrPermissive.STRICT_ARG_LONG_NAME}"
@@ -854,7 +854,7 @@ def correct_toml_dict1():
         ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "c_.*"],
         ShowWarnings.ARG_LONG_NAME: "all",
         StrictOrPermissive.STRICT_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "cache.json",
+        SaveResults.ARG_LONG_NAME: "results.json",
     }
 
 
@@ -872,7 +872,7 @@ def correct_toml_dict2():
         ShowWarnings.ARG_LONG_NAME: "all",
         ShowPath.ARG_LONG_NAME: "full",
         StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
-        Cache.ARG_LONG_NAME: "cache.json",
+        SaveResults.ARG_LONG_NAME: "results.json",
     }
 
 
@@ -892,7 +892,7 @@ def correct_toml_dict3():
         Output.SHOW_IR_ARG_LONG_NAME: True,
         Output.SHOW_RESULTS_ARG_LONG_NAME: True,
         Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "cache.json",
+        SaveResults.ARG_LONG_NAME: "results.json",
     }
 
 

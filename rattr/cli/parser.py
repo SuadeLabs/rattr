@@ -147,7 +147,7 @@ def parse_arguments(
         ShowPath,
         StrictOrPermissive,
         Output,
-        Cache,
+        SaveResults,
     )
 
     CLI_ARG_GROUP_PARSERS = (
@@ -683,21 +683,21 @@ class File(ArgumentGroupParser):
         return arguments
 
 
-class Cache(ArgumentGroupParser):
+class SaveResults(ArgumentGroupParser):
 
-    ARG_LONG_NAME = "cache"
+    ARG_LONG_NAME = "save-results"
     TOML_ARG_NAME_ARG_TYPE_MAP = {ARG_LONG_NAME: str}
 
     def register(parser: ArgumentParser) -> ArgumentParser:
-        cache_group = parser.add_argument_group()
-        cache_group.add_argument(
-            f"--{Cache.ARG_LONG_NAME}",
+        save_results_group = parser.add_argument_group()
+        save_results_group.add_argument(
+            f"--{SaveResults.ARG_LONG_NAME}",
             default="",
             type=str,
             help=multi_paragraph_wrap(
                 """\
-                >the file to cache the results to, if successful
-                >TOML example: cache='cache.json'
+                >the json file to save the results to, if successful
+                >TOML example: save-results='results.json'
                 """
             ),
         )
@@ -705,13 +705,13 @@ class Cache(ArgumentGroupParser):
         return parser
 
     def validate(parser: ArgumentParser, arguments: Namespace) -> Namespace:
-        f = arguments.cache
+        f = arguments.save_results
         _, ext = splitext(f)
 
         if isfile(f):
             error.rattr(f"'{f}' already exists and will be overwritten on success")
 
         if f != "" and ext != ".json":
-            error.rattr(f"cache expects extension '.json', got '{ext}'")
+            error.rattr(f"save results expects extension '.json', got '{ext}'")
 
         return arguments

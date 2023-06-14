@@ -1225,5 +1225,5 @@ def create_cache(
     ]
     to_cache["results"] = deepcopy(results)
 
-    with open(config.cache, "w") as f:
+    with open(config.save_results, "w") as f:
         json.dump(to_cache, f, cls=encoder, indent=4)
