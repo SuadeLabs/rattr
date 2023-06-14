@@ -276,9 +276,9 @@ class TestUtil:
 
         assert get_xattr_obj_name_pair("getattr", xattr, True) == expected
 
-        output, _ = capfd.readouterr()
-        assert "error" in output
-        assert "expects name to be a string literal" in output
+        _, stderr = capfd.readouterr()
+        assert "error" in stderr
+        assert "expects name to be a string literal" in stderr
 
         # Illegal: mixed nested
         xattr = ast.parse("getattr(hasattr(a, 'b'), 'c')").body[0].value
@@ -286,9 +286,9 @@ class TestUtil:
         with mock.patch("sys.exit") as _exit:
             get_xattr_obj_name_pair("getattr", xattr, True)
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "object must be a name or a call to 'getattr'" in output
+        assert "object must be a name or a call to 'getattr'" in stderr
         assert _exit.call_count == 1
 
         # Illegal: expression
@@ -458,12 +458,12 @@ class TestUtil:
         fn_def = _ast.body[1]
         assert get_annotation("absent", fn_def) is None
 
-        output, _ = capfd.readouterr()  # clear output buffer
+        _, stderr = capfd.readouterr()  # clear stderr buffer
         with mock.patch("sys.exit") as _exit:
             get_annotation("present", fn_def)
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "duplicated annotation" in output
+        assert "duplicated annotation" in stderr
         assert _exit.call_count == 1
 
         # Normal
@@ -972,18 +972,18 @@ class TestUtil:
 
         assert get_function_call_args(fn_call) == (["*args"], {})
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "iterable unpacking" in output
+        assert "iterable unpacking" in stderr
 
         # fn(**kwargs)
         fn_call = ast.parse("fn(**kwargs)").body[0].value
         with mock.patch("sys.exit") as _exit:
             get_function_call_args(fn_call)
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "dictionary unpacking" in output
+        assert "dictionary unpacking" in stderr
         assert _exit.call_count == 1
 
         # SomeClass

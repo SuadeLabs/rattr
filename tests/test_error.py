@@ -13,27 +13,27 @@ class TestError:
         with mock.patch("sys.exit") as _exit:
             error.warning("culprit doesn't matter")
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "warning" in output
+        assert "warning" in stderr
         assert not _exit.called
 
     def test_error(self, capfd):
         with mock.patch("sys.exit") as _exit:
             error.error("culprit doesn't matter")
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "error" in output
+        assert "error" in stderr
         assert not _exit.called
 
     def test_fatal(self, capfd):
         with mock.patch("sys.exit") as _exit:
             error.fatal("culprit doesn't matter")
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "fatal" in output
+        assert "fatal" in stderr
         assert _exit.called and _exit.call_count == 1
 
 

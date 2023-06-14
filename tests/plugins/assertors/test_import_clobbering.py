@@ -794,7 +794,6 @@ class TestNameClobberedByMethod:
     def test_do_not_fail_on_method_name(
         self,
         parse_with_context: Callable[[str], tuple[ast.AST, Context]],
-        capfd: pytest.CaptureFixture,
     ):
         _ast, _ctx = parse_with_context(
             """
@@ -814,7 +813,6 @@ class TestNameClobberedByMethod:
     def test_do_not_fail_on_property_name(
         self,
         parse_with_context: Callable[[str], tuple[ast.AST, Context]],
-        capfd: pytest.CaptureFixture,
     ):
         _ast, _ctx = parse_with_context(
             """

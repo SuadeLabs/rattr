@@ -16,9 +16,9 @@ class TestAssertor:
         with mock.patch("sys.exit") as _exit:
             assertor.failed("the reason")
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "the reason" in output
+        assert "the reason" in stderr
         assert _exit.call_count == 1
 
     def test_assertor_not_is_strict(self, capfd):
@@ -27,9 +27,9 @@ class TestAssertor:
         with mock.patch("sys.exit") as _exit:
             assertor.failed("the reason")
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "the reason" in output
+        assert "the reason" in stderr
         assert _exit.call_count == 0
 
 

@@ -141,8 +141,8 @@ class TestContext:
         root = Context(None)
         assert root.get_call_target("anything()", None) is None
 
-        output, _ = capfd.readouterr()
-        assert "unable to resolve call" in output
+        _, stderr = capfd.readouterr()
+        assert "unable to resolve call" in stderr
 
         # Target is not "Callable"
         root = Context(None)
@@ -151,8 +151,8 @@ class TestContext:
 
         assert child.get_call_target("a()", None) == Name("a")
 
-        output, _ = capfd.readouterr()
-        assert "is not callable" in output
+        _, stderr = capfd.readouterr()
+        assert "is not callable" in stderr
 
         # Target is not "Callable" -- higher-order function
         root = Context(None)
@@ -161,8 +161,8 @@ class TestContext:
 
         root.get_call_target("a()", None)
 
-        output, _ = capfd.readouterr()
-        assert "likely a procedural parameter" in output
+        _, stderr = capfd.readouterr()
+        assert "likely a procedural parameter" in stderr
 
         # Target is not "Callable" -- higher-order function
         root = Context(None)
@@ -172,8 +172,8 @@ class TestContext:
         with config("show_low_priority_warnings", True):
             root.get_call_target("a.method()", None)
 
-        output, _ = capfd.readouterr()
-        assert "unable to resolve call to method" in output
+        _, stderr = capfd.readouterr()
+        assert "unable to resolve call to method" in stderr
 
         # Found target
         root = Context(None)
@@ -453,8 +453,8 @@ class TestRootContext_Imports:
             Import("math"),
         )
 
-        output, _ = capfd.readouterr()
-        assert "info" in output
+        _, stderr = capfd.readouterr()
+        assert "info" in stderr
 
     def test_from_import(self, parse, RootSymbolTable):
         _ast = parse(
@@ -502,8 +502,8 @@ class TestRootContext_Imports:
         assert _ctx.parent is None
         assert _ctx.symbol_table == RootSymbolTable(Import("*", "math"))
 
-        output, _ = capfd.readouterr()
-        assert "warning" in output and "*" in output
+        _, stderr = capfd.readouterr()
+        assert "warning" in stderr and "*" in stderr
 
     def test_nested_from_import(self, parse, RootSymbolTable):
         _ast = parse(
@@ -713,8 +713,8 @@ class TestRootContext_FunctionDefs:
         with mock.patch("sys.exit") as _exit:
             RootContext(_ast)
 
-        output, _ = capfd.readouterr()
-        assert "top-level lambdas must be named" in output
+        _, stderr = capfd.readouterr()
+        assert "top-level lambdas must be named" in stderr
         assert _exit.called
 
     def test_lambda_named(self, parse, RootSymbolTable, capfd):
@@ -745,8 +745,8 @@ class TestRootContext_FunctionDefs:
         with mock.patch("sys.exit") as _exit:
             RootContext(_ast)
 
-        output, _ = capfd.readouterr()
-        assert "lambda assignment must be one-to-one" in output
+        _, stderr = capfd.readouterr()
+        assert "lambda assignment must be one-to-one" in stderr
         assert _exit.called
 
         # Bad: Multiple LHS
@@ -759,8 +759,8 @@ class TestRootContext_FunctionDefs:
         with mock.patch("sys.exit") as _exit:
             RootContext(_ast)
 
-        output, _ = capfd.readouterr()
-        assert "lambda assignment must be one-to-one" in output
+        _, stderr = capfd.readouterr()
+        assert "lambda assignment must be one-to-one" in stderr
         assert _exit.called
 
         # Bad: Multiple RHS
@@ -773,8 +773,8 @@ class TestRootContext_FunctionDefs:
         with mock.patch("sys.exit") as _exit:
             RootContext(_ast)
 
-        output, _ = capfd.readouterr()
-        assert "lambda assignment must be one-to-one" in output
+        _, stderr = capfd.readouterr()
+        assert "lambda assignment must be one-to-one" in stderr
         assert _exit.called
 
 
@@ -1063,8 +1063,8 @@ class TestRootContext_Ignored:
         assert _ctx.parent is None
         assert _ctx.symbol_table == RootSymbolTable()
 
-        output, _ = capfd.readouterr()
-        assert output == ""
+        _, stderr = capfd.readouterr()
+        assert stderr == ""
 
 
 class TestRootContext:
@@ -1105,6 +1105,6 @@ class TestRootContext:
         # NOTE `a_module` and `another_module` don't exist
         assert _exit.call_count == 2
 
-        output, _ = capfd.readouterr()
-        assert "unable to find module 'a_module'" in output
-        assert "unable to find module 'another_module'" in output
+        _, stderr = capfd.readouterr()
+        assert "unable to find module 'a_module'" in stderr
+        assert "unable to find module 'another_module'" in stderr

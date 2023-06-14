@@ -123,8 +123,8 @@ class TestIrDag_Utils:
 
         assert get_callee_target(call, {}, imports_ir) == (None, None)
 
-        output, _ = capfd.readouterr()
-        assert "unable to resolve call to 'nope' in import" in output
+        _, stderr = capfd.readouterr()
+        assert "unable to resolve call to 'nope' in import" in stderr
 
         # Callee module and target not found
         _i = Import("nah", "noway.nah")
@@ -323,9 +323,9 @@ class TestIrDag_Utils:
 
         assert construct_swap(fn_def, fn_call) == expected
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert "unexpected named arguments" in output
+        assert "unexpected named arguments" in stderr
 
         # Provide as positional and named
         fn_def = Func("fn", ["a"], None, None)
@@ -455,9 +455,9 @@ class TestIrDagNode:
         A.populate()
         A.simplify()
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert output == ""
+        assert stderr == ""
 
     def test_populate_on_stdlib(self, capfd):
         fn_a = Func("fn_a", ["a"], None, None)
@@ -477,9 +477,9 @@ class TestIrDagNode:
         A = IrDagNode(None, fn_a, fn_a_ir, file_ir, dict())
         A.populate()
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert output == ""
+        assert stderr == ""
 
     def test_populate_ignore_builtins(self, capfd):
         fn_a = Func("fn_a", ["a"], None, None)
@@ -499,9 +499,9 @@ class TestIrDagNode:
         A = IrDagNode(None, fn_a, fn_a_ir, file_ir, dict())
         A.populate()
 
-        output, _ = capfd.readouterr()
+        _, stderr = capfd.readouterr()
 
-        assert output == ""
+        assert stderr == ""
 
     def test_populate_ignore_seen(self):
         fn_a = Func("fn_a", ["a"], None, None)

@@ -202,8 +202,8 @@ class TestRegression:
 
         assert results == expected
 
-        output, _ = capfd.readouterr()
-        assert "likely a procedural parameter" in output
+        _, stderr = capfd.readouterr()
+        assert "likely a procedural parameter" in stderr
 
         # Procedural return value
         _ast = parse(
@@ -238,8 +238,8 @@ class TestRegression:
 
         assert results == expected
 
-        output, _ = capfd.readouterr()
-        assert "unable to resolve call result of call" in output
+        _, stderr = capfd.readouterr()
+        assert "unable to resolve call result of call" in stderr
 
         # Local function
         # Technically not higher-order, but w/e
@@ -296,8 +296,8 @@ class TestRegression:
 
         assert results == expected
 
-        output, _ = capfd.readouterr()
-        assert "likely a procedural parameter" in output
+        _, stderr = capfd.readouterr()
+        assert "likely a procedural parameter" in stderr
 
     def test_regression_generator_iterable_is_literal(self, parse):
         # List of many

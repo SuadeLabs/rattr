@@ -252,7 +252,8 @@ def __log(
             optional_file_info=file_info,
             optional_line_info=line_info,
             message=message,
-        )
+        ),
+        file=sys.stderr,
     )
 
 

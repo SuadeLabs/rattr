@@ -800,8 +800,8 @@ class TestFunctionAnalyser:
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
-        output, _ = capfd.readouterr()
-        assert "unable to unbind lambdas defined in functions" in output
+        _, stderr = capfd.readouterr()
+        assert "unable to unbind lambdas defined in functions" in stderr
 
         a_func = Func("fn", ["arg"], None, None)
         expected = {
