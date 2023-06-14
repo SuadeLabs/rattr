@@ -7,7 +7,6 @@ import hashlib
 import json
 import re
 import sys
-from contextlib import contextmanager
 from copy import deepcopy
 from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
@@ -18,7 +17,6 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Generator,
     Iterable,
     List,
     Optional,
@@ -717,15 +715,6 @@ def get_starred_imports(
         starred.append(symbol)
 
     return starred
-
-
-@contextmanager
-def enter_file(new_file: str) -> Generator:
-    """Set `config.current_file` for the scope of a context."""
-    old_file = config.current_file
-    config.current_file = new_file
-    yield
-    config.current_file = old_file
 
 
 def get_function_body(node: AnyFunctionDef) -> List[ast.stmt]:

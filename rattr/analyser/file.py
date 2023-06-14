@@ -16,7 +16,6 @@ from rattr.analyser.types import AnyAssign, AnyFunctionDef, FileIR, ImportsIR
 from rattr.analyser.util import (
     Changes,
     assignment_is_one_to_one,
-    enter_file,
     get_assignment_targets,
     get_contained_walruses,
     get_fullname,
@@ -31,6 +30,7 @@ from rattr.analyser.util import (
     read,
     timer,
 )
+from rattr.config.state import enter_file
 from rattr.plugins import plugins
 
 RattrStats = namedtuple(

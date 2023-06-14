@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 
 from rattr import error
-from rattr.analyser.util import enter_file
+from rattr.config.state import enter_file
 
 
 class TestError:

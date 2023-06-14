@@ -33,7 +33,6 @@ from rattr.analyser.util import (
     PYTHON_BUILTINS,
     Changes,
     assignment_is_one_to_one,
-    enter_file,
     get_absolute_module_name,
     get_assignment_targets,
     get_contained_walruses,
@@ -52,6 +51,7 @@ from rattr.analyser.util import (
     remove_call_brackets,
     unravel_names,
 )
+from rattr.config.state import enter_file
 
 _Context = TypeVar("_Context", bound="Context")
 
