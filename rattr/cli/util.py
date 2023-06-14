@@ -4,6 +4,7 @@ from shutil import get_terminal_size
 from textwrap import dedent, fill
 
 _terminal_width = get_terminal_size(fallback=(80, 32)).columns
+_terminal_width_minus_argparse_indent = _terminal_width - 24
 
 
 def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
@@ -33,7 +34,10 @@ def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
     """
 
     if width is None:
-        width = _terminal_width
+        if _terminal_width_minus_argparse_indent >= 32:
+            width = _terminal_width_minus_argparse_indent
+        else:
+            width = _terminal_width
 
     def _preserve(text: str) -> str:
         lines = list()
