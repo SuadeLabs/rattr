@@ -92,7 +92,10 @@ def skip_test_items_with_mark_if_not_explicitly_given(
 def is_pypy():
     """Return `True` if running under pypy."""
     try:
-        import __pypy__  # noqa: F401
+        # NOTE We can't have a `pyright` and `ruff` ignore on one line...
+        import __pypy__  # type: ignore reportMissingImports
+
+        __pypy__  # noqa: B018
 
         return True
     except ModuleNotFoundError:
