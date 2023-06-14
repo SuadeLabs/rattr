@@ -1,23 +1,39 @@
-"""Rattr CLI parser util functions."""
 from __future__ import annotations
 
-from argparse import Namespace
+from shutil import get_terminal_size
 from textwrap import dedent, fill
-from typing import Any, Dict
+
+_terminal_width = get_terminal_size(fallback=(80, 32)).columns
 
 
-def multi_paragraph_wrap(text: str, width: int = 80) -> str:
-    """Return the text dedented and wrapped at 70 characters.
+def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
+    """Return the given text dedented and wrapped.
 
-    Assumes that paragraphs are separated by a double newline, with single
-    newlines being removed.
+    Args:
+        text (str):
+            The text to wrap.
+        width (int | None, optional):
+            The line width to wrap to. On `None` this will attempt to determine the
+            current terminal width (with a fallback of 80 chars).
 
-    Paragraphs whose lines begin with ">" have their singlelines and relative
-    indentation preserved. Furthermore, the string "# noqa" (and any preceding
-    whitespace) is removed from the end of the lines, if present, allowing for
-    linter complaints to be ignored while preserving formatting for long lines.
+    Raises:
+        SyntaxError: Preserved line is missing `">"`.
 
+    Note:
+        Assumes that paragraphs are separated by a double newline, with single newlines
+        being removed.
+
+        Paragraphs whose lines begin with ">" are not wrapped and have their relative
+        indentation preserved. Furthermore, the string "# noqa" (and any preceding
+        whitespace) is removed from the end of the lines, if present, allowing for
+        linter complaints to be ignored while preserving formatting for long lines.
+
+    Returns:
+        str: The formatted text.
     """
+
+    if width is None:
+        width = _terminal_width
 
     def _preserve(text: str) -> str:
         lines = list()
@@ -47,8 +63,3 @@ def multi_paragraph_wrap(text: str, width: int = 80) -> str:
             paragraphs.append(_paragraph(p))
 
     return "\n\n".join(p for p in paragraphs)
-
-
-def namespace_to_dict(arguments: Namespace) -> Dict[str, Any]:
-    """Return the given arguments as a dictionary."""
-    return {k: v for k, v in arguments._get_kwargs()}

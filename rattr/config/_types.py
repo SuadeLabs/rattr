@@ -3,7 +3,10 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from enum import Enum, IntFlag, auto
+from functools import cached_property
 from pathlib import Path
+
+from config.util import find_project_root, find_pyproject_toml
 
 
 class FollowImports(IntFlag):
@@ -69,9 +72,9 @@ class State:
         return self.current_file is not None
 
 
-
 class ConfigMetaclass(type):
     """Metaclass allowing `Config` to act as a singleton."""
+
     _instance: Config | None = None
 
     def __call__(cls, *args, **kwargs):
@@ -83,5 +86,14 @@ class ConfigMetaclass(type):
 @dataclass
 class Config(metaclass=ConfigMetaclass):
     """The global config singleton."""
+
     cli: CliArguments
     state: State
+
+    @cached_property
+    def project_root(self) -> Path:
+        return find_project_root()
+
+    @cached_property
+    def pyproject_toml(self) -> Path | None:
+        return find_pyproject_toml()

@@ -10,8 +10,9 @@ from tomli import TOMLDecodeError
 
 from rattr import _version, error
 from rattr.cli.argparse import _ArgumentParser as ArgumentParser
-from rattr.cli.toml_parser import find_project_toml, load_cfg_from_project_toml
+from rattr.cli.toml import parse_toml
 from rattr.cli.util import multi_paragraph_wrap
+from rattr.config import Config
 
 
 def translate_toml_cfg_to_sys_args(toml_cfg: Dict[str, Any]) -> List[str]:
@@ -75,6 +76,26 @@ def get_toml_override(
         return None
 
     return config
+
+
+def parse_project_toml(
+    cli_parser: ArgumentParser,
+    sys_args: Optional[List[str]] = None,
+    *,
+    default: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Return the parsed project toml."""
+    toml_config_override = get_toml_override(cli_parser, sys_args)
+
+    if toml_config_override:
+        project_toml = toml_config_override
+    else:
+        project_toml = Config().pyproject_toml
+
+    if project_toml:
+        return parse_toml(project_toml)
+
+    return default
 
 
 def parse_arguments(
@@ -174,21 +195,13 @@ def parse_arguments(
             arg_group_parser.TOML_ARG_NAME_ARG_TYPE_MAP.keys()
         )
 
-    toml_config_override = get_toml_override(cli_parser, sys_args)
-
-    if toml_config_override is not None:
-        project_toml_cfg = load_cfg_from_project_toml(toml_config_override)
-
     if project_toml_cfg is None:
         try:
-            toml_cfg_path = find_project_toml()
-            project_toml_cfg = load_cfg_from_project_toml(toml_cfg_path=toml_cfg_path)
-        except TOMLDecodeError as e:
+            project_toml_cfg = parse_project_toml(cli_parser, sys_args, default={})
+        except TOMLDecodeError as toml_error:
             if exit_on_error:
-                error.fatal(
-                    f"Error decoding pyproject.toml file: {toml_cfg_path}. Error: {e}."
-                )
-            raise e
+                error.error(f"error reading toml: {toml_error}")
+            raise toml_error
 
     # only keep expected fields in toml cfg dict
     project_toml_cfg = {
