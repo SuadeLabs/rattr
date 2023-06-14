@@ -6,11 +6,9 @@ from os.path import isfile, splitext
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from tomli import TOMLDecodeError
-
 from rattr import _version, error
 from rattr.cli.argparse import _ArgumentParser as ArgumentParser
-from rattr.cli.toml import parse_toml
+from rattr.cli.toml import TOMLDecodeError, parse_toml
 from rattr.cli.util import multi_paragraph_wrap
 from rattr.config import Config
 
