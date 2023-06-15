@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 import sys
 from contextlib import contextmanager
@@ -58,7 +60,7 @@ def filter_marked(items: Iterable, mark: str, condition: bool):
 def is_pypy():
     """Return `True` if running under pypy."""
     try:
-        import __pypy__
+        import __pypy__  # noqa: F401
 
         return True
     except ModuleNotFoundError:

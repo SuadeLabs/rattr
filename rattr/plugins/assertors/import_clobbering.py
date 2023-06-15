@@ -1,4 +1,5 @@
 """Assert that there are no assignment to names that identify imports."""
+from __future__ import annotations
 
 import ast
 from typing import List, Union

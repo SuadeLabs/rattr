@@ -1,4 +1,6 @@
 """Rattr functions for producing and displaying results."""
+from __future__ import annotations
+
 import json
 
 from rattr.analyser.context import Symbol

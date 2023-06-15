@@ -1,13 +1,11 @@
 """Rattr Base class tests."""
+from __future__ import annotations
 
 from unittest import mock
 
 import pytest
 
-from rattr.analyser.base import (  # CustomFunctionAnalyser,
-    Assertor,
-    CustomFunctionHandler,
-)
+from rattr.analyser.base import Assertor, CustomFunctionHandler
 from rattr.analyser.context.symbol import Call, Import, Name
 
 

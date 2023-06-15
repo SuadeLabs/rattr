@@ -4,6 +4,7 @@ Rattr is designed to be a function analyser and thus the class-based features
 are rather limited.
 
 """
+from __future__ import annotations
 
 import ast
 from typing import List
@@ -15,9 +16,9 @@ from rattr.analyser.function import FunctionAnalyser
 from rattr.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
+    AstNamedExpr,
     ClassIR,
     FunctionIR,
-    ast_NamedExpr,
 )
 from rattr.analyser.util import (
     get_assignment_targets,
@@ -212,5 +213,5 @@ class ClassAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: ast_NamedExpr) -> None:
+    def visit_NamedExpr(self, node: AstNamedExpr) -> None:
         self.visit_AnyAssign(node)

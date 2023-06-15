@@ -1,4 +1,5 @@
 """Annotations to be imported for use by Rattr analysed code."""
+from __future__ import annotations
 
 from typing import Dict, List, Optional, Set, Tuple
 

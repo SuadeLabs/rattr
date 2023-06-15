@@ -1,4 +1,6 @@
-from rattr.error.error import (  # noqa
+from __future__ import annotations
+
+from rattr.error.error import (  # noqa: F401
     RattrBinOpInNameable,
     RattrComprehensionInNameable,
     RattrConstantInNameable,

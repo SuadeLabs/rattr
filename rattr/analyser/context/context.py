@@ -8,6 +8,7 @@ The root context of a file contains, amongst other things, the Python builtin
 functions such as `print`, etc.
 
 """
+from __future__ import annotations
 
 import ast
 from contextlib import contextmanager
@@ -27,7 +28,7 @@ from rattr.analyser.context.symbol import (
     get_possible_module_names,
 )
 from rattr.analyser.context.symbol_table import SymbolTable
-from rattr.analyser.types import AnyAssign, Constant, Literal, ast_NamedExpr
+from rattr.analyser.types import AnyAssign, AstNamedExpr, Constant, Literal
 from rattr.analyser.util import (
     PYTHON_BUILTINS,
     Changes,
@@ -329,7 +330,7 @@ class RootContext(Context):
         "__spec__",
     ]
 
-    def __new__(self, module: ast.Module) -> Any:  # Context, make mypy happy
+    def __new__(cls, module: ast.Module) -> Any:  # Context, make mypy happy
         if not isinstance(module, ast.Module):
             raise TypeError("The root context can only exist for a module")
 
@@ -509,7 +510,7 @@ class RootContext(Context):
             node,
         )
 
-    def register_NamedExpr(self, node: ast_NamedExpr) -> None:
+    def register_NamedExpr(self, node: AstNamedExpr) -> None:
         RootContext.register_AnyAssign(self, node)
 
     # ----------------------------------------------------------------------- #

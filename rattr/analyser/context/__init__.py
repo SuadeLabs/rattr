@@ -1,5 +1,7 @@
-from rattr.analyser.context.context import Context  # noqa: F401
+from __future__ import annotations
+
 from rattr.analyser.context.context import (  # noqa: F401
+    Context,
     RootContext,
     new_context,
 )

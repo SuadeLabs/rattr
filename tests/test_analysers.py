@@ -1,8 +1,5 @@
 """Tests shared across multiple analysers."""
-
-from unittest import mock
-
-import pytest
+from __future__ import annotations
 
 from rattr.analyser.context import RootContext
 from rattr.analyser.context.symbol import Call, Func, Name

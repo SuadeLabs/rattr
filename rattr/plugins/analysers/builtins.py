@@ -1,4 +1,5 @@
 """CustomFunctionAnalyser for Python's builtin functions."""
+from __future__ import annotations
 
 import ast
 

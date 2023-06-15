@@ -1,4 +1,5 @@
 """Rattr types."""
+from __future__ import annotations
 
 import ast
 import json
@@ -106,10 +107,10 @@ class _TypeNotInPythonVersion:
 
 # Walrus operator typing
 if sys.version_info.major == 3 and sys.version_info.minor >= 8:
-    ast_NamedExpr: Type[ast.NamedExpr] = ast.NamedExpr
+    AstNamedExpr: Type[ast.NamedExpr] = ast.NamedExpr
     AnyAssign = Union[ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr]
 else:
-    ast_NamedExpr = _TypeNotInPythonVersion
+    AstNamedExpr = _TypeNotInPythonVersion
 
 # --------------------------------------------------------------------------- #
 # Results and intermediate representation (IR)

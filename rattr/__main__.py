@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Rattr entry point."""
+from __future__ import annotations
 
 import json
 from math import log10

@@ -1,4 +1,5 @@
 """Represent the IR of functions as a DAG, for simplification."""
+from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
