@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import sys
 from contextlib import contextmanager
+from importlib.util import find_spec
 from os.path import dirname, join
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -92,15 +93,7 @@ def skip_test_items_with_mark_if_not_explicitly_given(
 
 def is_pypy():
     """Return `True` if running under pypy."""
-    try:
-        # NOTE We can't have a `pyright` and `ruff` ignore on one line...
-        import __pypy__  # type: ignore reportMissingImports
-
-        __pypy__  # noqa: B018
-
-        return True
-    except ModuleNotFoundError:
-        return False
+    return find_spec("__pypy__") is not None
 
 
 def is_python_3_8_plus():
