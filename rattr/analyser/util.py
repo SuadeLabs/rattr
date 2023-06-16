@@ -7,7 +7,6 @@ import hashlib
 import json
 import re
 import sys
-from copy import deepcopy
 from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
 from os.path import isfile
@@ -28,7 +27,7 @@ from typing import (
 
 from isort.api import place_module
 
-from rattr import config, error
+from rattr import error
 from rattr.analyser.context.symbol import (
     Class,
     Import,
@@ -43,13 +42,13 @@ from rattr.analyser.types import (
     AstDef,
     Comprehension,
     Constant,
-    FileResults,
     FuncOrAsyncFunc,
     FunctionIR,
     Literal,
     Nameable,
     StrictlyNameable,
 )
+from rattr.config import Config
 
 # The prefix given to local constants, literals, etc to produce a name
 # E.g. "hi" -> get_basename_fullname_pair(.) = "@Str"
@@ -527,14 +526,16 @@ def parse_rattr_results_from_annotation(fn_def: AnyFunctionDef, context) -> Func
 
 def is_blacklisted_module(module: str) -> bool:
     """Return `True` if the given module matches a blacklisted pattern."""
+    config = Config()
+
     # Exclude stdlib modules such as the built-in "_thread"
     if is_stdlib_module(module):
         return False
 
-    # Allow user specified exclusions via CLI
-    blacklist = set.union(MODULE_BLACKLIST_PATTERNS, config.excluded_imports)
-
-    return any(re.fullmatch(p, module) for p in blacklist)
+    return any(
+        re.fullmatch(p, module)
+        for p in MODULE_BLACKLIST_PATTERNS | config.arguments.excluded_imports
+    )
 
 
 def is_pip_module(module: str) -> bool:
@@ -972,7 +973,10 @@ def module_name_from_file_path(file: str) -> Optional[str]:
 
 def get_absolute_module_name(base: str, level: int, target: str) -> str:
     """Return the absolute import for the given relative import."""
-    level -= int(config.current_file.endswith("__init__.py"))
+    config = Config()
+
+    if config.state.current_file.name == "__init__.py":
+        level -= 1
 
     if level > 0:
         new_base = ".".join(base.split(".")[:-level])
@@ -1006,25 +1010,11 @@ def get_function_form(node: AnyFunctionDef) -> str:
     return f"'{node.name}({', '.join(arguments)})'"
 
 
-def re_filter_ir(d: Dict[Symbol, Any], filter_by: str) -> Dict[str, Any]:
-    """Return the given dict filtered by the given regular expression."""
-    if not filter_by:
-        return d
-
-    return {f: d[f] for f in filter(lambda f: re.fullmatch(filter_by, f.name), d)}
-
-
-def re_filter_results(d: Dict[str, Any], filter_by: str) -> Dict[str, Any]:
-    """Return the given dict filtered by the given regular expression."""
-    if not filter_by:
-        return d
-
-    return {f: d[f] for f in filter(lambda f: re.fullmatch(filter_by, f), d)}
-
-
 def is_excluded_name(name: str) -> bool:
     """Return `True` if the given name is in the exclude list."""
-    return any(re.fullmatch(x, name) for x in config.excluded_names)
+    config = Config()
+
+    return any(re.fullmatch(x, name) for x in config.arguments.excluded_names)
 
 
 def is_method_on_constant(name: str) -> bool:
@@ -1172,47 +1162,3 @@ def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
             return False
 
     return True
-
-
-def create_cache(
-    results: FileResults, imports: Set[str], encoder: json.JSONEncoder
-) -> None:
-    """Create a the cache and write it to the cache file.
-
-    NOTE:
-        The attribute `imports` should hold the file name of every directly and
-        indirectly imported source code file.
-
-    Cache file format (JSON):
-    {
-        "filepath": ...,    # the file the results belong to
-        "filehash": ...,    # the MD5 hash of the file when it was cached
-
-        "imports": [
-            {"filename": ..., "filehash": ...,},
-        ]
-
-        "results":
-            # For each function in the file:
-            "function_name": {
-                "sets"  : ["obj.attr", ...],
-                "gets"  : ["obj.attr", ...],
-                "dels"  : ["obj.attr", ...],
-                "calls" : ["obj.attr", ...],
-            },
-            ...
-        }
-    }
-
-    """
-    to_cache = dict()
-
-    to_cache["filepath"] = config.file
-    to_cache["filehash"] = get_file_hash(config.file)
-    to_cache["imports"] = [
-        {"filepath": file, "filehash": get_file_hash(file)} for file in imports
-    ]
-    to_cache["results"] = deepcopy(results)
-
-    with open(config.save_results, "w") as f:
-        json.dump(to_cache, f, cls=encoder, indent=4)

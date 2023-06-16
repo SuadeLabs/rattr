@@ -6,10 +6,10 @@ from contextlib import contextmanager
 from os.path import dirname, join
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest import mock
 
 import pytest
 
-import rattr
 from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
 from rattr.analyser.context import Context, RootContext
 from rattr.analyser.context.symbol import Builtin, Call, Name, Symbol
@@ -27,6 +27,7 @@ from rattr.cli.parser import (
     ShowWarnings,
     StrictOrPermissive,
 )
+from rattr.config import Arguments, Config, Output, State
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -111,6 +112,27 @@ def is_python_3_8_plus():
         return True
     else:
         return False
+
+
+@pytest.fixture(scope="session", autouse=True)
+@mock.patch("rattr.config._types.validate_arguments", lambda args: args)
+def setup_config():
+    Config(
+        arguments=Arguments(
+            pyproject_toml_override=None,
+            _follow_imports_level=1,
+            _excluded_imports=set(),
+            _excluded_names=set(),
+            _warning_level="default",
+            _collapse_home=True,
+            _truncate_deep_paths=True,
+            is_strict=False,
+            threshold=0,
+            stdout=Output.results,
+            target=Path(),
+        ),
+        state=State(),
+    )
 
 
 @pytest.fixture
@@ -235,16 +257,35 @@ def run_in_permissive_mode(config) -> None:
 
 
 @pytest.fixture
-def config():
+def argument():
     @contextmanager
     def _inner(attr, value):
-        if not hasattr(rattr.config, attr):
+        arguments = Config().arguments
+
+        if not hasattr(arguments, attr):
             raise AttributeError
 
-        _previous = getattr(rattr.config, attr)
-        setattr(rattr.config, attr, value)
+        _previous = getattr(arguments, attr)
+        setattr(arguments, attr, value)
         yield
-        setattr(rattr.config, attr, _previous)
+        setattr(arguments, attr, _previous)
+
+    return _inner
+
+
+@pytest.fixture
+def state():
+    @contextmanager
+    def _inner(attr, value):
+        state = Config().state
+
+        if not hasattr(state, attr):
+            raise AttributeError
+
+        _previous = getattr(state, attr)
+        setattr(state, attr, value)
+        yield
+        setattr(state, attr, _previous)
 
     return _inner
 

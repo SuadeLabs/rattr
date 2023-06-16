@@ -5,7 +5,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from rattr import config, error
+from rattr import error
 from rattr.analyser.context import (
     Builtin,
     Call,
@@ -24,19 +24,17 @@ from rattr.analyser.util import (
     module_name_from_file_path,
     remove_call_brackets,
 )
+from rattr.config import Config
 
 
 def __prefix(func: Func) -> str:
     """HACK We no longer have `culprit` so manually construct prefix."""
+    config = Config()
+
     if func is None:
         return ""
 
-    if func.defined_in is not None and config.show_path:
-        file = error.format_path(func.defined_in)
-    else:
-        file = ""
-
-    return "\033[1m{}:\033[0m".format(file)
+    return "\033[1m{}:\033[0m".format(config.get_formatted_path(func.defined_in))
 
 
 def __resolve_target_and_ir(
@@ -115,6 +113,7 @@ def resolve_import(
 ) -> Union[Tuple[None, None], Tuple[Func, FunctionIR]]:
     """Return the `Func` and IR for the given import."""
     _where = __prefix(caller)
+    config = Config()
 
     module = target.module_name
     module_ir: FileIR = imports_ir.get(module, None)
@@ -124,18 +123,18 @@ def resolve_import(
     if is_blacklisted_module(module):
         return None, None
 
-    if not config.follow_imports:
+    if not config.arguments.follow_imports:
         error.info(f"{_where} ignoring call to imported function '{target.name}'")
         return None, None
 
-    if not config.follow_pip_imports and is_pip_module(module):
+    if not config.arguments.follow_pip_imports and is_pip_module(module):
         error.info(
             f"{_where} ignoring call to function '{target.name}' imported "
             f"from pip installed module '{module}'"
         )
         return None, None
 
-    if not config.follow_stdlib_imports and is_stdlib_module(module):
+    if not config.arguments.follow_stdlib_imports and is_stdlib_module(module):
         error.info(
             f"{_where} ignoring call to function '{target.name}' imported "
             f"from stdlib module '{module}'"

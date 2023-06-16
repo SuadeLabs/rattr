@@ -2,23 +2,21 @@ from __future__ import annotations
 
 # isort: off
 from ._types import (
-    CliArguments,
+    Arguments,
     Config,
     FollowImports,
     Output,
-    Permissiveness,
-    ShowPath,
+    FormatPath,
     ShowWarnings,
     State,
 )
 
 __all__ = [
-    "CliArguments",
+    "Arguments",
     "Config",
     "FollowImports",
     "Output",
-    "Permissiveness",
-    "ShowPath",
+    "FormatPath",
     "ShowWarnings",
     "State",
 ]

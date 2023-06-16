@@ -7,7 +7,7 @@ from copy import deepcopy
 from dataclasses import replace as copy_dataclass
 from typing import List, NamedTuple, Set, Tuple
 
-from rattr import config, error
+from rattr import error
 from rattr.analyser.base import NodeVisitor
 from rattr.analyser.cls import ClassAnalyser
 from rattr.analyser.context import Context, Func, Import, RootContext
@@ -30,6 +30,7 @@ from rattr.analyser.util import (
     read,
     timer,
 )
+from rattr.config import Config
 from rattr.config.state import enter_file
 from rattr.plugins import plugins
 
@@ -60,7 +61,9 @@ ImportStats = namedtuple(
 
 def parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
     """Parse and analyse `config.file`."""
-    with enter_file(config.file):
+    config = Config()
+
+    with enter_file(config.arguments.target):
         file_ir, imports_ir, stats = __parse_and_analyse_file()
 
     return file_ir, imports_ir, stats
@@ -68,7 +71,9 @@ def parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
 
 def __parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
     """Parse and analyse the given file contents."""
-    with timer() as parse_timer, read(config.file) as (file_lines, source):
+    config = Config()
+
+    with timer() as parse_timer, read(config.arguments.target) as (file_lines, source):
         _ast = ast.parse(source)
 
     with timer() as root_context_timer:
@@ -79,7 +84,7 @@ def __parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
             assertor.assert_holds(_ast, deepcopy(context))
 
     with timer() as analyse_imports_timer:
-        if config.follow_imports:
+        if config.arguments.follow_imports:
             symbols = context.symbol_table.symbols()
             imports = [s for s in symbols if isinstance(s, Import)]
             imports_ir, import_stats = parse_and_analyse_imports(imports)
@@ -112,6 +117,8 @@ def parse_and_analyse_imports(imports: List[Import]) -> Tuple[ImportsIR, ImportS
     graph of imports becomes a DAG which we BFS.
 
     """
+    config = Config()
+
     n_lines: int = 0
     n_imports: int = 0
     imports_ir: ImportsIR = dict()
@@ -138,10 +145,10 @@ def parse_and_analyse_imports(imports: List[Import]) -> Tuple[ImportsIR, ImportS
         if is_blacklisted_module(module_name):
             continue
 
-        if not config.follow_pip_imports and is_pip_module(module_name):
+        if not config.arguments.follow_pip_imports and is_pip_module(module_name):
             continue
 
-        if not config.follow_stdlib_imports and is_stdlib_module(module_name):
+        if not config.arguments.follow_stdlib_imports and is_stdlib_module(module_name):
             continue
 
         with read(module_path) as (file_lines, source):

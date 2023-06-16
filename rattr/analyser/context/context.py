@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from dataclasses import replace as copy_dataclass
 from typing import Any, Generator, Iterable, Optional, Set, TypeVar, Union
 
-from rattr import config, error
+from rattr import error
 from rattr.analyser.context.symbol import (
     Builtin,
     CallTarget,
@@ -51,6 +51,7 @@ from rattr.analyser.util import (
     remove_call_brackets,
     unravel_names,
 )
+from rattr.config import Config
 from rattr.config.state import enter_file
 
 _Context = TypeVar("_Context", bound="Context")
@@ -80,9 +81,11 @@ class Context:
     """
 
     def __init__(self, parent: Optional[_Context]) -> None:
+        config = Config()
+
         self.parent = parent
         self.symbol_table = SymbolTable()
-        self.file = config.current_file
+        self.file = config.state.current_file
 
     def add(self, symbol: Symbol, is_argument: bool = False) -> None:
         """Add the given symbol to the context.
@@ -403,6 +406,8 @@ class RootContext(Context):
 
     def register_starred_import(self, node: ast.ImportFrom) -> None:
         """Helper method for starred imports."""
+        config = Config()
+
         if self.file is None or not self.file.endswith("__init__.py"):
             error.warning(
                 f"do not use 'from {node.module} import *', be explicit", node
@@ -412,7 +417,7 @@ class RootContext(Context):
 
         # Allow starred imports to be relative
         if node.level > 0:
-            base = module_name_from_file_path(config.current_file)
+            base = module_name_from_file_path(config.state.current_file)
             module = get_absolute_module_name(base, node.level, node.module)
 
             if get_module_name_and_spec(module) == (None, None):
@@ -422,7 +427,9 @@ class RootContext(Context):
 
     def register_relative_import(self, node: ast.ImportFrom) -> None:
         """Helper method for relative imports."""
-        base = module_name_from_file_path(config.current_file)
+        config = Config()
+
+        base = module_name_from_file_path(config.state.current_file)
 
         if base is None:
             error.fatal("unable to resolve parent in relative import", node)

@@ -14,7 +14,7 @@ from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
 from typing import Dict, List, Optional, Tuple, Union
 
-from rattr import config
+from rattr.config import Config
 
 
 @dataclass
@@ -75,7 +75,7 @@ class Func(Symbol):
     defined_in: Optional[str] = None
 
     def __post_init__(self) -> None:
-        self.defined_in = config.current_file
+        self.defined_in = Config().state.current_file
 
     def __hash__(self) -> int:
         return hash(repr(self))
@@ -98,7 +98,7 @@ class Class(Symbol):
     defined_in: Optional[str] = None
 
     def __post_init__(self) -> None:
-        self.defined_in = config.current_file
+        self.defined_in = Config().state.current_file
 
     def __hash__(self) -> int:
         return hash(repr(self))

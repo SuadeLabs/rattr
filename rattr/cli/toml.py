@@ -12,7 +12,7 @@ else:
     from tomli import TOMLDecodeError  # noqa: F401
 
 if TYPE_CHECKING:
-    from typing import Any, Dict
+    from typing import Any, Dict, Optional
 
 
 # HACK Wrap `tomllib.loads` to handle type hinting on different python versions
@@ -36,3 +36,19 @@ def parse_toml(config_path: Path) -> Dict[str, Any]:
         cleaned_cfg[k] = v
 
     return cleaned_cfg
+
+
+def parse_project_toml(
+    pyproject_toml: Optional[Path],
+    project_toml_override: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Return the parsed project toml."""
+    if project_toml_override:
+        project_toml = project_toml_override
+    else:
+        project_toml = pyproject_toml
+
+    if project_toml:
+        return parse_toml(project_toml)
+
+    return {}
