@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -67,3 +68,35 @@ def validate_arguments(arguments: Arguments) -> Arguments:
         )
 
     return arguments
+
+
+def find_xdg_cache_dir() -> Path:
+    """Return the $XDG_CACHE_DIR.
+
+    This is from the XDG Base Dir spec[1,2] which is standard on Linux.
+
+    [1] - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    [2] - https://wiki.archlinux.org/title/XDG_Base_Directory
+    """
+    user_xdg_cache_home = os.environ.get("XDG_CACHE_HOME", None)
+
+    default_xdg_cache_dir = Path.home() / ".cache"
+    default_xdg_cache_origin = "$HOME/.cache"
+
+    if user_xdg_cache_home is not None:
+        cache_dir = Path(user_xdg_cache_home)
+        origin = "$XDG_CACHE_HOME"
+    else:
+        cache_dir = default_xdg_cache_dir
+        origin = default_xdg_cache_origin
+
+    if not cache_dir.is_dir():
+        try:
+            cache_dir.mkdir(parents=True)
+        except PermissionError:
+            error.fatal(
+                f"unable to create cache directory {origin} ({str(cache_dir)}): "
+                f"permission denied"
+            )
+
+    return cache_dir

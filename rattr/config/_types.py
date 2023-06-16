@@ -7,7 +7,12 @@ from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rattr.config.util import find_project_root, find_pyproject_toml, validate_arguments
+from rattr.config.util import (
+    find_project_root,
+    find_pyproject_toml,
+    find_xdg_cache_dir,
+    validate_arguments,
+)
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -183,6 +188,16 @@ class Config(metaclass=ConfigMetaclass):
     @cached_property
     def pyproject_toml(self) -> Path | None:
         return find_pyproject_toml()
+
+    @cached_property
+    def root_cache_dir(self) -> Path:
+        # If the project has a clear root, use:
+        #   $ROOT/.rattr_cache/<rattr-version-hash>/<ir-or-results>/<filehash>
+        # Otherwise, use:
+        #   $XDG_CACHE_HOME/rattr/<rattr-version-hash>/<ir-or-results>/<filehash>
+        if self.project_root is None:
+            return find_xdg_cache_dir() / "rattr"
+        return self.project_root / ".rattr_cache"
 
     @property
     def is_in_target_file(self) -> bool:
