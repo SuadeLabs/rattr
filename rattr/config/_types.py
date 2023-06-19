@@ -79,15 +79,15 @@ class Arguments(argparse.Namespace):
 
     @property
     def follow_local_imports(self) -> bool:
-        return FollowImports.local in self
+        return FollowImports.local in self.follow_imports
 
     @property
     def follow_pip_imports(self) -> bool:
-        return FollowImports.pip in self
+        return FollowImports.pip in self.follow_imports
 
     @property
     def follow_stdlib_imports(self) -> bool:
-        return FollowImports.stdlib in self
+        return FollowImports.stdlib in self.follow_imports
 
     @property
     def excluded_imports(self) -> set[str]:
