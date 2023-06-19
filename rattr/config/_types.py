@@ -160,7 +160,8 @@ class ConfigMetaclass(type):
 
     def __call__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance: Config = super().__call__(*args, **kwargs)
+            _instance: Config = super().__call__(*args, **kwargs)
+            cls._instance = _instance
             cls._instance.arguments = validate_arguments(cls._instance.arguments)
         return cls._instance
 

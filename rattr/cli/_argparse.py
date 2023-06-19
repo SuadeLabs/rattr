@@ -58,11 +58,11 @@ class ArgumentParser(argparse.ArgumentParser):
         return namespace, args
 
     def exit(self, status=0, message=None):
-
         if not self.exit_on_error:
-            raise argparse.ArgumentError(None, message)
+            raise argparse.ArgumentError(None, message or "")
 
         if message:
             self._print_message(message, _sys.stderr)
+
         if self.exit_on_error:
             _sys.exit(status)

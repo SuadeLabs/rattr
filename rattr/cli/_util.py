@@ -35,9 +35,11 @@ def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
 
     if width is None:
         if _terminal_width_minus_argparse_indent >= 32:
-            width = _terminal_width_minus_argparse_indent
+            _width = _terminal_width_minus_argparse_indent
         else:
-            width = _terminal_width
+            _width = _terminal_width
+    else:
+        _width = width
 
     def _preserve(text: str) -> str:
         lines = list()
@@ -53,10 +55,10 @@ def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
 
             lines.append(line)
 
-        return "\n".join(fill(dedent(line), width) for line in lines)
+        return "\n".join(fill(dedent(line), _width) for line in lines)
 
     def _paragraph(text: str) -> str:
-        return fill(text, width)
+        return fill(text, _width)
 
     paragraphs = list()
 

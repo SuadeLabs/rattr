@@ -13,7 +13,7 @@ from rattr.config import Arguments
 from rattr.config.util import find_pyproject_toml
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, Type
+    from typing import Any, Dict, List, NoReturn, Optional, Type
 
 
 TOML_ARGUMENT_TYPE_MAP: Dict[str, Type[int | str | bool | list]] = {
@@ -51,7 +51,7 @@ def parse_arguments(
     try:
         toml_parser.parse_args(args=toml_arguments, namespace=arguments)
     except argparse.ArgumentError as argument_error:
-        _toml_error(argument_error, exit_on_error)
+        _toml_error(argument_error, exit_on_error=exit_on_error)
     cli_parser.parse_args(args=sys_args, namespace=arguments)
 
     return arguments
@@ -102,7 +102,7 @@ def _get_toml_override(cli_parser: ArgumentParser) -> Optional[Path]:
     return None
 
 
-def _toml_error(exc: Exception, *, exit_on_error: bool) -> None:
+def _toml_error(exc: Exception, *, exit_on_error: bool) -> NoReturn:
     if exit_on_error:
         error.fatal(f"error parsing project toml: {error}")
     raise exc
