@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -49,27 +50,207 @@ long_absolute_path_not_in_home_windows = (
 
 
 class TestState:
-    def test_badness_vs_full_badness(self):
+    def test_badness_vs_full_badness(self, config, state):
         # For now at least these are expected to differ, thus there should be a test
         # for regression purposes at the very least.
-        raise AssertionError
+        with state(
+            badness_from_target_file=3,
+            badness_from_imports=5,
+            badness_from_simplification=7,
+        ):
+            assert config.state.badness == 10
+            assert config.state.full_badness == 15
 
 
 class TestConfig:
-    def test_root_cache_dir(self):
-        raise AssertionError
+    @mock.patch("rattr.config._types.find_project_root")
+    def test_root_cache_dir(self, m_find_project_root, config):
+        project_root = Path("~") / "my_project"
+        m_find_project_root.return_value = project_root
 
-    def test_increment_badness(self):
-        raise AssertionError
+        assert config.root_cache_dir == project_root / ".rattr" / "cache"
 
-    def test_is_within_badness_threshold(self):
-        raise AssertionError
+    def test_increment_badness(self, config, state):
+        assert config.state.badness_from_simplification == 0
+        assert config.state.badness_from_target_file == 0
+        assert config.state.badness_from_imports == 0
 
-    def test_formatted_current_file_path(self):
-        raise AssertionError
+        with state(current_file=None):
+            config.increment_badness(5)
+        assert config.state.badness_from_simplification == 5
+        assert config.state.badness_from_target_file == 0
+        assert config.state.badness_from_imports == 0
 
-    def formatted_target_path(self):
-        raise AssertionError
+        with state(current_file=Path("target.py")):
+            config.increment_badness(5)
+        assert config.state.badness_from_simplification == 5
+        assert config.state.badness_from_target_file == 5
+        assert config.state.badness_from_imports == 0
+
+        with state(current_file="not none but not the target"):
+            config.increment_badness(5)
+        assert config.state.badness_from_simplification == 5
+        assert config.state.badness_from_target_file == 5
+        assert config.state.badness_from_imports == 5
+
+    def test_is_within_badness_threshold_is_strict(self, config, arguments, state):
+        with arguments(is_strict=True):
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=0,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=1,
+                badness_from_target_file=0,
+                badness_from_imports=0,
+            ):
+                assert not config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=1,
+                badness_from_imports=0,
+            ):
+                assert not config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=0,
+                badness_from_imports=1,
+            ):
+                assert config.is_within_badness_threshold
+
+    def test_is_within_badness_threshold_infinite_threshold(self, config, arguments, state):
+        with arguments(is_strict=False, threshold=0):
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=0,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=1_000,
+                badness_from_target_file=0,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=1_000,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=0,
+                badness_from_imports=1_000,
+            ):
+                assert config.is_within_badness_threshold
+
+    def test_is_within_badness_threshold_ordinary(self, config, arguments, state):
+        with arguments(is_strict=False, threshold=500):
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=0,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=499,
+                badness_from_target_file=0,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+            with state(
+                badness_from_simplification=500,
+                badness_from_target_file=0,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+            with state(
+                badness_from_simplification=501,
+                badness_from_target_file=0,
+                badness_from_imports=0,
+            ):
+                assert not config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=499,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=500,
+                badness_from_imports=0,
+            ):
+                assert config.is_within_badness_threshold
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=501,
+                badness_from_imports=0,
+            ):
+                assert not config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=0,
+                badness_from_imports=499,
+            ):
+                assert config.is_within_badness_threshold
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=0,
+                badness_from_imports=500,
+            ):
+                assert config.is_within_badness_threshold
+            with state(
+                badness_from_simplification=0,
+                badness_from_target_file=0,
+                badness_from_imports=501,
+            ):
+                assert config.is_within_badness_threshold
+
+            with state(
+                badness_from_simplification=250,
+                badness_from_target_file=250,
+                badness_from_imports=101,
+            ):
+                assert config.is_within_badness_threshold
+            with state(
+                badness_from_simplification=251,
+                badness_from_target_file=250,
+                badness_from_imports=101,
+            ):
+                assert not config.is_within_badness_threshold
+
+    def test_formatted_current_file_path(self, config, arguments, state):
+        file = Path.home() / "this" / "is" / "a" / "path" / "to" / "a.file"
+
+        with arguments(collapse_home=True, truncate_deep_paths=True):
+            with state(current_file=None):
+                assert config.formatted_current_file_path is None
+
+            with state(current_file=file):
+                assert config.formatted_current_file_path == "~/.../path/to/a.file"
+
+    def test_formatted_target_path(self, config, arguments):
+        file = Path.home() / "this" / "is" / "a" / "path" / "to" / "a.file"
+
+        with arguments(collapse_home=True, truncate_deep_paths=True):
+            with arguments(target=None):
+                assert config.formatted_target_path is None
+
+            with arguments(target=file):
+                assert config.formatted_target_path == "~/.../path/to/a.file"
 
 
 class TestGetFormattedPath:
