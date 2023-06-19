@@ -126,7 +126,11 @@ def get_file_and_line_info(culprit: Optional[ast.AST]) -> Tuple[str, str]:
     if culprit is None:
         return "", ""
 
-    file_info = __FILE_INFO.format(config.formatted_current_file_path or "")
+    if config.formatted_current_file_path:
+        file_info = __FILE_INFO.format(config.formatted_current_file_path)
+    else:
+        file_info = ""
+
     line_info = __LINE_INFO.format(culprit.lineno, culprit.col_offset)
 
     return file_info, line_info
