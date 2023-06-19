@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 from unittest import mock
 
@@ -48,17 +49,44 @@ long_absolute_path_not_in_home_windows = (
     / "thefile.win"
 )
 
+@pytest.fixture
+def reset(state):
+    return partial(
+        state,
+        badness_from_simplification=0,
+        badness_from_target_file=0,
+        badness_from_imports=0,
+    )
+
+
+@pytest.fixture
+def assert_badness(config):
+    def _make_assertion(simplification: int, target: int, imports: int):
+        assert config.state.badness_from_simplification == simplification
+        assert config.state.badness_from_target_file == target
+        assert config.state.badness_from_imports == imports
+
+    return _make_assertion
+
+
+@pytest.fixture
+def badness(state):
+    def _set_badness(simplification: int, target: int, imports: int):
+        return state(
+            badness_from_simplification=simplification,
+            badness_from_target_file=target,
+            badness_from_imports=imports,
+        )
+
+    return _set_badness
+
 
 class TestState:
-    def test_badness_vs_full_badness(self, config, state):
+    def test_badness_vs_full_badness(self, badness, config):
         # For now at least these are expected to differ, thus there should be a test
         # for regression purposes at the very least.
-        with state(
-            badness_from_target_file=3,
-            badness_from_imports=5,
-            badness_from_simplification=7,
-        ):
-            assert config.state.badness == 10
+        with badness(simplification=3, target=5, imports=7):
+            assert config.state.badness == 8
             assert config.state.full_badness == 15
 
 
@@ -70,166 +98,93 @@ class TestConfig:
 
         assert config.root_cache_dir == project_root / ".rattr" / "cache"
 
-    def test_increment_badness(self, config, state):
-        assert config.state.badness_from_simplification == 0
-        assert config.state.badness_from_target_file == 0
-        assert config.state.badness_from_imports == 0
+    def test_increment_badness(self, assert_badness, config, state, reset):
+        with reset():
+            assert_badness(simplification=0, target=0, imports=0)
 
-        with state(current_file=None):
-            config.increment_badness(5)
-        assert config.state.badness_from_simplification == 5
-        assert config.state.badness_from_target_file == 0
-        assert config.state.badness_from_imports == 0
+            with state(current_file=None):
+                config.increment_badness(5)
 
-        with state(current_file=Path("target.py")):
-            config.increment_badness(5)
-        assert config.state.badness_from_simplification == 5
-        assert config.state.badness_from_target_file == 5
-        assert config.state.badness_from_imports == 0
+            assert_badness(simplification=5, target=0, imports=0)
 
-        with state(current_file="not none but not the target"):
-            config.increment_badness(5)
-        assert config.state.badness_from_simplification == 5
-        assert config.state.badness_from_target_file == 5
-        assert config.state.badness_from_imports == 5
+        with reset():
+            assert_badness(simplification=0, target=0, imports=0)
 
-    def test_is_within_badness_threshold_is_strict(self, config, arguments, state):
+            with state(current_file=Path("target.py")):
+                config.increment_badness(5)
+
+            assert_badness(simplification=0, target=5, imports=0)
+
+        with reset():
+            assert_badness(simplification=0, target=0, imports=0)
+
+            with state(current_file="not none but not the target"):
+                config.increment_badness(5)
+
+            assert_badness(simplification=0, target=0, imports=5)
+
+    def test_is_within_badness_threshold_is_strict(self, config, arguments, badness):
         with arguments(is_strict=True):
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=0,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=0, target=0, imports=0):
                 assert config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=1,
-                badness_from_target_file=0,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=1, target=0, imports=0):
                 assert not config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=1,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=0, target=1, imports=0):
                 assert not config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=0,
-                badness_from_imports=1,
-            ):
+            with badness(simplification=0, target=0, imports=1):
                 assert config.is_within_badness_threshold
 
-    def test_is_within_badness_threshold_infinite_threshold(self, config, arguments, state):
+    def test_is_within_badness_threshold_infinite_threshold(
+        self, config, arguments, badness
+    ):
         with arguments(is_strict=False, threshold=0):
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=0,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=0, target=0, imports=0):
                 assert config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=1_000,
-                badness_from_target_file=0,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=1_000, target=0, imports=0):
                 assert config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=1_000,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=0, target=1_000, imports=0):
                 assert config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=0,
-                badness_from_imports=1_000,
-            ):
+            with badness(simplification=0, target=0, imports=1_000):
                 assert config.is_within_badness_threshold
 
-    def test_is_within_badness_threshold_ordinary(self, config, arguments, state):
+    def test_is_within_badness_threshold_ordinary(self, config, arguments, badness):
         with arguments(is_strict=False, threshold=500):
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=0,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=0, target=0, imports=0):
                 assert config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=499,
-                badness_from_target_file=0,
-                badness_from_imports=0,
-            ):
+            # Simplification badness is part of badness
+            with badness(simplification=499, target=0, imports=0):
                 assert config.is_within_badness_threshold
-            with state(
-                badness_from_simplification=500,
-                badness_from_target_file=0,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=500, target=0, imports=0):
                 assert config.is_within_badness_threshold
-            with state(
-                badness_from_simplification=501,
-                badness_from_target_file=0,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=501, target=0, imports=0):
                 assert not config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=499,
-                badness_from_imports=0,
-            ):
+            # Target file badness is part of badness
+            with badness(simplification=0, target=499, imports=0):
                 assert config.is_within_badness_threshold
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=500,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=0, target=500, imports=0):
                 assert config.is_within_badness_threshold
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=501,
-                badness_from_imports=0,
-            ):
+            with badness(simplification=0, target=501, imports=0):
                 assert not config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=0,
-                badness_from_imports=499,
-            ):
+            # Imported badness is *not* part of badness (only full_badness)
+            with badness(simplification=0, target=0, imports=499):
                 assert config.is_within_badness_threshold
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=0,
-                badness_from_imports=500,
-            ):
+            with badness(simplification=0, target=0, imports=500):
                 assert config.is_within_badness_threshold
-            with state(
-                badness_from_simplification=0,
-                badness_from_target_file=0,
-                badness_from_imports=501,
-            ):
+            with badness(simplification=0, target=0, imports=501):
                 assert config.is_within_badness_threshold
 
-            with state(
-                badness_from_simplification=250,
-                badness_from_target_file=250,
-                badness_from_imports=101,
-            ):
+            with badness(simplification=250, target=250, imports=101):
                 assert config.is_within_badness_threshold
-            with state(
-                badness_from_simplification=251,
-                badness_from_target_file=250,
-                badness_from_imports=101,
-            ):
+            with badness(simplification=251, target=250, imports=101):
                 assert not config.is_within_badness_threshold
 
     def test_formatted_current_file_path(self, config, arguments, state):
