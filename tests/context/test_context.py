@@ -136,7 +136,7 @@ class TestContext:
         assert root.get("b") == Name("b")
         assert root.get("x") is None
 
-    def test_get_call_target(self, capfd, argument):
+    def test_get_call_target(self, capfd, arguments):
         # No target
         root = Context(None)
         assert root.get_call_target("anything()", None) is None
@@ -169,7 +169,7 @@ class TestContext:
         root.add(Name("a"))
         child = Context(root)
 
-        with argument("_warning_level", "all"):
+        with arguments(_warning_level="all"):
             root.get_call_target("a.method()", None)
 
         _, stderr = capfd.readouterr()
@@ -438,13 +438,13 @@ class TestRootContext_Imports:
             Import("m", "math"),
         )
 
-    def test_import_list(self, parse, RootSymbolTable, capfd, argument):
+    def test_import_list(self, parse, RootSymbolTable, capfd, arguments):
         _ast = parse(
             """
             import os, math
         """
         )
-        with argument("_warning_level", "all"):
+        with arguments(_warning_level="all"):
             _ctx = RootContext(_ast)
 
         assert _ctx.parent is None

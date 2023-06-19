@@ -43,6 +43,7 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "py_3_8_plus: mark test to run only under Python 3.8+"
     )
+    config.addinivalue_line("markers", "windows: mark test to run only under Windows")
     config.addinivalue_line(
         "markers",
         "update_expected_results: mark test that updates the expected test results for "
@@ -57,6 +58,9 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
     if not is_python_3_8_plus():
         skip_test_items_with_mark(items, "py_3_8_plus")
+
+    if not is_windows():
+        skip_test_items_with_mark(items, "windows")
 
     skip_test_items_with_mark_if_not_explicitly_given(
         items,
@@ -107,9 +111,13 @@ def is_python_3_8_plus():
         return False
 
 
+def is_windows():
+    return sys.platform == "win32"
+
+
 @pytest.fixture(scope="session", autouse=True)
 @mock.patch("rattr.config._types.validate_arguments", lambda args: args)
-def setup_config():
+def _init_testing_config():
     Config(
         arguments=Arguments(
             pyproject_toml_override=None,
@@ -117,8 +125,8 @@ def setup_config():
             _excluded_imports=set(),
             _excluded_names=set(),
             _warning_level="default",
-            _collapse_home=True,
-            _truncate_deep_paths=True,
+            collapse_home=True,
+            truncate_deep_paths=True,
             is_strict=False,
             threshold=0,
             stdout=Output.results,
@@ -250,18 +258,28 @@ def run_in_permissive_mode(config) -> None:
 
 
 @pytest.fixture
-def argument():
+def arguments():
     @contextmanager
-    def _inner(attr, value):
+    def _inner(**kwargs):
         arguments = Config().arguments
 
-        if not hasattr(arguments, attr):
-            raise AttributeError
+        _missing_attrs = {
+            attr
+            for attr in kwargs.keys()
+            if not hasattr(arguments, attr)
+        }
+        if _missing_attrs:
+            raise AttributeError(_missing_attrs)
 
-        _previous = getattr(arguments, attr)
-        setattr(arguments, attr, value)
+        previous = {attr: getattr(arguments, attr) for attr in kwargs.keys()}
+
+        for attr, value in kwargs.items():
+            setattr(arguments, attr, value)
+
         yield
-        setattr(arguments, attr, _previous)
+
+        for attr, value in previous.items():
+            setattr(arguments, attr, value)
 
     return _inner
 
@@ -269,18 +287,33 @@ def argument():
 @pytest.fixture
 def state():
     @contextmanager
-    def _inner(attr, value):
+    def _inner(**kwargs):
         state = Config().state
 
-        if not hasattr(state, attr):
-            raise AttributeError
+        _missing_attrs = {
+            attr
+            for attr in kwargs.keys()
+            if not hasattr(state, attr)
+        }
+        if _missing_attrs:
+            raise AttributeError(_missing_attrs)
 
-        _previous = getattr(state, attr)
-        setattr(state, attr, value)
+        previous = {attr: getattr(state, attr) for attr in kwargs.keys()}
+
+        for attr, value in kwargs.items():
+            setattr(state, attr, value)
+
         yield
-        setattr(state, attr, _previous)
+
+        for attr, value in previous.items():
+            setattr(state, attr, value)
 
     return _inner
+
+
+@pytest.fixture
+def config():
+    return Config()
 
 
 @pytest.fixture

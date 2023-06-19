@@ -1224,15 +1224,15 @@ class TestUtil:
         fn = ast.parse("def fn(a, b, c=None, *args, **kwargs): pass").body[0]
         assert get_function_form(fn) == "'fn(a, b, c, *args, **kwargs)'"
 
-    def test_is_excluded_name(self, argument):
+    def test_is_excluded_name(self, arguments):
         assert not is_excluded_name("sin")
         assert not is_excluded_name("_hidden_func")
 
-        with argument("excluded_names", {"sin"}):
+        with arguments(_excluded_names={"sin"}):
             assert is_excluded_name("sin")
             assert not is_excluded_name("_hidden_func")
 
-        with argument("excluded_names", {"_.*"}):
+        with arguments(_excluded_names={"_.*"}):
             assert not is_excluded_name("sin")
             assert is_excluded_name("_hidden_func")
 

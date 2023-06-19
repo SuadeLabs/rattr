@@ -14,7 +14,7 @@ class TestParser:
     ):
         args = parse_arguments(
             sys_args=sys_args1,
-            project_toml_cfg=toml_dict_with_illegal_fields,
+            project_toml_conf=toml_dict_with_illegal_fields,
             exit_on_error=False,
         )
         # illegal field should be left out from parsed args
@@ -25,7 +25,7 @@ class TestParser:
     ):
         for toml_dict, error_message in toml_dicts_with_bad_field_types_and_errors:
             with pytest.raises(ArgumentError) as exc_info:
-                parse_arguments(project_toml_cfg=toml_dict, exit_on_error=False)
+                parse_arguments(project_toml_conf=toml_dict, exit_on_error=False)
             assert str(exc_info.value) == error_message
 
     def test_toml_dicts_with_mutex_arg_violation(
@@ -33,7 +33,7 @@ class TestParser:
     ):
         for toml_dict, error_message in toml_dicts_with_mutex_arg_violation_and_errors:
             with pytest.raises(ArgumentError) as exc_info:
-                parse_arguments(project_toml_cfg=toml_dict, exit_on_error=False)
+                parse_arguments(project_toml_conf=toml_dict, exit_on_error=False)
             assert str(exc_info.value) == error_message
 
     def test_toml_dict_without_file_from_cli_call(self, correct_toml_dict1):
@@ -41,7 +41,7 @@ class TestParser:
             parse_arguments(
                 # empty 'sys_args' imply no file specified in cli call
                 sys_args=[],
-                project_toml_cfg=correct_toml_dict1,
+                project_toml_conf=correct_toml_dict1,
                 exit_on_error=False,
             )
 
@@ -53,7 +53,7 @@ class TestParser:
     ):
         args = parse_arguments(
             sys_args=sys_args1[1:],
-            project_toml_cfg=correct_toml_dict1,
+            project_toml_conf=correct_toml_dict1,
             exit_on_error=False,
         )
 
@@ -83,7 +83,7 @@ class TestParser:
     ):
         args = parse_arguments(
             sys_args=sys_args1[1:],
-            project_toml_cfg=correct_toml_dict2,
+            project_toml_conf=correct_toml_dict2,
             exit_on_error=False,
         )
 
@@ -113,7 +113,7 @@ class TestParser:
     ):
         args = parse_arguments(
             sys_args=sys_args2[1:],
-            project_toml_cfg=correct_toml_dict1,
+            project_toml_conf=correct_toml_dict1,
             exit_on_error=False,
         )
 
@@ -143,7 +143,7 @@ class TestParser:
     ):
         args = parse_arguments(
             sys_args=sys_args3[1:],
-            project_toml_cfg=correct_toml_dict1,
+            project_toml_conf=correct_toml_dict1,
             exit_on_error=False,
         )
 
@@ -179,7 +179,7 @@ class TestParser:
     ):
         args = parse_arguments(
             sys_args=sys_args2[1:],
-            project_toml_cfg=correct_toml_dict2,
+            project_toml_conf=correct_toml_dict2,
             exit_on_error=False,
         )
 
@@ -211,7 +211,7 @@ class TestParser:
         with pytest.raises(ArgumentError) as exc_info:
             parse_arguments(
                 sys_args=sys_args4[1:],
-                project_toml_cfg=correct_toml_dict3,
+                project_toml_conf=correct_toml_dict3,
                 exit_on_error=False,
             )
 
@@ -222,7 +222,7 @@ class TestParser:
         args = parse_arguments(
             # empty 'sys_args' imply no file specified in cli call
             sys_args=sys_args4[1:],
-            project_toml_cfg={},
+            project_toml_conf={},
             exit_on_error=False,
         )
 
@@ -250,7 +250,7 @@ class TestParser:
     def test_permissive_cli_call_overwrite(self, sys_args5, correct_toml_dict2):
         args = parse_arguments(
             sys_args=sys_args5[1:],
-            project_toml_cfg=correct_toml_dict2,
+            project_toml_conf=correct_toml_dict2,
             exit_on_error=False,
         )
 
@@ -278,7 +278,7 @@ class TestParser:
     def test_toml_config_override(self, sys_args6):
         args = parse_arguments(
             sys_args=sys_args6[1:],
-            project_toml_cfg={},
+            project_toml_conf={},
             exit_on_error=False,
         )
 
