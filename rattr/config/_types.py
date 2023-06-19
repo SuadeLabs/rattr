@@ -55,8 +55,8 @@ class Arguments(argparse.Namespace):
 
     _warning_level: Literal["none", "local", "default", "all"]
 
-    _collapse_home: bool
-    _truncate_deep_paths: bool
+    collapse_home: bool
+    truncate_deep_paths: bool
 
     is_strict: bool
     threshold: int
@@ -121,20 +121,12 @@ class Arguments(argparse.Namespace):
     def format_path(self) -> FormatPath:
         flag = FormatPath(0)
 
-        if self._collapse_home:
+        if self.collapse_home:
             flag |= FormatPath.collapse_home
-        if self._truncate_deep_paths:
+        if self.truncate_deep_paths:
             flag |= FormatPath.truncate_deep_paths
 
         return flag
-
-    @property
-    def collapse_home(self) -> bool:
-        return FormatPath.collapse_home in self.format_path
-
-    @property
-    def truncate_deep_paths(self) -> bool:
-        return FormatPath.truncate_deep_paths in self.format_path
 
 
 @dataclass
@@ -245,21 +237,27 @@ class Config(metaclass=ConfigMetaclass):
         if isinstance(path, str):
             path = Path(path)
 
+        home = str(Path.home().resolve())
+
         # TODO Python 3.9
         #   Path.is_relative_to(...) is introduced
-        if self.arguments.collapse_home:
-            home = str(Path.home())
-
+        if self.arguments.collapse_home and str(path).startswith(home):
             relative_path = str(path).replace(home, "")
-            if relative_path.startswith("/"):
-                relative_path[1:]
 
-            path = Path("~") / str(path).replace(home, "")
+            if relative_path.startswith(("/", "\\")):
+                relative_path = relative_path[1:]
+
+            path = Path("~") / relative_path
 
         if self.arguments.truncate_deep_paths and len(path.parts) > 5:
-            path = Path(path.parts[0]) / "..." / path.parts[-3:]
+            base = Path(path.parts[0]) / "..."
 
-        return path
+            for part in path.parts[-3:]:
+                base /= part
+
+            path = base
+
+        return str(path)
 
     @property
     def formatted_current_file_path(self) -> str | None:

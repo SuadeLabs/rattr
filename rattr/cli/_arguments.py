@@ -168,7 +168,7 @@ def add_format_path_arguments(parser: ArgumentParser) -> ArgumentParser:
             >TOML example: collapse-home=true
             """
         ),
-        dest="_collapse_home",
+        dest="collapse_home",
     )
     show_path_group.add_argument(
         "-T",
@@ -182,7 +182,7 @@ def add_format_path_arguments(parser: ArgumentParser) -> ArgumentParser:
             >TOML example: truncate-deep-paths=true
             """
         ),
-        dest="_truncate_deep_paths",
+        dest="truncate_deep_paths",
     )
 
     return parser
