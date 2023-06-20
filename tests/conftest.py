@@ -27,37 +27,62 @@ from rattr.cli.parser import (
 )
 
 if TYPE_CHECKING:
-    from typing import Callable, Iterable
+    from typing import Callable
 
 
 def pytest_configure(config):
+    config.addinivalue_line("addopts", "--strict-markers")
+
     config.addinivalue_line("markers", "pypy: mark test to run only under pypy")
     config.addinivalue_line(
         "markers", "py_3_8_plus: mark test to run only under Python 3.8+"
     )
+    config.addinivalue_line(
+        "markers",
+        "update_expected_results: mark test that updates the expected test results for "
+        "a benchmarking test, only run if the mark is explicitly given",
+    )
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]):
     """Alter the collected tests."""
-    filter_marked(items, "pypy", is_pypy())
-    filter_marked(items, "py_3_8_plus", is_python_3_8_plus())
+    if not is_pypy():
+        skip_test_items_with_mark(items, "pypy")
+
+    if not is_python_3_8_plus():
+        skip_test_items_with_mark(items, "py_3_8_plus")
+
+    skip_test_items_with_mark_if_not_explicitly_given(
+        items,
+        "update_expected_results",
+        config=config,
+    )
 
 
-def filter_marked(items: Iterable, mark: str, condition: bool):
+def skip_test_items_with_mark(items: list[pytest.Item], mark: str):
     """Remove the marked items if the condition is `False`."""
-    marked = list()
-    unmarked = list()
+    _reason = "{mark} is not satisfied"
 
-    for item in items:
-        if item.get_closest_marker(mark):
-            marked.append(item)
-        else:
-            unmarked.append(item)
+    for item in (i for i in items if i.get_closest_marker(mark)):
+        item.add_marker(pytest.mark.skip(reason=_reason.format(mark=mark)))
 
-    if condition:
-        items[:] = marked + unmarked
-    else:
-        items[:] = unmarked
+
+def skip_test_items_with_mark_if_not_explicitly_given(
+    items: list[pytest.Item],
+    mark: str,
+    *,
+    config: pytest.Config,
+):
+    """Skip tests with the given mark unless the mark was given via `-m mark` etc."""
+    dash_m_is_in_cli_arguments = bool(config.option.markexpr)
+    dash_k_is_in_cli_arguments = bool(config.option.keyword)
+
+    if dash_m_is_in_cli_arguments or dash_k_is_in_cli_arguments:
+        # If `-m ...` or `-k ...` is given, let pytest handle the skipping/running
+        # i.e. the test will only run if it is in the `-m` or the `-k`
+        return
+
+    skip_test_items_with_mark(items, mark)
 
 
 def is_pypy():
