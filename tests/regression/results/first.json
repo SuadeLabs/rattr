@@ -1,7 +1,9 @@
 {
     "my_foo": {
-        "gets": ["x.attr"],
         "sets": [],
+        "gets": [
+            "x.attr"
+        ],
         "dels": [],
         "calls": []
     }

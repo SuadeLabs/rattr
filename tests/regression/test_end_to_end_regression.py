@@ -8,7 +8,7 @@ import pytest
 
 from rattr.__main__ import load_config
 from rattr.analyser.file import parse_and_analyse_file
-from rattr.analyser.results import generate_results_from_ir
+from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
 from rattr.analyser.types import FileResults, FunctionResults
 from rattr.cli import parse_arguments
 
@@ -103,9 +103,9 @@ class TestEndToEndRegressionTests:
                     "none",
                     "-p",
                     "none",
-                    "-r",
                     "--permissive",
                     "0",
+                    "-r",
                     str(code_file),
                 ]
             )
@@ -139,5 +139,17 @@ class TestEndToEndRegressionTests:
         assert diff_is_empty, diff_error
 
     @pytest.mark.update_expected_results
-    def test_update_expected_results(self):
-        pass
+    @pytest.mark.parametrize(
+        ("code_file,results_file"),
+        zip(code_files, results_files),
+        ids=[str(f.relative_to(code_dir)) for f in code_files],
+    )
+    def test_update_expected_results(self, code_file,results_file):
+        _cli_arguments = ["-w", "all", "--permissive", "0", "-r"]
+
+        load_config(parse_arguments([*_cli_arguments, str(code_file)]))
+
+        file_ir, imports_ir, _ = parse_and_analyse_file()
+        results = generate_results_from_ir(file_ir, imports_ir)
+
+        results_file.write_text(json.dumps(results, indent=4, cls=ResultsEncoder))
