@@ -7,26 +7,50 @@ from typing import TYPE_CHECKING
 from rattr import error
 from rattr.cli import _arguments
 from rattr.cli._argparse import ArgumentParser
-from rattr.cli._util import multi_paragraph_wrap
+from rattr.cli._types import TomlArgumentType
+from rattr.cli._util import get_type_name, multi_paragraph_wrap
 from rattr.cli.toml import TOMLDecodeError, parse_project_toml
 from rattr.config import Arguments
 from rattr.config.util import find_pyproject_toml
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, NoReturn, Optional, Type
+    from typing import Any, Dict, List, NoReturn, Optional
 
 
-TOML_ARGUMENT_TYPE_MAP: Dict[str, Type[int | str | bool | list]] = {
-    "follow-imports": int,
-    "exclude-import": list,
-    "exclude": list,
-    "warning-level": str,
-    "collapse-home": bool,
-    "truncate-deep-paths": bool,
-    "strict": bool,
-    "threshold": int,
-    "stdout": str,
+TOML_ARGUMENT_NAME_TO_SYS_ARGUMENT_NAME_MAP: Dict[str, str] = {
+    "exclude-imports": "exclude-import",
 }
+"""Map from toml argument name to sys argument name.
+
+If absent the name is the same for both the toml arguments and the sys arguments, thus
+the expected usage is as such:
+
+>>> # TOML_ARGUMENT_NAME_TO_SYS_ARGUMENT_NAME_MAP = {"saul-of-tarsus": "paul"}
+>>> toml_name = "peter"
+>>> TOML_ARGUMENT_NAME_TO_SYS_ARGUMENT_NAME_MAP.get(toml_name, toml_name)
+"peter"
+>>> toml_name = "saul-of-tarsus"
+>>> TOML_ARGUMENT_NAME_TO_SYS_ARGUMENT_NAME_MAP.get(toml_name, toml_name)
+"paul"
+"""
+
+TOML_ARGUMENT_TYPE_MAP: Dict[str, TomlArgumentType] = {
+    "follow-imports": TomlArgumentType.int,
+    "exclude-imports": TomlArgumentType.list_of_strings,
+    "exclude": TomlArgumentType.list_of_strings,
+    "warning-level": TomlArgumentType.string,
+    "collapse-home": TomlArgumentType.flag,
+    "truncate-deep-paths": TomlArgumentType.flag,
+    "strict": TomlArgumentType.flag,
+    "threshold": TomlArgumentType.int,
+    "stdout": TomlArgumentType.string,
+}
+"""The expected type of the arguments in the toml config file.
+
+This is used for:
+1. Type checking the provided toml arguments;
+2. Correctly converting toml arguments to sys arguments (see TomlArgumentType docs).
+"""
 
 
 def parse_arguments(
@@ -146,21 +170,20 @@ def _validate_toml_config(conf: Dict[str, Any]) -> Dict[str, Any]:
     # Validate types
     for arg, value in conf.items():
         expected_type = TOML_ARGUMENT_TYPE_MAP[arg]
-        actual_type: Type[Any] = type(value)
 
-        if not isinstance(value, expected_type):
+        if not expected_type.is_valid(value):
             _error = _type_error.format(
                 arg=arg,
                 value=value,
-                expected_type=expected_type.__name__,
-                actual_type=actual_type.__name__,
+                expected_type=str(expected_type),
+                actual_type=get_type_name(value),
             )
             raise argparse.ArgumentError(None, _error)
 
     return conf
 
 
-def _translate_toml_conf_to_sys_args(toml_cfg: Dict[str, Any]) -> List[str]:
+def _translate_toml_conf_to_sys_args(toml_conf: Dict[str, Any]) -> List[str]:
     """Return the toml conf translated to `sys.argv` style list.
 
     >>> _translate_toml_conf_to_sys_args(
@@ -170,8 +193,12 @@ def _translate_toml_conf_to_sys_args(toml_cfg: Dict[str, Any]) -> List[str]:
     """
     toml_sys_args = []
 
-    for k, v in toml_cfg.items():
-        arg_name = f"-{k}" if len(str(k)) == 1 else f"--{k}"
+    for k, v in toml_conf.items():
+        if len(k) > 1:
+            arg_name = f"--{TOML_ARGUMENT_NAME_TO_SYS_ARGUMENT_NAME_MAP.get(k, k)}"
+        else:
+            arg_name = f"-{k}"
+
         if isinstance(v, bool):
             toml_sys_args += [arg_name] if v else []
         elif isinstance(v, str) or isinstance(v, int) or isinstance(v, float):

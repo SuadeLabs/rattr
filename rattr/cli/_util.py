@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from shutil import get_terminal_size
 from textwrap import dedent, fill
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
 
 _terminal_width = get_terminal_size(fallback=(80, 32)).columns
 _terminal_width_minus_argparse_indent = _terminal_width - 24
@@ -69,3 +73,17 @@ def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
             paragraphs.append(_paragraph(p))
 
     return "\n\n".join(p for p in paragraphs)
+
+
+def get_type_name(value: Any) -> str:
+    """Return a Pythonic name for the type of the given value."""
+    if isinstance(value, (set, list)):
+        _types: list[str] = sorted({type(v).__name__ for v in value})
+        return f"{type(value).__name__}[{' | '.join(_types)}]"
+
+    if isinstance(value, dict):
+        _keys: list[str] = sorted({type(v).__name__ for v in value.keys()})
+        _values: list[str] = sorted({type(v).__name__ for v in value.values()})
+        return f"{type(value).__name__}[{' | '.join(_keys)}, {' | '.join(_values)}]"
+
+    return type(value).__name__

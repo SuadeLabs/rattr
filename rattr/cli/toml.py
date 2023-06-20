@@ -20,24 +20,6 @@ def _load_from_file(file: Path) -> Dict[str, Any]:
     return tomllib.loads(file.read_text())
 
 
-def parse_toml(config_path: Path) -> Dict[str, Any]:
-    """Return the parsed toml config.
-
-    Raises:
-        TOMLDecodeError: Raised on invalid toml syntax.
-    """
-    cfg, cleaned_cfg = _load_from_file(config_path).get("tool", {}).get("rattr", {}), {}
-
-    for k, v in cfg.items():
-        if k.startswith("--"):
-            k = k[2:]
-        elif k.startswith("-"):
-            k = k[1:]
-        cleaned_cfg[k] = v
-
-    return cleaned_cfg
-
-
 def parse_project_toml(
     pyproject_toml: Optional[Path],
     project_toml_override: Optional[Path] = None,
@@ -49,6 +31,6 @@ def parse_project_toml(
         project_toml = pyproject_toml
 
     if project_toml:
-        return parse_toml(project_toml)
+        return _load_from_file(project_toml).get("tool", {}).get("rattr", {})
 
     return {}
