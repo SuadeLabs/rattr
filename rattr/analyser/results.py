@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from rattr.analyser.context import Symbol
 from rattr.analyser.ir_dag import IrDagNode
@@ -13,7 +14,10 @@ class ResultsEncoder(json.JSONEncoder):
 
     def default(self, obj):
         if isinstance(obj, set):
-            return list(obj)
+            return sorted(obj)
+
+        if isinstance(obj, list):
+            return sorted(obj)
 
         if isinstance(obj, Symbol):
             return repr(obj)
