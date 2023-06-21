@@ -1,3 +1,13 @@
+"""End-to-end regression tests.
+
+NOTE
+====
+Dues to slight differences in the representation of constants the Python AST between
+Python 3.7 and Python 3.8, this test is limited to Python 3,8 plus (for example, it the
+output contains a local number this would be `@Num` in one version and `@Constant` in
+another, though there is no semantic difference).
+"""
+
 from __future__ import annotations
 
 import json
@@ -80,6 +90,7 @@ class TestEndToEndRegressionTests:
             str(f) for f in _missing_result_files
         )
 
+    @pytest.mark.py_3_8_plus()
     @pytest.mark.parametrize(
         ("code_file,results_file"),
         zip(code_files, results_files),
