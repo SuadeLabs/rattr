@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from rattr.analyser.context import Symbol
 from rattr.analyser.ir_dag import IrDagNode
