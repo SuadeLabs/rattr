@@ -64,8 +64,8 @@ def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResu
         composed_ir = ir_dag.simplify()
 
         simplified[foc.name] = {
-            "sets": {s.name for s in composed_ir["sets"]},
             "gets": {s.name for s in composed_ir["gets"]},
+            "sets": {s.name for s in composed_ir["sets"]},
             "dels": {s.name for s in composed_ir["dels"]},
             "calls": {s.name for s in composed_ir["calls"]},
         }
