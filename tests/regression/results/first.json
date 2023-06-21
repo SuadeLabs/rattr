@@ -1,10 +1,71 @@
 {
     "my_foo": {
-        "sets": [],
         "gets": [
             "x.attr"
         ],
+        "sets": [],
         "dels": [],
         "calls": []
+    },
+    "some_function": {
+        "gets": [
+            "x",
+            "x.attr",
+            "x.is_whatever",
+            "x.whatever",
+            "y",
+            "y.attr",
+            "z",
+            "z.attr"
+        ],
+        "sets": [
+            "x.another_thing",
+            "x.some_thing"
+        ],
+        "dels": [],
+        "calls": [
+            "my_foo()"
+        ]
+    },
+    "overwrite_me": {
+        "gets": [
+            "foobar.x",
+            "foobar.y",
+            "foobar.z",
+            "x",
+            "x.attr",
+            "x.is_whatever",
+            "x.whatever",
+            "y",
+            "y.attr",
+            "z",
+            "z.attr"
+        ],
+        "sets": [
+            "some_other_var.attr",
+            "x.another_thing",
+            "x.some_thing"
+        ],
+        "dels": [],
+        "calls": [
+            "some_function()",
+            "this_should_not_appear_in_the_results()"
+        ]
+    },
+    "i_use_a_lib_function": {
+        "gets": [
+            "data[].goodness",
+            "datum",
+            "good_data",
+            "my_lib_function"
+        ],
+        "sets": [
+            "good_data"
+        ],
+        "dels": [],
+        "calls": [
+            "Exception()",
+            "len()"
+        ]
     }
 }

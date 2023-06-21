@@ -1,0 +1,133 @@
+{
+    "recursive": {
+        "gets": [
+            "_x",
+            "x",
+            "x.xs",
+            "x.xs[].single_value"
+        ],
+        "sets": [],
+        "dels": [],
+        "calls": [
+            "len()",
+            "sum()"
+        ]
+    },
+    "_one_fn": {
+        "gets": [
+            "@Constant",
+            "@Constant.attr",
+            "arg_a.attr",
+            "arg_b.some_thing",
+            "arg_b.some_thing.attr",
+            "arg_b.some_thing.is_whatever",
+            "arg_b.some_thing.whatever"
+        ],
+        "sets": [
+            "arg_b.some_thing.another_thing",
+            "arg_b.some_thing.some_thing"
+        ],
+        "dels": [],
+        "calls": [
+            "some_function()"
+        ]
+    },
+    "_two_fn": {
+        "gets": [
+            "@Constant",
+            "@Constant.attr",
+            "arg_b.some_thing",
+            "arg_b.some_thing.attr",
+            "arg_b.some_thing.is_whatever",
+            "arg_b.some_thing.whatever",
+            "first",
+            "first.some_thing",
+            "second",
+            "second.attr"
+        ],
+        "sets": [
+            "arg_b.some_thing.another_thing",
+            "arg_b.some_thing.some_thing"
+        ],
+        "dels": [],
+        "calls": [
+            "_one_fn()"
+        ]
+    },
+    "_three_fn": {
+        "gets": [
+            "arg_a.first",
+            "arg_a.second",
+            "arg_a.third",
+            "arg_b.first",
+            "arg_b.second",
+            "arg_b.third"
+        ],
+        "sets": [],
+        "dels": [],
+        "calls": [
+            "sum()"
+        ]
+    },
+    "_four_fn": {
+        "gets": [
+            "Exception",
+            "arg_a",
+            "arg_a.accessed_in_four",
+            "arg_a.is_a_good_thing",
+            "arg_a.type"
+        ],
+        "sets": [],
+        "dels": [],
+        "calls": [
+            "my_lib_function()"
+        ]
+    },
+    "Things": {
+        "gets": [
+            "Things.one",
+            "Things.three",
+            "Things.two"
+        ],
+        "sets": [],
+        "dels": [],
+        "calls": []
+    },
+    "dispatcher": {
+        "gets": [
+            "@Constant",
+            "@Constant.attr",
+            "Exception",
+            "arg_b.first",
+            "arg_b.second",
+            "arg_b.some_thing",
+            "arg_b.some_thing.attr",
+            "arg_b.some_thing.is_whatever",
+            "arg_b.some_thing.whatever",
+            "arg_b.third",
+            "data.discriminator",
+            "data.wrapped",
+            "data.wrapped.accessed_in_four",
+            "data.wrapped.attr",
+            "data.wrapped.first",
+            "data.wrapped.is_a_good_thing",
+            "data.wrapped.second",
+            "data.wrapped.some_thing",
+            "data.wrapped.third",
+            "data.wrapped.type",
+            "second",
+            "second.attr"
+        ],
+        "sets": [
+            "arg_b.some_thing.another_thing",
+            "arg_b.some_thing.some_thing"
+        ],
+        "dels": [],
+        "calls": [
+            "_four_fn()",
+            "_one_fn()",
+            "_three_fn()",
+            "_two_fn()"
+        ]
+    }
+}

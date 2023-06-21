@@ -1,0 +1,64 @@
+{
+    "_pretty_list_format": {
+        "gets": [
+            "_comma_separated_items",
+            "_final_item",
+            "items",
+            "items[]"
+        ],
+        "sets": [
+            "_comma_separated_items",
+            "_final_item"
+        ],
+        "dels": [],
+        "calls": [
+            "@Constant.join()",
+            "ValueError()",
+            "len()"
+        ]
+    },
+    "_get_simple_present_of_be": {
+        "gets": [
+            "things"
+        ],
+        "sets": [],
+        "dels": [],
+        "calls": [
+            "len()"
+        ]
+    },
+    "confirm_walrus_happiness": {
+        "gets": [
+            "@ListComp",
+            "@ListComp[]",
+            "_are_or_is",
+            "_comma_separated_items",
+            "_final_item",
+            "_walrus_or_walruses_by_name",
+            "happiness",
+            "unhappy_walruses",
+            "w",
+            "walrus",
+            "walrus.happiness",
+            "walrus.max_happiness",
+            "walrus.name",
+            "walruses"
+        ],
+        "sets": [
+            "_are_or_is",
+            "_comma_separated_items",
+            "_final_item",
+            "_walrus_or_walruses_by_name",
+            "happiness",
+            "unhappy_walruses",
+            "walrus"
+        ],
+        "dels": [],
+        "calls": [
+            "_get_simple_present_of_be()",
+            "_pretty_list_format()",
+            "print()",
+            "unhappy_walruses.append()"
+        ]
+    }
+}
