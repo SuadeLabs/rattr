@@ -17,7 +17,7 @@ class TestAnnotations:
             @rattr_ignore
             def another_func(arg):
                 return arg.another_attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -43,7 +43,7 @@ class TestAnnotations:
             @rattr_ignore
             async def another_func(arg):
                 return arg.another_attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -71,7 +71,7 @@ class TestAnnotations:
             class SomeClass:
                 def __init__(self, a):
                     self.a = a
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -99,7 +99,7 @@ class TestAnnotations:
             @rattr_results(gets={"a", "b"})
             def another_func(arg):
                 return arg.another_attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -135,7 +135,7 @@ class TestAnnotations:
             @rattr_results()
             async def another_func(arg):
                 return arg.another_attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -177,7 +177,7 @@ class TestAnnotations:
             )
             def another_func(arg):
                 return arg.another_attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -201,5 +201,4 @@ class TestAnnotations:
             },
         }
 
-        print(results)
         assert results == expected

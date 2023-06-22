@@ -34,7 +34,7 @@ class TestRegression:
 
             def setter(a):
                 *a.b[0]().c = "a value"
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -67,7 +67,7 @@ class TestRegression:
 
             def setter(a):
                 a.attr_a, a.attr_b = x, y
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -109,7 +109,7 @@ class TestRegression:
 
             def test_2(a):
                 return (-b).c
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -147,7 +147,7 @@ class TestRegression:
 
             def a_func(arg):
                 return act(getattr(arg, "attr"))
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -186,7 +186,7 @@ class TestRegression:
             def bad_map(f, target):
                 # like map but... bad
                 return f(target)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -215,7 +215,7 @@ class TestRegression:
 
             def actor():
                 return wrapper()()
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -258,7 +258,7 @@ class TestRegression:
                     accumulator += f(argument)
 
                 return accumulator
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -309,7 +309,7 @@ class TestRegression:
                         e.whatever for e in [thing_one, thing_two]
                     ])
                 ]
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -340,7 +340,7 @@ class TestRegression:
                         e.whatever for e in [thing]
                     ])
                 ]
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -374,7 +374,7 @@ class TestRegression:
             """
             def fn(arg):
                 return (arg.first + arg.second)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -398,7 +398,7 @@ class TestRegression:
             """
             def fn(arg):
                 return (arg.first + arg.second).some_property
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -424,7 +424,7 @@ class TestRegression:
             """
             def fn(arg):
                 return call(*[arg.first + arg.second])
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -452,7 +452,7 @@ class TestRegression:
             """
             def fn(arg):
                 return (arg.first + arg.second)["index"]
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -477,7 +477,7 @@ class TestRegression:
             """
             def fn(arg):
                 return arg.attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -499,7 +499,7 @@ class TestRegression:
             """
             def fn(arg):
                 return arg.method()
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -521,7 +521,7 @@ class TestRegression:
             """
             def fn(arg):
                 return arg.attr.method()
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -545,7 +545,7 @@ class TestRegression:
             """
             def fn(arg):
                 return arg.a.b.c.d.method()
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 

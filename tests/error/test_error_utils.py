@@ -12,7 +12,7 @@ class TestErrorUtils:
             # not line 2,
             x = 4
             # but third time's the charm
-        """
+            """
         )
         culprit = _ast.body[0]
 

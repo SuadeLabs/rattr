@@ -18,7 +18,7 @@ class TestCustomFunctionAnalysers:
             """
             def a_func(arg):
                 sorted(arg)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -41,7 +41,7 @@ class TestCustomFunctionAnalysers:
             """
             def a_func(arg):
                 sorted(arg, key=1)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -63,7 +63,7 @@ class TestCustomFunctionAnalysers:
             """
             def a_func(arg):
                 sorted(arg, key=arg.attr)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -90,7 +90,7 @@ class TestCustomFunctionAnalysers:
 
             def key_func(a):
                 return a.b
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -123,7 +123,7 @@ class TestCustomFunctionAnalysers:
             """
             def a_func(arg):
                 sorted(arg, key=lambda a: a.attr)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -146,7 +146,7 @@ class TestCustomFunctionAnalysers:
             """
             def a_func(arg):
                 sorted(arg, key=lambda a: a[0])
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -169,7 +169,7 @@ class TestCustomFunctionAnalysers:
             """
             def a_func(arg):
                 sorted(arg, key=lambda a: a[0].attr)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 

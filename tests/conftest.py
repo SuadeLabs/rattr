@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from importlib.util import find_spec
 from os.path import dirname, join
 from pathlib import Path
+from textwrap import dedent
 from typing import TYPE_CHECKING
 from unittest import mock
 
@@ -127,44 +128,45 @@ def _init_testing_config():
     )
 
 
+def _nth_line_is_empty(lines: list[str], *, n: int) -> bool:
+    return lines and (lines[n] == "" or lines[n].isspace())
+
+
 @pytest.fixture
 def parse():
     def _inner(source: str) -> ast.AST:
         """Return the parsed AST for the given code, use relative indentation.
 
-        Assume usage is:
-            parse('''
+        Assumed usage is:
+            parse(
+                '''
                 <source code>       # first line sets the base indent
                 <source code>
                     <source code>   # this is indented once (relative)
                 <source code>
-            ''')
+                '''
+            )
 
-        Require the opening and closing blank lines.
         """
-        lines = list()
-        source_lines = source.splitlines()[1:-1]
+        lines = source.splitlines()
 
-        if not len(source_lines):
-            raise ValueError("Incorrect source code formatting")
+        # Skip the first and last line if empty, this is because in the usage such as:
+        # parse(
+        #   """
+        #   ...
+        #   """
+        # )
+        # the first and last line (specifically the first) will have a different
+        # indentation level, which will throw off `dedent(...)`.
+        if _nth_line_is_empty(lines, n=0):
+            lines = lines[1:]
+        if _nth_line_is_empty(lines, n=-1):
+            lines = lines[:-1]
 
-        # Determine whitespace from first line
-        indent = str()
-        for c in source_lines[0]:
-            if not c.isspace():
-                break
-            indent += c
+        if not len(lines):
+            raise ValueError("parse(...) expects a non-empty, non-whitespace string")
 
-        # Strip whitespace from all lines
-        for line in source_lines:
-            if line.startswith(indent):
-                lines.append(line[len(indent) :])
-            elif line == "":
-                lines.append(line)
-            else:
-                raise SyntaxError("Incorrect indentation in test code")
-
-        return ast.parse("\n".join(lines))
+        return ast.parse(dedent("\n".join(lines)))
 
     return _inner
 

@@ -20,7 +20,7 @@ class TestFunctionAnalyser:
             def a_func(arg):
                 arg.sets_me = "value"
                 return arg.gets_me
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -45,7 +45,7 @@ class TestFunctionAnalyser:
             def another_func(arg):
                 arg.attr = "this function only sets"
                 arg.attr_two = "see!"
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -76,7 +76,7 @@ class TestFunctionAnalyser:
                 if debug:
                     return False
                 return arg.attr == "target value"
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -102,7 +102,7 @@ class TestFunctionAnalyser:
                     if c2:
                         return arg.foo
                 return arg.bar
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -130,7 +130,7 @@ class TestFunctionAnalyser:
                 def inner(arg):
                     return arg.foo
                 return inner(arg)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -177,7 +177,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return getattr(arg, "attr")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -199,7 +199,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return getattr(getattr(arg, "inner"), "outer")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -221,7 +221,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return getattr(getattr(arg.b[0], "inner"), "outer")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -244,7 +244,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return hasattr(arg, "attr")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -266,7 +266,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return hasattr(hasattr(arg, "inner"), "outer")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -288,7 +288,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return hasattr(hasattr(arg.b[0], "inner"), "outer")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -311,7 +311,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 setattr(arg, "attr", "value")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -333,7 +333,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return setattr(arg.b[0], "attr", "value")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -356,7 +356,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 delattr(arg, "attr")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -378,7 +378,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return delattr(arg.b[0], "attr")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -403,7 +403,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return format(arg, "b")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -425,7 +425,7 @@ class TestFunctionAnalyser:
             """
             def a_func(arg):
                 return format(getattr(arg, "attr"), "b")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -455,7 +455,7 @@ class TestFunctionAnalyser:
 
             def func_two(arg):
                 return map(lambda x: x*x, [1, 2, 3])
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -490,7 +490,6 @@ class TestFunctionAnalyser:
             },
         }
 
-        print(results)
         assert results == expected
 
     def test_class_init(self, parse, capfd):
@@ -502,7 +501,7 @@ class TestFunctionAnalyser:
 
             def a_func(blarg):
                 thing = ClassName(blarg)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -554,7 +553,7 @@ class TestFunctionAnalyser:
             """
             def a_func(blarg):
                 return 4
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -575,7 +574,7 @@ class TestFunctionAnalyser:
             """
             def a_func(blarg):
                 return blarg.attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -598,7 +597,7 @@ class TestFunctionAnalyser:
             """
             def a_func(blarg):
                 return blarg.attr, 1, a_call(blarg.another_attr)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -626,7 +625,7 @@ class TestFunctionAnalyser:
 
             def a_func(blarg):
                 return MyEnum("one")
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -665,7 +664,7 @@ class TestFunctionAnalyser:
 
             def a_func(blarg):
                 return 1, MyEnum("one"), blarg.attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -695,7 +694,6 @@ class TestFunctionAnalyser:
             },
         }
 
-        print(results)
         assert results == expected
 
     @pytest.mark.py_3_8_plus()
@@ -729,7 +727,6 @@ class TestFunctionAnalyser:
             },
         }
 
-        print(results)
         assert results == expected
 
         # Basic
@@ -757,7 +754,6 @@ class TestFunctionAnalyser:
             },
         }
 
-        print(results)
         assert results == expected
 
         # Multiple assignment
@@ -786,7 +782,6 @@ class TestFunctionAnalyser:
             },
         }
 
-        print(results)
         assert results == expected
 
     @pytest.mark.py_3_8_plus()
@@ -818,7 +813,6 @@ class TestFunctionAnalyser:
             },
         }
 
-        print(results)
         assert results == expected
 
         # Walrus multi assign w/ lambda
@@ -846,7 +840,6 @@ class TestFunctionAnalyser:
             },
         }
 
-        print(results)
         assert results == expected
 
         # Walrus multi assign w/ lambda as list
@@ -874,5 +867,4 @@ class TestFunctionAnalyser:
             },
         }
 
-        print(results)
         assert results == expected

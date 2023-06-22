@@ -18,7 +18,7 @@ class TestCustomCollectionsAnalysers:
             """
             def a_func(arg):
                 d = defaultdict()
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -43,7 +43,7 @@ class TestCustomCollectionsAnalysers:
 
             def factory():
                 return hello.results
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -76,7 +76,7 @@ class TestCustomCollectionsAnalysers:
             """
             def a_func(arg):
                 d = defaultdict(lambda: 0)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -91,8 +91,6 @@ class TestCustomCollectionsAnalysers:
             }
         }
 
-        print(results)
-        print(expected)
         assert results == expected
 
         # Lambda to attr
@@ -100,7 +98,7 @@ class TestCustomCollectionsAnalysers:
             """
             def a_func(arg):
                 d = defaultdict(lambda: arg.attr)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -115,8 +113,6 @@ class TestCustomCollectionsAnalysers:
             }
         }
 
-        print(results)
-        print(expected)
         assert results == expected
 
     def test_defaultdict_nested_factory(self, parse):
@@ -124,7 +120,7 @@ class TestCustomCollectionsAnalysers:
             """
             def a_func(arg):
                 d = defaultdict(defaultdict(list))
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 

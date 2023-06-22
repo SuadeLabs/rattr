@@ -310,7 +310,7 @@ class TestUtil:
             @name_decorator
             def fn(bob: YourUncle):
                 return isinstance(bob, YourUncle)
-        """
+            """
         )
         decorator = _ast.body[0].decorator_list[0]
         assert get_decorator_name(decorator) == "name_decorator"
@@ -322,7 +322,7 @@ class TestUtil:
             @called_decorator_no_args()
             def fn(bob: YourUncle):
                 return isinstance(bob, YourUncle)
-        """
+            """
         )
         decorator_one = _ast.body[0].decorator_list[0]
         decorator_two = _ast.body[0].decorator_list[1]
@@ -333,7 +333,7 @@ class TestUtil:
         decorator = parse(
             """
             x = 4       # <result>.body[0] will be ast.Assign
-        """
+            """
         ).body[0]
         with pytest.raises(TypeError):
             get_decorator_name(decorator)
@@ -347,7 +347,7 @@ class TestUtil:
                 pass
             def func_call_many_args(arg_one, arg_two, arg_three):
                 pass
-        """
+            """
         )
 
         # Return empty string when there are no args
@@ -388,7 +388,7 @@ class TestUtil:
             @nested.attribute.call.decorator()
             def call_attribute_decorated(a, b, c):
                 pass
-        """
+            """
         )
 
         # No decorators
@@ -447,7 +447,7 @@ class TestUtil:
             @a.b.c.present("value", "another value")
             def called_attr_with_args(a, b, c):
                 pass
-        """
+            """
         )
 
         # No decorators
@@ -568,7 +568,7 @@ class TestUtil:
             @call([1, 2, illegal])
             def fn(a, b, c):
                 pass
-        """
+            """
         )
 
         the_empty_result = (list(), dict())
@@ -714,7 +714,7 @@ class TestUtil:
             @rattr_results(sets="invalid type")
             def fn():
                 pass
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -774,7 +774,7 @@ class TestUtil:
             ])
             def fn():
                 pass
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -811,7 +811,7 @@ class TestUtil:
             @rattr_results(calls=[("fn_a()", (["alpha", "beta"], {}))])
             def ano():
                 return "it is a lie, i do nothing!"
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -902,7 +902,7 @@ class TestUtil:
             """
             def fn():
                 pass
-        """
+            """
         ).body[0]
 
         assert get_function_def_args(fn_def) == ([], None, None)
@@ -912,7 +912,7 @@ class TestUtil:
             """
             def fn(a, b, c):
                 pass
-        """
+            """
         ).body[0]
 
         assert get_function_def_args(fn_def) == (["a", "b", "c"], None, None)
@@ -922,7 +922,7 @@ class TestUtil:
             """
             def fn(a, b=c, *d):
                 pass
-        """
+            """
         ).body[0]
 
         assert get_function_def_args(fn_def) == (["a", "b"], "d", None)
@@ -932,7 +932,7 @@ class TestUtil:
             """
             def fn(a, b="val", *c, **d):
                 pass
-        """
+            """
         ).body[0]
 
         assert get_function_def_args(fn_def) == (["a", "b"], "c", "d")
@@ -942,7 +942,7 @@ class TestUtil:
             """
             def fn(*args, **kwargs):
                 pass
-        """
+            """
         ).body[0]
 
         assert get_function_def_args(fn_def) == ([], "args", "kwargs")

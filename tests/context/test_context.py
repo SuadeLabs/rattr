@@ -266,9 +266,9 @@ class TestContext:
         arguments = (
             parse(
                 """
-            def fn():
-                pass
-        """
+                def fn():
+                    pass
+                """
             )
             .body[0]
             .args
@@ -286,7 +286,7 @@ class TestContext:
                 """
             def fn(a, b, c=1, d=2, *x, **y):
                 pass
-        """
+            """
             )
             .body[0]
             .args
@@ -356,7 +356,7 @@ class TestRootContext_ContextFromPython:
         _ast = parse(
             """
             # A blank context
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -381,7 +381,7 @@ class TestRootContext_ContextFromPython:
         _ast = parse(
             """
             # A blank context
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -400,7 +400,7 @@ class TestRootContext_ContextFromPython:
         _ast = parse(
             """
             # A blank context
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -416,7 +416,7 @@ class TestRootContext_Imports:
         _ast = parse(
             """
             import math
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -429,7 +429,7 @@ class TestRootContext_Imports:
         _ast = parse(
             """
             import math as m
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -442,7 +442,7 @@ class TestRootContext_Imports:
         _ast = parse(
             """
             import os, math
-        """
+            """
         )
         with arguments(_warning_level="all"):
             _ctx = RootContext(_ast)
@@ -461,7 +461,7 @@ class TestRootContext_Imports:
             """
             from os.path import isfile
             from math import sin, cos
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -477,7 +477,7 @@ class TestRootContext_Imports:
             """
             from os import path as path_utils
             from math import power as exp, some_func
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -492,7 +492,7 @@ class TestRootContext_Imports:
         _ast = parse(
             """
             from math import *
-        """
+            """
         )
 
         _ctx = RootContext(_ast)
@@ -509,7 +509,7 @@ class TestRootContext_Imports:
         _ast = parse(
             """
             from os.path import join
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -521,7 +521,7 @@ class TestRootContext_Imports:
             """
             from os import *
             from math import *
-        """
+            """
         )
 
         _ctx = RootContext(_ast)
@@ -536,7 +536,7 @@ class TestRootContext_Imports:
             """
             if something:
                 from math import *
-        """
+            """
         )
 
         _ctx = RootContext(_ast)
@@ -551,7 +551,7 @@ class TestRootContext_Imports:
             """
             def fn():
                 from math import *
-        """
+            """
         )
 
         _ctx = RootContext(_ast)
@@ -573,7 +573,7 @@ class TestRootContext_Assigns:
             b = hhgttg()
 
             x, y, = 1, 2
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -590,7 +590,7 @@ class TestRootContext_Assigns:
             """
             a: int = 42
             b: str = "an string!"
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -607,7 +607,7 @@ class TestRootContext_Assigns:
             a += 5
 
             b %= "fmt"
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -675,7 +675,7 @@ class TestRootContext_FunctionDefs:
 
             def fn_two(c):
                 var = "i shouldn't be in the root context!"
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -693,7 +693,7 @@ class TestRootContext_FunctionDefs:
 
             async def fn_two(c):
                 var = "i shouldn't be in the root context!"
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -707,7 +707,7 @@ class TestRootContext_FunctionDefs:
         _ast = parse(
             """
             lambda: 1
-        """
+            """
         )
 
         with mock.patch("sys.exit") as _exit:
@@ -724,7 +724,7 @@ class TestRootContext_FunctionDefs:
             x = lambda a, b: 1
             y: type = lambda: 1
             z = lambda *args: 1
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -739,7 +739,7 @@ class TestRootContext_FunctionDefs:
         _ast = parse(
             """
             x, y = lambda a, b: 1, 2
-        """
+            """
         )
 
         with mock.patch("sys.exit") as _exit:
@@ -753,7 +753,7 @@ class TestRootContext_FunctionDefs:
         _ast = parse(
             """
             x, y = lambda a: 1
-        """
+            """
         )
 
         with mock.patch("sys.exit") as _exit:
@@ -767,7 +767,7 @@ class TestRootContext_FunctionDefs:
         _ast = parse(
             """
             x = lambda a, b: 1, 2
-        """
+            """
         )
 
         with mock.patch("sys.exit") as _exit:
@@ -787,7 +787,7 @@ class TestRootContext_If:
                     pass
 
                 global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -806,7 +806,7 @@ class TestRootContext_If:
                         pass
 
                     global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -826,7 +826,7 @@ class TestRootContext_For:
                     pass
 
                 global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -845,7 +845,7 @@ class TestRootContext_For:
                         pass
 
                     global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -863,7 +863,7 @@ class TestRootContext_For:
                     pass
 
                 global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -883,7 +883,7 @@ class TestRootContext_While:
                     pass
 
                 global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -902,7 +902,7 @@ class TestRootContext_While:
                         pass
 
                     global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -927,7 +927,7 @@ class TestRootContext_Try:
                 global_d = 4
             finally:
                 global_e = 5
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -956,7 +956,7 @@ class TestRootContext_Try:
                     global_e = 5
             finally:
                 global_z = 26
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -980,7 +980,7 @@ class TestRootContext_With:
                     pass
 
                 global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -999,7 +999,7 @@ class TestRootContext_With:
                         pass
 
                     global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -1017,7 +1017,7 @@ class TestRootContext_With:
                     pass
 
                 global_var = 40
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -1039,7 +1039,7 @@ class TestRootContext_ClassDefs:
                 def method(self):
                     var = "i shouldn't be in the root context!"
                     return var + " see, i'm not!"
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -1056,7 +1056,7 @@ class TestRootContext_Ignored:
             '''
             Docstring at module level.
             '''
-        """
+            """
         )
         _ctx = RootContext(_ast)
 
@@ -1088,7 +1088,7 @@ class TestRootContext:
 
                 def get_data(self):
                     return self.data
-        """
+            """
         )
 
         with mock.patch("sys.exit") as _exit:

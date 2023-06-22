@@ -15,7 +15,7 @@ class TestClassAnalyser:
                 Two = 2
                 Three = 3
                 Four, Five = 4, 5
-        """
+            """
         )
         file_analyser = FileAnalyser(_ast, RootContext(_ast))
         file_analyser.analyse()
@@ -36,7 +36,7 @@ class TestClassAnalyser:
                 def __init__(self, some_arg):
                     self.whatever = some_arg.whatever
                     some_arg.good_number = 5    # 5 is a good number
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -67,7 +67,7 @@ class TestClassAnalyser:
                 def __init__(self, some_arg):
                     self.whatever = some_arg.whatever
                     some_arg.good_number = 5    # 5 is a good number
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -94,7 +94,6 @@ class TestClassAnalyser:
         }
 
         # HACK This has to be a repr, can't just compare, idk why
-        print(results)
         assert repr(results._file_ir) == repr(expected)
 
         # __init__ -> Func
@@ -106,7 +105,7 @@ class TestClassAnalyser:
             class SomeClass:
                 def __init__(self, some_arg):
                     self.a_thing = func(some_arg)
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -141,7 +140,7 @@ class TestClassAnalyser:
                 @staticmethod
                 def method(a, b):
                     a.attr = b.attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -169,7 +168,7 @@ class TestClassAnalyser:
                 @staticmethod
                 def method(a, b):
                     a.attr = b.attr
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -210,7 +209,7 @@ class TestClassAnalyser:
                     FibIter.N_ = FibIter.N_ + last
 
                     return FibIter.N
-        """
+            """
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
@@ -242,7 +241,7 @@ class TestClassAnalyser:
 
             class MyEnum(Enum):
                 LHS = "RHS"
-        """
+            """
         )
         _ctx = RootContext(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
@@ -268,7 +267,7 @@ class TestClassAnalyser:
 
             class MyEnum(enum.Enum):
                 LHS = "RHS"
-        """
+            """
         )
         _ctx = RootContext(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
@@ -294,7 +293,7 @@ class TestClassAnalyser:
 
             class MyEnum(Enum):
                 LHS = "RHS"
-        """
+            """
         )
         _ctx = RootContext(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
@@ -329,7 +328,7 @@ class TestClassAnalyser:
 
             def get_none():
                 return 4
-        """
+            """
         )
         _ctx = RootContext(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
@@ -364,7 +363,6 @@ class TestClassAnalyser:
             },
         }
 
-        print(results)
         assert results == expected
 
     @pytest.mark.py_3_8_plus()
@@ -402,7 +400,6 @@ class TestClassAnalyser:
             }
         }
 
-        print(results)
         assert results == expected
 
         # Tuple'd
@@ -440,7 +437,6 @@ class TestClassAnalyser:
             }
         }
 
-        print(results)
         assert results == expected
 
     @pytest.mark.py_3_8_plus()
@@ -474,5 +470,4 @@ class TestClassAnalyser:
             }
         }
 
-        print(results)
         assert results == expected
