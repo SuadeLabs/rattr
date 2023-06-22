@@ -10,7 +10,8 @@ from typing import Dict, List, Optional
 from rattr import error
 from rattr.analyser.context import Context
 from rattr.analyser.context.symbol import Import
-from rattr.analyser.types import FuncOrAsyncFunc, FunctionIR
+from rattr.analyser.types import FunctionIr
+from rattr.ast.types import AstFunctionDef
 
 
 class Assertor(NodeVisitor):
@@ -59,7 +60,7 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
         return ""
 
     @abstractmethod
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
         """Return the IR of the definition of the handled function."""
         return {
             "sets": set(),
@@ -69,7 +70,7 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
         }
 
     @abstractmethod
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         """Return the IR produced by a call to the handled function.
 
         The returned IR will be union'd with the IR of the caller function.
@@ -165,7 +166,7 @@ class CustomFunctionHandler:
         """Return `True` if there is a analyser for the function `name`."""
         return self.get(name, ctx) is not None
 
-    def handle_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def handle_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
         """Dispatch to the to the appropriate analyser."""
         analyser = self.get(name, ctx)
 
@@ -174,7 +175,7 @@ class CustomFunctionHandler:
 
         return analyser.on_def(name, node, ctx)
 
-    def handle_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def handle_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         """Dispatch to the to the appropriate analyser."""
         analyser = self.get(name, ctx)
 

@@ -5,8 +5,9 @@ import ast
 
 from rattr.analyser.base import CustomFunctionAnalyser
 from rattr.analyser.context import Context
-from rattr.analyser.types import FuncOrAsyncFunc, FunctionIR
+from rattr.analyser.types import FunctionIr
 from rattr.analyser.util import get_dynamic_name, get_fullname
+from rattr.ast.types import AnyFunctionDef
 
 
 class GetattrAnalyser(CustomFunctionAnalyser):
@@ -18,10 +19,10 @@ class GetattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "getattr"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": set(),
             "gets": {
@@ -41,10 +42,10 @@ class SetattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "setattr"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": {
                 get_dynamic_name(name, node, "{first}.{second}"),
@@ -64,10 +65,10 @@ class HasattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "hasattr"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": set(),
             "gets": {
@@ -87,10 +88,10 @@ class DelattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "delattr"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": set(),
             "gets": set(),
@@ -110,10 +111,10 @@ class SortedAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "sorted"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         # HACK Avoid circular import
         from rattr.analyser.context.symbol import Name
         from rattr.analyser.function import FunctionAnalyser

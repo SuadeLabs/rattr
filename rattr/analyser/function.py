@@ -17,13 +17,10 @@ from rattr.analyser.context import (
     new_context,
 )
 from rattr.analyser.types import (
-    AnyAssign,
-    AnyFunctionDef,
-    CompoundStrictlyNameable,
-    Comprehension,
-    FunctionIR,
+    AstStrictlyNameable,
+    CompoundNameable,
+    FunctionIr,
     Nameable,
-    StrictlyNameable,
 )
 from rattr.analyser.util import (
     LOCAL_VALUE_PREFIX,
@@ -42,6 +39,12 @@ from rattr.analyser.util import (
     namedtuple_in_rhs,
     remove_call_brackets,
 )
+from rattr.ast.types import (
+    AnyAssign,
+    AnyComprehension,
+    AnyFunctionDef,
+    AstFunctionDefOrLambda,
+)
 from rattr.plugins import plugins
 
 
@@ -50,12 +53,12 @@ class FunctionAnalyser(NodeVisitor):
 
     def __init__(self, _ast: ast.AST, context: Context) -> None:
         """Set configuration and initialise IR."""
-        if not isinstance(_ast, AnyFunctionDef.__args__):
+        if not isinstance(_ast, AstFunctionDefOrLambda):
             raise TypeError("FunctionAnalyser expects `_ast` to be a function")
 
-        self._ast: AnyFunctionDef = _ast
+        self._ast: ast.Lambda | AnyFunctionDef = _ast
 
-        self.func_ir: FunctionIR = {
+        self.func_ir: FunctionIr = {
             "gets": set(),
             "sets": set(),
             "dels": set(),
@@ -65,7 +68,7 @@ class FunctionAnalyser(NodeVisitor):
         # NOTE Managed by `new_context` contextmanager -- do not manually set
         self.context: Context = context
 
-    def analyse(self) -> FunctionIR:
+    def analyse(self) -> FunctionIr:
         """Entry point, return the results of analysis."""
         with new_context(self):
             self.context.push_arguments_to_context(self._ast.args)
@@ -118,7 +121,7 @@ class FunctionAnalyser(NodeVisitor):
 
         self.update_results(Name(fullname, basename), node.ctx)
 
-    def visit_compound_nameable(self, node: CompoundStrictlyNameable) -> None:
+    def visit_compound_nameable(self, node: CompoundNameable) -> None:
         """Helper method for special nameable nodes.
 
         Visit ast.Starred(value, ctx).
@@ -135,8 +138,8 @@ class FunctionAnalyser(NodeVisitor):
         #       visited
         #       In `a.thing`, the expr should be visted once as a whole
         #       (neither `a` nor `thing` should be visited directly)
-        if not isinstance(node.value, StrictlyNameable.__args__):
-            self.visit(node.value)
+        if not isinstance(node.value, AstStrictlyNameable):
+            self.generic_visit(node.value)
 
         self.update_results(Name(fullname, basename), node.ctx)
 
@@ -397,7 +400,7 @@ class FunctionAnalyser(NodeVisitor):
 
     def _visit_any_comprehension_or_generator_expr(
         self,
-        node: Comprehension | ast.GeneratorExp,
+        node: AnyComprehension | ast.GeneratorExp,
         names: list[ast.expr],
     ) -> None:
         with new_context(self):

@@ -15,7 +15,7 @@ from rattr.analyser.context import (
     Name,
     Symbol,
 )
-from rattr.analyser.types import FileIR, FunctionIR, ImportsIR
+from rattr.analyser.types import FileIr, FunctionIr, ImportsIr
 from rattr.analyser.util import (
     is_blacklisted_module,
     is_excluded_name,
@@ -39,9 +39,9 @@ def __prefix(func: Func) -> str:
 
 def __resolve_target_and_ir(
     callee: Call,
-    file_ir: FileIR,
-    imports_ir: ImportsIR,
-) -> Tuple[Func, FunctionIR]:
+    file_ir: FileIr,
+    imports_ir: ImportsIr,
+) -> Tuple[Func, FunctionIr]:
     """Helper function for `resolve_function` and `resolve_class`."""
     if callee.target in file_ir:
         return callee.target, file_ir[callee.target]
@@ -65,10 +65,10 @@ def __resolve_target_and_ir(
 
 def resolve_function(
     callee: Call,
-    file_ir: FileIR,
-    imports_ir: ImportsIR,
+    file_ir: FileIr,
+    imports_ir: ImportsIr,
     caller: Optional[Func] = None,
-) -> Union[Tuple[None, None], Tuple[Func, FunctionIR]]:
+) -> Union[Tuple[None, None], Tuple[Func, FunctionIr]]:
     _msg = f"{__prefix(caller)} unable to resolve call to {callee.target.name!r}"
 
     if caller is not None:
@@ -90,10 +90,10 @@ def resolve_function(
 
 def resolve_class(
     callee: Call,
-    file_ir: FileIR,
-    imports_ir: ImportsIR,
+    file_ir: FileIr,
+    imports_ir: ImportsIr,
     caller: Optional[Func] = None,
-) -> Union[Tuple[None, None], Tuple[Func, FunctionIR]]:
+) -> Union[Tuple[None, None], Tuple[Func, FunctionIr]]:
     _where = __prefix(caller)
 
     try:
@@ -108,15 +108,15 @@ def resolve_class(
 def resolve_import(
     name: str,
     target: Import,
-    imports_ir: ImportsIR,
+    imports_ir: ImportsIr,
     caller: Optional[Func] = None,
-) -> Union[Tuple[None, None], Tuple[Func, FunctionIR]]:
+) -> Union[Tuple[None, None], Tuple[Func, FunctionIr]]:
     """Return the `Func` and IR for the given import."""
     _where = __prefix(caller)
     config = Config()
 
     module = target.module_name
-    module_ir: FileIR = imports_ir.get(module, None)
+    module_ir: FileIr = imports_ir.get(module, None)
 
     as_name, qualified_name = target.name, target.qualified_name
 
@@ -187,10 +187,10 @@ def resolve_import(
 
 def get_callee_target(
     callee: Call,
-    file_ir: FileIR,
-    imports_ir: ImportsIR,
+    file_ir: FileIr,
+    imports_ir: ImportsIr,
     caller: Optional[Func] = None,
-) -> Union[Tuple[None, None], Tuple[Func, FunctionIR]]:
+) -> Union[Tuple[None, None], Tuple[Func, FunctionIr]]:
     """Return the `Symbol` and IR of the called function."""
     # TODO Should this trigger a warning?
     if callee.target is None:
@@ -229,7 +229,7 @@ def partially_unbind_name(symbol: Name, new_basename: str) -> Name:
     return Name(new_name, new_basename)
 
 
-def partially_unbind(func_ir: FunctionIR, swaps: Dict[str, str]) -> FunctionIR:
+def partially_unbind(func_ir: FunctionIr, swaps: Dict[str, str]) -> FunctionIr:
     """Return the partially unbound results for the given function."""
     return {
         "sets": {
@@ -292,9 +292,9 @@ class IrDagNode:
 
     call: Call
     func: Func
-    func_ir: FunctionIR
-    file_ir: FileIR
-    imports_ir: ImportsIR
+    func_ir: FunctionIr
+    file_ir: FileIr
+    imports_ir: ImportsIr
 
     def __post_init__(self) -> None:
         self.children: List[IrDagNode] = list()
@@ -336,7 +336,7 @@ class IrDagNode:
 
         return seen
 
-    def simplify(self) -> FunctionIR:
+    def simplify(self) -> FunctionIr:
         """Return the IR modified to include dependent calls.
 
         NOTE
@@ -351,7 +351,7 @@ class IrDagNode:
         # and their children partially unbound
         child_irs = [(c.simplify(), c) for c in self.children]
 
-        simplified: FunctionIR = deepcopy(self.func_ir)
+        simplified: FunctionIr = deepcopy(self.func_ir)
 
         for child_ir, child in child_irs:
             swaps = construct_swap(child.func, child.call)

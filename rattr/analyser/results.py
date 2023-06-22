@@ -5,7 +5,7 @@ import json
 
 from rattr.analyser.context import Symbol
 from rattr.analyser.ir_dag import IrDagNode
-from rattr.analyser.types import FileIR, FileResults, ImportsIR
+from rattr.analyser.types import FileIr, FileResults, ImportsIr
 
 
 class ResultsEncoder(json.JSONEncoder):
@@ -24,7 +24,7 @@ class ResultsEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResults:
+def generate_results_from_ir(file_ir: FileIr, imports_ir: ImportsIr) -> FileResults:
     """Generate the final results from the given IR.
 
     Removing cycles:

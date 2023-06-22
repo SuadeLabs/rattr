@@ -18,7 +18,7 @@ from typing import Any, Generator, Iterable, Optional, Set, TypeVar, Union
 from rattr import error
 from rattr.analyser.context.symbol import (
     Builtin,
-    CallTarget,
+    CallableSymbol,
     Class,
     Func,
     Import,
@@ -28,7 +28,6 @@ from rattr.analyser.context.symbol import (
     get_possible_module_names,
 )
 from rattr.analyser.context.symbol_table import SymbolTable
-from rattr.analyser.types import AnyAssign, Constant, Literal
 from rattr.analyser.util import (
     PYTHON_BUILTINS,
     Changes,
@@ -50,6 +49,12 @@ from rattr.analyser.util import (
     namedtuple_in_rhs,
     remove_call_brackets,
     unravel_names,
+)
+from rattr.ast.types import (
+    AnyAssign,
+    AstComprehensions,
+    AstConstants,
+    AstLiterals,
 )
 from rattr.config import Config
 from rattr.config.state import enter_file
@@ -181,7 +186,7 @@ class Context:
         #   If it is an argument, then it is either a procedural parameter or a
         #   call to a method on an argument; distinguished by "." being in the
         #   callee name.
-        if warn and target is not None and not isinstance(target, CallTarget.__args__):
+        if warn and target is not None and not isinstance(target, CallableSymbol):
             if "." not in callee and self.declares(target.name):
                 error.error(
                     f"unable to resolve call to {name!r}, likely a procedural "
@@ -614,10 +619,13 @@ class RootContext(Context):
             "floating"), then disallow it.
 
         """
-        if isinstance(node.value, Literal.__args__):
+        if isinstance(node.value, AstConstants):
             return
 
-        if isinstance(node.value, Constant.__args__):
+        if isinstance(node.value, AstLiterals):
+            return
+
+        if isinstance(node.value, AstComprehensions):
             return
 
         if isinstance(node.value, ast.Call):

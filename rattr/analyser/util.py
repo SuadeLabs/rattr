@@ -36,17 +36,15 @@ from rattr.analyser.context.symbol import (
     parse_call,
     parse_name,
 )
-from rattr.analyser.types import (
+from rattr.analyser.types import AstStrictlyNameable, FunctionIr
+from rattr.ast.types import (
     AnyAssign,
+    AnyDef,
     AnyFunctionDef,
-    AstDef,
-    Comprehension,
-    Constant,
-    FuncOrAsyncFunc,
-    FunctionIR,
-    Literal,
+    AstComprehensions,
+    AstConstants,
+    AstLiterals,
     Nameable,
-    StrictlyNameable,
 )
 from rattr.config import Config
 
@@ -122,7 +120,7 @@ def get_basename_fullname_pair(
     # node ⊂ ( StrictlyNameable \ { ast.Name } )
     if isinstance(node, ast.Call):
         basename, sub_name = get_basename_fullname_pair(node.func, safe)
-    elif isinstance(node, StrictlyNameable.__args__):
+    elif isinstance(node, AstStrictlyNameable):
         basename, sub_name = get_basename_fullname_pair(node.value, safe)
 
     if isinstance(node, ast.Attribute):
@@ -153,11 +151,11 @@ def get_basename_fullname_pair(
         _error_class = error.RattrUnaryOpInNameable
     elif isinstance(node, ast.BinOp):
         _error_class = error.RattrBinOpInNameable
-    elif isinstance(node, Constant.__args__):
+    elif isinstance(node, AstConstants):
         _error_class = error.RattrConstantInNameable
-    elif isinstance(node, Literal.__args__):
+    elif isinstance(node, AstLiterals):
         _error_class = error.RattrLiteralInNameable
-    elif isinstance(node, Comprehension.__args__):
+    elif isinstance(node, AstComprehensions):
         _error_class = error.RattrComprehensionInNameable
     elif isinstance(node, ast.GeneratorExp):
         _error_class = error.RattrComprehensionInNameable
@@ -218,7 +216,7 @@ def unravel_names(
     ["a.attr"]
 
     """
-    if isinstance(node, StrictlyNameable.__args__):
+    if isinstance(node, AstStrictlyNameable):
         return [get_name(node)]
 
     if isinstance(node, (ast.Tuple, ast.List)):
@@ -286,8 +284,8 @@ def get_xattr_obj_name_pair(
         return ".".join(get_xattr_obj_name_pair(xattr, obj)), attr_name
 
     # Base Case
-    # NOTE Call ∈ StrictlyNameable, thus base case comes second
-    if isinstance(obj, StrictlyNameable.__args__):
+    # NOTE Call ∈ AstStrictlyNameable, thus base case comes second
+    if isinstance(obj, AstStrictlyNameable):
         return get_fullname(node.args[0]), attr_name
 
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
@@ -322,12 +320,12 @@ def get_second_argument_name(arguments: ast.arguments) -> str:
     return get_nth_argument_name(arguments, 1)
 
 
-def has_annotation(name: str, fn: AstDef) -> bool:
+def has_annotation(name: str, fn: AnyDef) -> bool:
     """Return `True` if the function is decorated with the given annotation."""
     return name in map(get_attrname, fn.decorator_list)
 
 
-def get_annotation(name: str, fn: AstDef) -> Optional[ast.expr]:
+def get_annotation(name: str, fn: AnyDef) -> Optional[ast.expr]:
     """Return the decorator node for the given annotation on the function."""
     matching: List[ast.expr] = list()
 
@@ -388,7 +386,7 @@ def safe_eval(expr: ast.expr, culprit: ast.AST) -> Optional[Any]:
 
 
 def parse_annotation(
-    name: str, fn_def: FuncOrAsyncFunc
+    name: str, fn_def: AnyFunctionDef
 ) -> Tuple[List[Any], Dict[str, Any]]:
     """Return the positional and keyword arguments of the annotation."""
     annotation = get_annotation(name, fn_def)
@@ -465,7 +463,7 @@ def is_args(args: Any) -> bool:
     return True
 
 
-def parse_rattr_results_from_annotation(fn_def: AnyFunctionDef, context) -> FunctionIR:
+def parse_rattr_results_from_annotation(fn_def: AnyFunctionDef, context) -> FunctionIr:
     """Return the IR for the given function, assuming it is annotated."""
     # Check arguments
     expected = {"sets": set(), "gets": set(), "calls": list(), "dels": set()}
@@ -574,7 +572,7 @@ def is_in_builtins(name_or_qualified_name: str) -> bool:
 
 
 def get_function_def_args(
-    fn_def: AnyFunctionDef,
+    fn_def: ast.Lambda | AnyFunctionDef,
 ) -> Tuple[List[str], Optional[str], Optional[str]]:
     """Return the arguments in the given function definition."""
     args = list()
@@ -718,7 +716,7 @@ def get_starred_imports(
     return starred
 
 
-def get_function_body(node: AnyFunctionDef) -> List[ast.stmt]:
+def get_function_body(node: ast.Lambda | AnyFunctionDef) -> List[ast.stmt]:
     """Return the body of the given function as a list of statements."""
     if isinstance(node, ast.Lambda):
         return [node.body]

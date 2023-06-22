@@ -8,7 +8,7 @@ from math import log10
 from rattr import error
 from rattr.analyser.file import RattrStats, parse_and_analyse_file
 from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
-from rattr.analyser.types import FileIR, FileResults, ImportsIR
+from rattr.analyser.types import FileIr, FileResults, ImportsIr
 from rattr.cli import parse_arguments
 from rattr.config import Config, Output, State
 
@@ -37,7 +37,7 @@ def main(config: Config) -> None:
         show_stats(stats)
 
 
-def show_ir(file: str, file_ir: FileIR, imports_ir: ImportsIR) -> None:
+def show_ir(file: str, file_ir: FileIr, imports_ir: ImportsIr) -> None:
     """Prettily print the given file and imports IR."""
     jsonable_ir = dict()
 

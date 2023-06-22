@@ -13,7 +13,7 @@ from rattr.analyser.base import NodeVisitor
 from rattr.analyser.context import Context
 from rattr.analyser.context.symbol import Class, Func, Name, Symbol
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import AnyAssign, AnyFunctionDef, ClassIR, FunctionIR
+from rattr.analyser.types import ClassIr, FunctionIr
 from rattr.analyser.util import (
     get_assignment_targets,
     get_fullname,
@@ -21,21 +21,22 @@ from rattr.analyser.util import (
     has_annotation,
     unravel_names,
 )
+from rattr.ast.types import AnyAssign, AnyFunctionDef, AstFunctionDef
 
 
 def is_method(node: ast.AST) -> bool:
-    return isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef))
+    return isinstance(node, AstFunctionDef)
 
 
-def get_statements(statements: ast.AST) -> List[AnyFunctionDef]:
+def get_statements(statements: ast.AST) -> List[ast.stmt]:
     return list(filter(lambda stmt: not is_method(stmt), statements))
 
 
-def get_methods(statements: ast.AST) -> List[ast.stmt]:
+def get_methods(statements: ast.AST) -> List[AnyFunctionDef]:
     return list(filter(lambda stmt: is_method(stmt), statements))
 
 
-def get_initialiser(methods: List[AnyFunctionDef]) -> AnyFunctionDef:
+def get_initialiser(methods: List[AnyFunctionDef]) -> ast.FunctionDef | None:
     init = list(filter(lambda m: m.name == "__init__", methods))
 
     if len(init) == 0:
@@ -83,12 +84,12 @@ class ClassAnalyser(NodeVisitor):
         self._ast = _ast
         self.class_name = _ast.name
 
-        self.class_ir: ClassIR = dict()
+        self.class_ir: ClassIr = dict()
 
         # NOTE Managed by `new_context` contextmanager -- do not manually set
         self.context = context
 
-    def analyse(self) -> ClassIR:
+    def analyse(self) -> ClassIr:
         """Entry point, return the IR produced from analysis.
 
         Algorithm:
@@ -140,7 +141,7 @@ class ClassAnalyser(NodeVisitor):
     # Non-method statements
     # ----------------------------------------------------------------------- #
 
-    def visit_initialiser(self, init: AnyFunctionDef) -> None:
+    def visit_initialiser(self, init: ast.FunctionDef) -> None:
         # NOTE
         #   Class already in context (as Class("ClassName"))
         #   Add initialiser as Func("ClassName.__init__")
@@ -164,7 +165,7 @@ class ClassAnalyser(NodeVisitor):
         names: List[Symbol] = list(filter(lambda s: isinstance(s, Name), symbols))
         enum_values = filter(lambda n: n.name.startswith(f"{self.class_name}."), names)
 
-        ir: FunctionIR = {
+        ir: FunctionIr = {
             "sets": set(),
             "gets": set(enum_values),
             "calls": set(),

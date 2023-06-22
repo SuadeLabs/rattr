@@ -16,8 +16,9 @@ from rattr.analyser.context import Context, RootContext
 from rattr.analyser.context.symbol import Builtin, Call, Name, Symbol
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
-from rattr.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
+from rattr.analyser.types import FileIr, FunctionIr
 from rattr.analyser.util import LOCAL_VALUE_PREFIX, has_affect
+from rattr.ast.types import AstFunctionDef
 from rattr.config import Arguments, Config, Output, State
 
 if TYPE_CHECKING:
@@ -181,7 +182,7 @@ def parse_with_context(parse: Callable[[str], ast.AST]):
 @pytest.fixture
 def analyse_single_file(
     parse_with_context: Callable[[str], tuple[ast.AST, Context]],
-) -> Callable[[str], tuple[FileIR, FileResults]]:
+) -> Callable[[str], tuple[FileIr, FileResults]]:
     """Parse and analyse the source as though it were a single file.
 
     NOTE
@@ -588,7 +589,7 @@ def file_ir_from_dict():
         ctx.add_all(ir.keys())
 
         # Create FileIR
-        file_ir = FileIR(ctx)
+        file_ir = FileIr(ctx)
         file_ir._file_ir = ir
 
         return file_ir
@@ -605,7 +606,7 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "print"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
         return {
             "sets": {
                 Name("set_in_print_def"),
@@ -621,7 +622,7 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
             },
         }
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": {
                 Name("set_in_print"),
@@ -652,7 +653,7 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "module.example"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
         return {
             "sets": {
                 Name("set_in_example_def"),
@@ -668,7 +669,7 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
             },
         }
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": {
                 Name("set_in_example"),

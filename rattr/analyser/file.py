@@ -12,7 +12,7 @@ from rattr.analyser.base import NodeVisitor
 from rattr.analyser.cls import ClassAnalyser
 from rattr.analyser.context import Context, Func, Import, RootContext
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import AnyAssign, AnyFunctionDef, FileIR, ImportsIR
+from rattr.analyser.types import FileIr, ImportsIr
 from rattr.analyser.util import (
     Changes,
     assignment_is_one_to_one,
@@ -30,6 +30,7 @@ from rattr.analyser.util import (
     read,
     timer,
 )
+from rattr.ast.types import AnyAssign, AnyFunctionDef
 from rattr.config import Config
 from rattr.config.state import enter_file
 from rattr.plugins import plugins
@@ -59,7 +60,7 @@ ImportStats = namedtuple(
 )
 
 
-def parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
+def parse_and_analyse_file() -> Tuple[FileIr, ImportsIr, NamedTuple]:
     """Parse and analyse `config.file`."""
     config = Config()
 
@@ -69,7 +70,7 @@ def parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
     return file_ir, imports_ir, stats
 
 
-def __parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
+def __parse_and_analyse_file() -> Tuple[FileIr, ImportsIr, NamedTuple]:
     """Parse and analyse the given file contents."""
     config = Config()
 
@@ -109,7 +110,7 @@ def __parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
     return file_ir, imports_ir, stats
 
 
-def parse_and_analyse_imports(imports: List[Import]) -> Tuple[ImportsIR, ImportStats]:
+def parse_and_analyse_imports(imports: List[Import]) -> Tuple[ImportsIr, ImportStats]:
     """Return the mapping from file name to IR for each import.
 
     Imports are a directed cyclic graph, however, previously analysed files can
@@ -121,7 +122,7 @@ def parse_and_analyse_imports(imports: List[Import]) -> Tuple[ImportsIR, ImportS
 
     n_lines: int = 0
     n_imports: int = 0
-    imports_ir: ImportsIR = dict()
+    imports_ir: ImportsIr = dict()
     seen_module_paths: Set[str] = set()
 
     for _i in imports:
@@ -181,9 +182,9 @@ class FileAnalyser(NodeVisitor):
         """Set configuration and initialise results."""
         self._ast = _ast
         self.context = context
-        self.file_ir = FileIR(context)
+        self.file_ir = FileIr(context)
 
-    def analyse(self) -> FileIR:
+    def analyse(self) -> FileIr:
         """Entry point of FileAnalyser, return the results of analysis."""
         self.visit(self._ast)
 

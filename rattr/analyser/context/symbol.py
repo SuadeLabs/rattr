@@ -12,12 +12,19 @@ from dataclasses import dataclass
 from importlib.machinery import ModuleSpec
 from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
-from typing import Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
 from rattr.config import Config
 
+if TYPE_CHECKING:
+    from typing import Dict, List, Optional, Tuple, Union
 
-@dataclass
+
+class CallableSymbol:
+    """Mixin to signify that a symbol is callable."""
+
+
+@dataclass(order=True)
 class Symbol:
     name: str
 
@@ -41,7 +48,7 @@ class Name(Symbol):
 
 
 @dataclass
-class Builtin(Symbol):
+class Builtin(Symbol, CallableSymbol):
     has_affect: bool
 
     def __hash__(self) -> int:
@@ -49,7 +56,7 @@ class Builtin(Symbol):
 
 
 @dataclass
-class Import(Symbol):
+class Import(Symbol, CallableSymbol):
     qualified_name: Optional[str] = None
     module_name: Optional[str] = None
     module_spec: Optional[ModuleSpec] = None
@@ -67,7 +74,7 @@ class Import(Symbol):
 
 
 @dataclass
-class Func(Symbol):
+class Func(Symbol, CallableSymbol):
     args: List[str]
     vararg: Optional[str] = None
     kwarg: Optional[str] = None
@@ -82,7 +89,7 @@ class Func(Symbol):
 
 
 @dataclass
-class Class(Symbol):
+class Class(Symbol, CallableSymbol):
     """Represent the class itself and the target of `<class>.__call__()`.
 
     NOTE
@@ -104,14 +111,6 @@ class Class(Symbol):
         return hash(repr(self))
 
 
-CallTarget = Union[
-    Func,
-    Class,
-    Builtin,
-    Import,
-]
-
-
 @dataclass
 class Call(Symbol):
     args: List[str]
@@ -129,7 +128,7 @@ def parse_name(name: str) -> Name:
 def parse_call(
     callee: str,
     args: Tuple[List[str], Dict[str, str]],
-    target: Optional[CallTarget] = None,
+    target: Optional[CallableSymbol] = None,
 ) -> Call:
     if not callee.endswith("()"):
         callee += "()"

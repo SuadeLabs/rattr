@@ -6,13 +6,13 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from rattr.analyser.base import Assertor
-from rattr.analyser.types import AnyAssign, AnyFunctionDef, Comprehension
 from rattr.analyser.util import (
     get_fullname,
     get_function_def_args,
     has_annotation,
     unravel_names,
 )
+from rattr.ast.types import AnyAssign, AnyComprehension, AnyFunctionDef
 
 if TYPE_CHECKING:
     from typing import Generator
@@ -92,7 +92,7 @@ class ImportClobberingAssertor(Assertor):
         self.check_arguments(node)
         return super().generic_visit(node)
 
-    def check_arguments(self, node: AnyFunctionDef) -> None:
+    def check_arguments(self, node: ast.Lambda | AnyFunctionDef) -> None:
         args, vararg, kwarg = get_function_def_args(node)
         names = {a for a in (*args, vararg, kwarg) if a is not None}
 
@@ -139,7 +139,7 @@ class ImportClobberingAssertor(Assertor):
     def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
         return self.visit_With(node)
 
-    def check_comprehension(self, node: Comprehension | ast.GeneratorExp) -> None:
+    def check_comprehension(self, node: AnyComprehension | ast.GeneratorExp) -> None:
         for generator in node.generators:
             names = [n for n in unravel_names(generator.target)]
 

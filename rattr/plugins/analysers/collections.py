@@ -5,7 +5,8 @@ import ast
 
 from rattr.analyser.base import CustomFunctionAnalyser
 from rattr.analyser.context import Context
-from rattr.analyser.types import FuncOrAsyncFunc, FunctionIR
+from rattr.analyser.types import FunctionIr
+from rattr.ast.types import AnyFunctionDef
 
 
 class DefaultDictAnalyser(CustomFunctionAnalyser):
@@ -17,10 +18,10 @@ class DefaultDictAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "collections.defaultdict"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         # HACK Avoid circular import
         from rattr.analyser.function import FunctionAnalyser
 
