@@ -28,6 +28,12 @@ _OPERATORS: dict[str, _Operator] = {
 }
 
 
+def _version_cmp(op: _Operator, current: str, target: str) -> bool:
+    _, current_minor_and_micro = current.split(".", maxsplit=1)
+    _, target_minor_and_micro = target.split(".", maxsplit=1)
+    return op(float(current_minor_and_micro), float(target_minor_and_micro))
+
+
 def _parse_opcode(version: str) -> tuple[str, str]:
     opcode = "".join(takewhile(lambda c: c in _OPERATOR_LEXEMES, version))
     remainder = version[len(opcode) :]
@@ -93,4 +99,4 @@ def is_python_version(version: str) -> bool:
     _operator = _OPERATORS[opcode]
     interpreter_version = _current_version_string(include_micro=_include_micro)
 
-    return _operator(interpreter_version, target_version)
+    return _version_cmp(_operator, interpreter_version, target_version)

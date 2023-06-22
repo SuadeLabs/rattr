@@ -73,3 +73,35 @@ class TestIsPythonVersion:
         assert is_python_version("<=3.7.1")
         assert not is_python_version(">3.7.1")
         assert not is_python_version("<3.7.1")
+
+    @mock.patch("rattr.versioning._util._current_version", lambda: (3, 9, 1))
+    def test_10_vs_9(self):
+        # Originally this used string comparison and thus failed as for strings
+        # 3.9 > 3.10, now this uses float comparison sans the major version number.
+        assert is_python_version(">=3.9")
+        assert not is_python_version(">3.9")
+        assert is_python_version("==3.9")
+        assert not is_python_version("<3.9")
+        assert is_python_version("<=3.9")
+
+        assert not is_python_version(">=3.10")
+        assert not is_python_version(">3.10")
+        assert not is_python_version("==3.10")
+        assert is_python_version("<3.10")
+        assert is_python_version("<=3.10")
+
+    @mock.patch("rattr.versioning._util._current_version", lambda: (3, 9, 1))
+    def test_10_vs_9_with_micro(self):
+        # Originally this used string comparison and thus failed as for strings
+        # 3.9 > 3.10, now this uses float comparison sans the major version number.
+        assert is_python_version(">=3.9.1")
+        assert not is_python_version(">3.9.1")
+        assert is_python_version("==3.9.1")
+        assert not is_python_version("<3.9.1")
+        assert is_python_version("<=3.9.1")
+
+        assert not is_python_version(">=3.10.1")
+        assert not is_python_version(">3.10.1")
+        assert not is_python_version("==3.10.1")
+        assert is_python_version("<3.10.1")
+        assert is_python_version("<=3.10.1")
