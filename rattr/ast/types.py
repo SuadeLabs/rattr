@@ -3,9 +3,8 @@ from __future__ import annotations
 import ast
 from typing import Union
 
-from typing_extensions import TypeAlias
-
 from rattr.versioning import AstNodeNotInPythonVersion, is_python_version
+from rattr.versioning.typing import TypeAlias
 
 AstConstants = (
     # Python 3.8+ all constants are under `ast.Constant(..., kind=...)`

@@ -3,10 +3,9 @@ from __future__ import annotations
 import ast
 from typing import Dict, Literal, Set, Union
 
-from typing_extensions import TypeAlias
-
 from rattr.analyser.context.symbol import Class, Func, Symbol
 from rattr.models.ir import FileIr
+from rattr.versioning.typing import TypeAlias
 
 ResultsCategory: TypeAlias = Literal["gets", "sets", "dels", "calls"]
 
