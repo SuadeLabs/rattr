@@ -159,18 +159,6 @@ cache = ''
 
 # Developer Notes
 
-## Use of Undocumented Behaviour
-
-In `rattr/analyser/types.py` several `Union` types are defined for
-convenience. In Python 3.8 to check if the variable `a` is an instance of any
-of the types within the `Union` the `typing` module provides `get_args` i.e.
-one would use `isinstance(a, get_args(UnionTypeName))`. However, this function
-is not provided in Python 3.7 and so the undocumented attribute `__args__` of
-the `UnionTypeName` must be used i.e. `isinstance(a, UnionTypeName.__args__)`.
-As this is undocumented it should be changed when we upgrade to Python 3.8+
-(and `$EDITOR` will not syntax highlight or tab-complete it).
-
-
 ## Annotations
 
 Rattr provides the ability to annotate functions in the target file such that
@@ -326,40 +314,19 @@ will become `@BinOp.some_attr`, and the latter `@Int.to_bytes`.
 }
 ```
 
-## Support for Python 3.8
+## Supported Python Versions
 
-Between Python 3.7 and Python 3.8 there were several significant changes that
-effect Rattr and how it works, namely:
+At present `rattr` officially supports, and is tested under, Python versions 3.8
+through 3.11 as the run-time interpreter (i.e. supports `python3.8 -m rattr ...`).
+Previously Python 3.7 was supported but due to a number of `ast` changes (named
+expressions and constant changes) and useful stdlib changes in Python 3.8, this it is
+no longer supported (some code still makes exceptions for Python 3.7 which will be
+refactored over time).
 
-1. the introduction of the walrus operator;
-2. the addition of `posonlyargs` to `ast.arguments`;
-3. complete rework of the representation of constants in `ast`.
-
-As it stands Rattr will run on-and-under Python 3.8, however, with varying
-support for the above. Specifically: 1. is not supported, and usage will cause
-an error; 2. is not supported, and usage results in undefined behaviour; and 3.
-is fully supported.
-
-An additional issue with Python 3.7/3.8 cross-compatibility is the introduction
-of `typing.get_origin` and `typing.get_args`, removing the need to rely on the
-undefined behaviour of `Union().__args__`. Though, as the latter works in both,
-this does not affect the execution of Rattr -- it just results in some
-complaints by `mypy` which could be avoided it only Python 3.8 were supported.
-
-Links regarding the above:
-
-[1] https://stackoverflow.com/questions/45957615/check-a-variable-against-union-type-at-runtime-in-python-3-6
--- answers 1 and 2 specifically touch on the `typing.get_args` /
-`Union().__args__` issue.
-
-[2] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#literals
--- literals are very different.
-
-[3] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#NamedExpr
--- walrus operator.
-
-[4] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#arguments
--- `posonlyargs`.
+Python version outside of the given range may not be able to run `rattr` but,
+hypothetically, any Python 3 code is a valid target. That is to say that while
+`python3.7 -m rattr my_python_3_7_file.py` will not work
+`python3.8 -m rattr my_python_3_7_file.py` (*sic*) will work.
 
 
 --------------------------------------------------------------------------------
