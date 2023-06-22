@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
-from rattr.cli.parser import parse_arguments
+from rattr.cli.parser import _parse_project_config, parse_arguments
 from rattr.config import Arguments, Output
 
 
@@ -248,3 +249,85 @@ class TestTomlValidation:
             exit_on_error=False,
         )
         assert str(arguments.target) == "my/rattr/target.py"
+
+
+class TestTomlOverride:
+    @mock.patch("rattr.cli.parser._toml_error")
+    @mock.patch("rattr.cli.parser.parse_project_toml")
+    def test_parse_project_config_from_input_config(
+        self,
+        m_parse_project_toml,
+        m_toml_error,
+        illegal_field_name,
+        toml_override_path,
+        toml_override,
+    ):
+        # Test 1 -- input config given, should just be validated and returned
+        input_config = {
+            "threshold": 1,
+            "strict": True,
+            illegal_field_name: "skip-me",
+        }
+
+        input_config_valid_only = input_config.copy()
+        _ = input_config_valid_only.pop(illegal_field_name)
+
+        assert (
+            _parse_project_config(input_config=input_config, project_toml_override=None)
+            == input_config_valid_only
+        )
+        assert (
+            _parse_project_config(
+                input_config=input_config, project_toml_override=toml_override_path
+            )
+            == input_config_valid_only
+            != toml_override
+        )
+
+        assert not m_toml_error.called
+        assert not m_parse_project_toml.called
+
+    @mock.patch("rattr.cli.parser._toml_error")
+    @mock.patch("rattr.cli.parser.find_pyproject_toml")
+    def test_parse_project_config_from_pyproject_toml(
+        self,
+        m_find_pyproject_toml,
+        m_toml_error,
+        toml_well_formed_path,
+        toml_well_formed,
+    ):
+        m_pyproject_toml = mock.Mock(spec=Path)
+        m_pyproject_toml.is_file.return_value = True
+        m_pyproject_toml.read_text.return_value = toml_well_formed_path.read_text()
+
+        m_find_pyproject_toml.return_value = m_pyproject_toml
+
+        assert (
+            _parse_project_config(input_config={}, project_toml_override=None)
+            == toml_well_formed
+        )
+        assert not m_toml_error.called
+
+    @mock.patch("rattr.cli.parser._toml_error")
+    @mock.patch("rattr.cli.parser.find_pyproject_toml")
+    def test_parse_project_config_from_override(
+        self,
+        m_find_pyproject_toml,
+        m_toml_error,
+        toml_well_formed_path,
+        toml_well_formed,
+        toml_override_path,
+        toml_override,
+    ):
+        m_pyproject_toml = mock.Mock(spec=Path)
+        m_pyproject_toml.is_file.return_value = True
+        m_pyproject_toml.read_text.return_value = toml_well_formed_path.read_text()
+
+        m_find_pyproject_toml.return_value = m_pyproject_toml
+
+        assert (
+            _parse_project_config(input_config={}, project_toml_override=toml_override_path)
+            == toml_override
+            != toml_well_formed
+        )
+        assert not m_toml_error.called

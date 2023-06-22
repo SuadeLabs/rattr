@@ -1,3 +1,0 @@
-[tool.rattr]
-show-ir=true
-show-path='full'
