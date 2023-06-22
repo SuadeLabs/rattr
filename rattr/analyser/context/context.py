@@ -413,7 +413,7 @@ class RootContext(Context):
         """Helper method for starred imports."""
         config = Config()
 
-        if self.file is None or not self.file.endswith("__init__.py"):
+        if self.file is None or not self.file.name == "__init__.py":
             error.warning(
                 f"do not use 'from {node.module} import *', be explicit", node
             )

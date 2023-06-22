@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,6 +29,13 @@ def illegal_field_name() -> str:
 @pytest.fixture
 def required_sys_args() -> list[str]:
     return ["my/rattr/target.py"]
+
+
+@pytest.fixture
+def required_sys_args_rattr_target() -> str:
+    if sys.platform == "win32":
+        return "my\\rattr\\target.py"
+    return "my/rattr/target.py"
 
 
 @pytest.fixture

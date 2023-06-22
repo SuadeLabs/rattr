@@ -242,13 +242,18 @@ class TestTomlValidation:
             ({"stdout": "results"}),
         ],
     )
-    def test_toml_type_is_correct_and_value_is_valid(self, required_sys_args, toml):
+    def test_toml_type_is_correct_and_value_is_valid(
+        self,
+        required_sys_args,
+        platform_formatted_str,
+        toml,
+    ):
         arguments = parse_arguments(
             sys_args=required_sys_args,
             project_toml_conf=toml,
             exit_on_error=False,
         )
-        assert str(arguments.target) == "my/rattr/target.py"
+        assert str(arguments.target) == platform_formatted_str("my/rattr/target.py")
 
 
 class TestTomlOverride:
@@ -326,7 +331,9 @@ class TestTomlOverride:
         m_find_pyproject_toml.return_value = m_pyproject_toml
 
         assert (
-            _parse_project_config(input_config={}, project_toml_override=toml_override_path)
+            _parse_project_config(
+                input_config={}, project_toml_override=toml_override_path
+            )
             == toml_override
             != toml_well_formed
         )

@@ -222,6 +222,18 @@ def builtin() -> Callable[[str], Builtin]:
 
 
 @pytest.fixture
+def platform_formatted_str():
+    def _format_path_as_platform_specific_path(path: Path | str) -> str:
+        # On Windows this should give:
+        #   path_as_str("foo/bar.py") == path_as_str("foo\\bar.py") == "foo\\bar.py"
+        # On Linux, MacOS, etc:
+        #   path_as_str("foo/bar.py") == "foo/bar.py"
+        return str(Path(path))
+
+    return _format_path_as_platform_specific_path
+
+
+@pytest.fixture
 def RootSymbolTable():
     def _inner(*args):
         """Create a root context with the addition of the **kwargs."""
