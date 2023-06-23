@@ -208,4 +208,3 @@ def _translate_toml_conf_to_sys_args(toml_conf: Dict[str, Any]) -> List[str]:
                 toml_sys_args += [arg_name, f"{arg_value}"]
 
     return toml_sys_args
-

@@ -1068,7 +1068,6 @@ class TestRootContext_Ignored:
 
 
 class TestRootContext:
-
     # Longer "end-to-end" style test -- i.e. context over a whole module
 
     def test_module(self, parse, RootSymbolTable, capfd):

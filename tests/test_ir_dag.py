@@ -338,7 +338,6 @@ class TestIrDag_Utils:
 
 
 class TestIrDagNode:
-
     # NOTE
     #   TestIrDagNode.simplify tested in the test for `results.py`'s
     #   `generate_results_from_ir` function as the tests would be almost
