@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from functools import partial
 from pathlib import Path
 from unittest import mock
@@ -37,9 +38,9 @@ long_absolute_path_not_in_home = (
     Path("/tmp") / "a" / "b" / "c" / "dee" / "eff" / "jee" / "my_temp.file"
 )
 
-short_absolute_path_not_in_home_windows = Path("C:\\") / "Program Files" / "thefile.win"
+short_absolute_path_not_in_home_windows = Path("C:/") / "Program Files" / "thefile.win"
 long_absolute_path_not_in_home_windows = (
-    Path("C:\\")
+    Path("C:/")
     / "Program Files"
     / "Rattr"
     / "Config"
@@ -216,12 +217,15 @@ class TestGetFormattedPath:
     @pytest.mark.parametrize(
         "path,expected",
         [
-            (short_relative_path, str(short_relative_path)),
-            (long_relative_path, str(long_relative_path)),
-            (short_absolute_path_in_home, str(short_absolute_path_in_home)),
-            (long_absolute_path_in_home, str(long_absolute_path_in_home)),
-            (short_absolute_path_not_in_home, str(short_absolute_path_not_in_home)),
-            (long_absolute_path_not_in_home, str(long_absolute_path_not_in_home)),
+            (short_relative_path, short_relative_path.as_posix()),
+            (long_relative_path, long_relative_path.as_posix()),
+            (short_absolute_path_in_home, short_absolute_path_in_home.as_posix()),
+            (long_absolute_path_in_home, long_absolute_path_in_home.as_posix()),
+            (
+                short_absolute_path_not_in_home,
+                short_absolute_path_not_in_home.as_posix(),
+            ),
+            (long_absolute_path_not_in_home, long_absolute_path_not_in_home.as_posix()),
         ],
         ids=[
             "short_relative_path",
@@ -239,15 +243,18 @@ class TestGetFormattedPath:
     @pytest.mark.parametrize(
         "path,expected",
         [
-            (short_relative_path, str(short_relative_path)),
-            (long_relative_path, str(long_relative_path)),
+            (short_relative_path, short_relative_path.as_posix()),
+            (long_relative_path, long_relative_path.as_posix()),
             (short_absolute_path_in_home, "~/rattr/target.py"),
             (
                 long_absolute_path_in_home,
                 "~/some/deeply/nested/path/to/some/rattr/target.py",
             ),
-            (short_absolute_path_not_in_home, str(short_absolute_path_not_in_home)),
-            (long_absolute_path_not_in_home, str(long_absolute_path_not_in_home)),
+            (
+                short_absolute_path_not_in_home,
+                short_absolute_path_not_in_home.as_posix(),
+            ),
+            (long_absolute_path_not_in_home, long_absolute_path_not_in_home.as_posix()),
         ],
         ids=[
             "short_relative_path",
@@ -265,11 +272,14 @@ class TestGetFormattedPath:
     @pytest.mark.parametrize(
         "path,expected",
         [
-            (short_relative_path, str(short_relative_path)),
+            (short_relative_path, short_relative_path.as_posix()),
             (long_relative_path, "relative_dir/.../nested/content/inside.it"),
-            (short_absolute_path_in_home, str(short_absolute_path_in_home)),
+            (short_absolute_path_in_home, short_absolute_path_in_home.as_posix()),
             (long_absolute_path_in_home, "/.../some/rattr/target.py"),
-            (short_absolute_path_not_in_home, str(short_absolute_path_not_in_home)),
+            (
+                short_absolute_path_not_in_home,
+                short_absolute_path_not_in_home.as_posix(),
+            ),
             (long_absolute_path_not_in_home, "/.../eff/jee/my_temp.file"),
         ],
         ids=[
@@ -282,17 +292,23 @@ class TestGetFormattedPath:
         ],
     )
     def test_truncate_deep_paths(self, config, arguments, path, expected):
+        if path == long_absolute_path_in_home and sys.platform == "win32":
+            expected = f"C:{expected}"
+
         with arguments(collapse_home=False, truncate_deep_paths=True):
             assert config.get_formatted_path(path) == expected
 
     @pytest.mark.parametrize(
         "path,expected",
         [
-            (short_relative_path, str(short_relative_path)),
+            (short_relative_path, short_relative_path.as_posix()),
             (long_relative_path, "relative_dir/.../nested/content/inside.it"),
             (short_absolute_path_in_home, "~/rattr/target.py"),
             (long_absolute_path_in_home, "~/.../some/rattr/target.py"),
-            (short_absolute_path_not_in_home, str(short_absolute_path_not_in_home)),
+            (
+                short_absolute_path_not_in_home,
+                short_absolute_path_not_in_home.as_posix(),
+            ),
             (long_absolute_path_not_in_home, "/.../eff/jee/my_temp.file"),
         ],
         ids=[
@@ -313,39 +329,39 @@ class TestGetFormattedPath:
         with arguments(collapse_home=False, truncate_deep_paths=False):
             assert (
                 config.get_formatted_path(short_absolute_path_not_in_home_windows)
-                == "C:\\Program Files\\thefile.win"
+                == "C:/Program Files/thefile.win"
             )
             assert (
                 config.get_formatted_path(long_absolute_path_not_in_home_windows)
-                == "C:\\Program Files\\Rattr\\Config\\Made Up\\Path\\Here\\thefile.win"
+                == "C:/Program Files/Rattr/Config/Made Up/Path/Here/thefile.win"
             )
 
         with arguments(collapse_home=False, truncate_deep_paths=True):
             assert (
                 config.get_formatted_path(short_absolute_path_not_in_home_windows)
-                == "C:\\Program Files\\thefile.win"
+                == "C:/Program Files/thefile.win"
             )
             assert (
                 config.get_formatted_path(long_absolute_path_not_in_home_windows)
-                == "C:\\...\\Path\\Here\\thefile.win"
+                == "C:/.../Path/Here/thefile.win"
             )
 
         with arguments(collapse_home=True, truncate_deep_paths=False):
             assert (
                 config.get_formatted_path(short_absolute_path_not_in_home_windows)
-                == "C:\\Program Files\\thefile.win"
+                == "C:/Program Files/thefile.win"
             )
             assert (
                 config.get_formatted_path(long_absolute_path_not_in_home_windows)
-                == "C:\\Program Files\\Rattr\\Config\\Made Up\\Path\\Here\\thefile.win"
+                == "C:/Program Files/Rattr/Config/Made Up/Path/Here/thefile.win"
             )
 
         with arguments(collapse_home=True, truncate_deep_paths=True):
             assert (
                 config.get_formatted_path(short_absolute_path_not_in_home_windows)
-                == "C:\\Program Files\\thefile.win"
+                == "C:/Program Files/thefile.win"
             )
             assert (
                 config.get_formatted_path(long_absolute_path_not_in_home_windows)
-                == "C:\\...\\Path\\Here\\thefile.win"
+                == "C:/.../Path/Here/thefile.win"
             )
