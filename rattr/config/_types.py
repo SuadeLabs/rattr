@@ -251,7 +251,7 @@ class Config(metaclass=ConfigMetaclass):
 
             path = base
 
-        return str(path)
+        return path.as_posix()
 
     @property
     def formatted_current_file_path(self) -> str | None:

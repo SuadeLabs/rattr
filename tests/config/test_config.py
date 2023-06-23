@@ -188,38 +188,25 @@ class TestConfig:
             with badness(simplification=251, target=250, imports=101):
                 assert not config.is_within_badness_threshold
 
-    def test_formatted_current_file_path(
-        self,
-        config,
-        arguments,
-        state,
-        platform_formatted_str,
-    ):
+    def test_formatted_current_file_path(self, config, arguments, state):
         file = Path.home() / "this" / "is" / "a" / "path" / "to" / "a.file"
-        expected = platform_formatted_str("~/.../path/to/a.file")
 
         with arguments(collapse_home=True, truncate_deep_paths=True):
             with state(current_file=None):
                 assert config.formatted_current_file_path is None
 
             with state(current_file=file):
-                assert config.formatted_current_file_path == expected
+                assert config.formatted_current_file_path == "~/.../path/to/a.file"
 
-    def test_formatted_target_path(
-        self,
-        config,
-        arguments,
-        platform_formatted_str,
-    ):
+    def test_formatted_target_path(self, config, arguments):
         file = Path.home() / "this" / "is" / "a" / "path" / "to" / "a.file"
-        expected = platform_formatted_str("~/.../path/to/a.file")
 
         with arguments(collapse_home=True, truncate_deep_paths=True):
             with arguments(target=None):
                 assert config.formatted_target_path is None
 
             with arguments(target=file):
-                assert config.formatted_target_path == expected
+                assert config.formatted_target_path == "~/.../path/to/a.file"
 
 
 class TestGetFormattedPath:
@@ -271,16 +258,9 @@ class TestGetFormattedPath:
             "long_absolute_path_not_in_home",
         ],
     )
-    def test_collapsed_home(
-        self,
-        config,
-        arguments,
-        platform_formatted_str,
-        path,
-        expected,
-    ):
+    def test_collapsed_home(self, config, arguments, path, expected):
         with arguments(collapse_home=True, truncate_deep_paths=False):
-            assert config.get_formatted_path(path) == platform_formatted_str(expected)
+            assert config.get_formatted_path(path) == expected
 
     @pytest.mark.parametrize(
         "path,expected",
@@ -301,16 +281,9 @@ class TestGetFormattedPath:
             "long_absolute_path_not_in_home",
         ],
     )
-    def test_truncate_deep_paths(
-        self,
-        config,
-        arguments,
-        platform_formatted_str,
-        path,
-        expected,
-    ):
+    def test_truncate_deep_paths(self, config, arguments, path, expected):
         with arguments(collapse_home=False, truncate_deep_paths=True):
-            assert config.get_formatted_path(path) == platform_formatted_str(expected)
+            assert config.get_formatted_path(path) == expected
 
     @pytest.mark.parametrize(
         "path,expected",
@@ -331,16 +304,9 @@ class TestGetFormattedPath:
             "long_absolute_path_not_in_home",
         ],
     )
-    def test_fully_formatted(
-        self,
-        config,
-        arguments,
-        platform_formatted_str,
-        path,
-        expected,
-    ):
+    def test_fully_formatted(self, config, arguments, path, expected):
         with arguments(collapse_home=True, truncate_deep_paths=True):
-            assert config.get_formatted_path(path) == platform_formatted_str(expected)
+            assert config.get_formatted_path(path) == expected
 
     @pytest.mark.windows
     def test_windows(self, config, arguments):
