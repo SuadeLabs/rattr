@@ -26,11 +26,11 @@ setup(
     install_requires=[r.strip() for r in REQUIREMENTS.read_text().splitlines()],
     extras_require={
         "dev": [
-            "black==22.1.0",
-            "click==8.0.2",
-            "ruff==0.0.270",
-            "isort==5.10.1",
-            "pytest==7.0.1",
+            "black==23.3.0",
+            "click==8.1.3",
+            "ruff==0.0.275",
+            "isort==5.12",
+            "pytest==7.3.2",
         ],
     },
     entry_points={"console_scripts": ["rattr = rattr.__main__:entry_point"]},
