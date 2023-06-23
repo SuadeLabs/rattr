@@ -5,8 +5,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if sys.version_info.major == 3 and sys.version_info.minor >= 11:
+    # isort: off
     import tomllib  # type: ignore reportMissingImports
     from tomllib import TOMLDecodeError  # type: ignore reportMissingImports; noqa: F401
+
+    # isort: on
 else:
     import tomli as tomllib
     from tomli import TOMLDecodeError  # noqa: F401
