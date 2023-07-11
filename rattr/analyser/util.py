@@ -10,6 +10,7 @@ import sys
 from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
 from os.path import isfile
+from pathlib import Path
 from string import ascii_lowercase
 from time import perf_counter
 from typing import (
@@ -938,8 +939,14 @@ def is_relative_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
     return node.level != 0
 
 
-def module_name_from_file_path(file: str) -> Optional[str]:
+def module_name_from_file_path(file: Path | str | None) -> Optional[str]:
     """Return the recognised name of the given module."""
+    if file is None:
+        raise ValueError
+
+    if isinstance(file, Path):
+        file = str(file)
+
     module = file.replace("/", ".").replace("\\", ".")
 
     if module.endswith(".__init__.py"):
