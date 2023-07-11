@@ -128,6 +128,15 @@ def _init_testing_config():
     )
 
 
+@pytest.fixture(scope="function")
+@mock.patch("rattr.config._types.validate_arguments", lambda args: args)
+def set_testing_config():
+    def _set_testing_config(arguments: Arguments, state: State = None) -> None:
+        Config(arguments=arguments, state=state or State())
+
+    return _set_testing_config
+
+
 def _nth_line_is_empty(lines: list[str], *, n: int) -> bool:
     return lines and (lines[n] == "" or lines[n].isspace())
 

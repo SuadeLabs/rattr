@@ -16,11 +16,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rattr.__main__ import load_config
 from rattr.analyser.file import parse_and_analyse_file
 from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
 from rattr.analyser.types import FileResults, FunctionResults
 from rattr.cli import parse_arguments
+from rattr.config import Config
 
 if TYPE_CHECKING:
     from typing import Any, Dict, List, Set
@@ -96,7 +96,12 @@ class TestEndToEndRegressionTests:
         zip(code_files, results_files),
         ids=[str(f.relative_to(code_dir)) for f in code_files],
     )
-    def test_run_e2e_regression_tests(self, code_file: Path, results_file: Path):
+    def test_run_e2e_regression_tests(
+        self,
+        set_testing_config,
+        code_file: Path,
+        results_file: Path,
+    ):
         # TODO
         #   Make this more end-to-end-y (that is, use `main(...))
         #   This should suffice for now as `main(...)` is not particularly practical for
@@ -106,21 +111,21 @@ class TestEndToEndRegressionTests:
         # Parse expected results
         expected_results: Dict[str, Any] = json.loads(results_file.read_text())
 
-        # Equivalent to main function
-        load_config(
-            parse_arguments(
-                sys_args=[
-                    "-w",
-                    "none",
-                    "-p",
-                    "none",
-                    "--permissive",
-                    "0",
-                    "-r",
-                    str(code_file),
-                ]
-            )
+        # Setup simulated cli arguments and state
+        config = Config()
+        config.arguments = parse_arguments(
+            sys_args=[
+                "-w",
+                "none",
+                "--threshold",
+                "0",
+                "-o",
+                "results",
+                str(code_file),
+            ],
         )
+
+        # Equivalent to main function
         file_ir, imports_ir, _ = parse_and_analyse_file()
         actual_results = generate_results_from_ir(file_ir, imports_ir)
 
@@ -158,7 +163,9 @@ class TestEndToEndRegressionTests:
     def test_update_expected_results(self, code_file, results_file):
         _cli_arguments = ["-w", "all", "--permissive", "0", "-r"]
 
-        load_config(parse_arguments([*_cli_arguments, str(code_file)]))
+        # Setup simulated cli arguments and state
+        config = Config()
+        config.arguments = parse_arguments([*_cli_arguments, str(code_file)])
 
         file_ir, imports_ir, _ = parse_and_analyse_file()
         results = generate_results_from_ir(file_ir, imports_ir)
