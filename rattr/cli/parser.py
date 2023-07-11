@@ -64,7 +64,7 @@ def parse_arguments(
 
     project_toml_conf = _parse_project_config(
         project_toml_conf,
-        _get_toml_override(cli_parser),
+        _get_toml_override(cli_parser, sys_args),
         exit_on_error=exit_on_error,
     )
     toml_arguments = _translate_toml_conf_to_sys_args(project_toml_conf)
@@ -115,9 +115,9 @@ def make_toml_parser() -> ArgumentParser:
     return parser
 
 
-def _get_toml_override(cli_parser: ArgumentParser) -> Optional[Path]:
+def _get_toml_override(cli_parser: ArgumentParser, sys_args: Optional[List[str]] = None) -> Optional[Path]:
     """Return the toml config override from the CLI if given, otherwise `None`."""
-    cli_arguments = cli_parser.parse_args(namespace=Arguments())
+    cli_arguments = cli_parser.parse_args(args=sys_args, namespace=Arguments())
     pyproject_toml_override = cli_arguments.pyproject_toml_override
 
     if pyproject_toml_override and pyproject_toml_override.is_file():
