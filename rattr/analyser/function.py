@@ -37,7 +37,6 @@ from rattr.analyser.util import (
     is_call_to,
     lambda_in_rhs,
     namedtuple_in_rhs,
-    remove_call_brackets,
 )
 from rattr.ast.types import (
     AnyAssign,
@@ -45,6 +44,7 @@ from rattr.ast.types import (
     AnyFunctionDef,
     AstFunctionDefOrLambda,
 )
+from rattr.models.symbol.util import without_call_brackets
 from rattr.plugins import plugins
 
 
@@ -175,7 +175,7 @@ class FunctionAnalyser(NodeVisitor):
         # NOTE
         #   If this is a call to a method on an attribute, then it necessarily
         #   "gets" the attribute
-        parts = remove_call_brackets(fullname).split(".")[:-1]
+        parts = without_call_brackets(fullname).split(".")[:-1]
         for attr in list(accumulate(parts, lambda a, b: f"{a}.{b}"))[1:]:
             self.func_ir["gets"].add(Name(attr, parts[0]))
 
@@ -191,9 +191,9 @@ class FunctionAnalyser(NodeVisitor):
     def handle_special_function(self, node: ast.Call) -> bool:
         """Return `True` if handled."""
         if isinstance(node.func, ast.Name):
-            name = remove_call_brackets(node.func.id)
+            name = without_call_brackets(node.func.id)
         else:
-            name = remove_call_brackets(get_fullname(node, safe=True))
+            name = without_call_brackets(get_fullname(node, safe=True))
 
         analyser = plugins.custom_function_handler.get(name, self.context.get_root())
 

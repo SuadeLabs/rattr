@@ -48,6 +48,12 @@ from rattr.ast.types import (
     Nameable,
 )
 from rattr.config import Config
+from rattr.models.symbol import (
+    PYTHON_ATTR_ACCESS_BUILTINS,
+    PYTHON_BUILTINS,
+    CallArguments,
+    CallInterface,
+)
 
 # The prefix given to local constants, literals, etc to produce a name
 # E.g. "hi" -> get_basename_fullname_pair(.) = "@Str"
@@ -61,19 +67,6 @@ MODULE_BLACKLIST_PATTERNS = {
     "(rattr|rattr\\..*)",
     "(package.rattr|packages.rattr\\..*)",
 }
-
-# Python builtins which are not functions, classes, etc.
-PYTHON_LITERAL_BUILTINS = {"None", "True", "False", "Ellipsis"}
-
-# Python builtins which end in "attr", these dynamically access attributes on a
-# given object
-# NOTE
-#   These must be handled explicitly by `FunctionAnalyser` or anyother
-#   `ast.NodeVisitor` implementation that records results/context and sees them
-PYTHON_ATTR_BUILTINS = {"delattr", "getattr", "hasattr", "setattr"}
-
-# All Python builtins that are present in the `RootContext`
-PYTHON_BUILTINS = set(filter(lambda b: b not in PYTHON_LITERAL_BUILTINS, dir(builtins)))
 
 
 def get_basename_fullname_pair(
@@ -131,7 +124,7 @@ def get_basename_fullname_pair(
         return basename, f"{sub_name}[]"
 
     if isinstance(node, ast.Call):
-        if any(is_call_to(attr, node) for attr in PYTHON_ATTR_BUILTINS):
+        if any(is_call_to(attr, node) for attr in PYTHON_ATTR_ACCESS_BUILTINS):
             return basename, ".".join(get_xattr_obj_name_pair(basename, node))
 
         return basename, f"{sub_name}()"
@@ -253,7 +246,7 @@ def has_affect(builtin: str) -> bool:
     if builtin not in PYTHON_BUILTINS:
         raise ValueError(f"'{builtin}' is not a Python builtin")
 
-    return builtin in PYTHON_ATTR_BUILTINS
+    return builtin in PYTHON_ATTR_ACCESS_BUILTINS
 
 
 def get_xattr_obj_name_pair(
@@ -573,70 +566,47 @@ def is_in_builtins(name_or_qualified_name: str) -> bool:
 
 
 def get_function_def_args(
-    fn_def: ast.Lambda | AnyFunctionDef,
-) -> Tuple[List[str], Optional[str], Optional[str]]:
-    """Return the arguments in the given function definition."""
-    args = list()
-    vararg = None
-    kwarg = None
+    fn: ast.Lambda | AnyFunctionDef,
+) -> tuple[list[str], list[str], list[str]]:
+    """Return the identifiers of the arguments in the given function definition.
 
-    for pos in fn_def.args.args:
-        args.append(pos.arg)
+    >>> get_function_def_args(ast.parse("def f(): pass").body[0])
+    ([], [], [])
 
-    if fn_def.args.vararg:
-        vararg = fn_def.args.vararg.arg
+    >>> get_function_def_args(ast.parse("def f(a, b, c): pass").body[0])
+    ([], ["a", "b", "c"], [])
 
-    if fn_def.args.kwarg:
-        kwarg = fn_def.args.kwarg.arg
-
-    return args, vararg, kwarg
+    >>> get_function_def_args(ast.parse("def f(a, b, /, c, d, *, e): pass").body[0])
+    (["a" ,"b"], ["c", "d"], ["e"])
+    """
+    _interface = CallInterface.from_fn_def(fn)
+    return (_interface.posonlyargs, _interface.args, _interface.kwonlyargs)
 
 
 def get_function_call_args(
-    fn_call: ast.Call,
-    self_name: Optional[str] = None,
-) -> Tuple[List[str], Dict[str, str]]:
-    """Return the arguments in the given function call.
+    call: ast.Call,
+    *,
+    self: str | None = None,
+) -> tuple[list[str], dict[str, str]]:
+    """Return the args and kwargs for the given call.
 
-    Method/initialiser calls can provide a `self_name` to prepend to the
-    positional arguments.
+    #### Class Initialisers
+    This takes an optional `self` parameter, which is the name of the self argument in
+    the `__init__` definition, to be prepended to the resultant  args.
 
+    #### Examples
+    >>> get_function_call_args(ast.parse("fn(a, b, c='val', d=foobar)").body[0].value)
+    (["a", "b"], {"c": "@Str", "d": "foobar"})
+
+    >>> get_function_call_args(ast.parse("MyClass(a, b)").body[0].value, self="self")
+    (["self", "a", "b"], {})
+
+    >>> # def __init__(blah, a, b): ...
+    >>> get_function_call_args(ast.parse("MyClass(a, b)").body[0].value, self="blah")
+    (["blah", "a", "b"], {})
     """
-    _unsupported = "{} not supported in function calls"
-
-    args = list()
-    kwargs = dict()
-
-    for arg in fn_call.args:
-        if isinstance(arg, ast.Starred):
-            error.error(_unsupported.format("iterable unpacking"), fn_call)
-
-        args.append(get_fullname(arg, safe=True))
-
-    for kwarg in fn_call.keywords:
-        expected, got = kwarg.arg, kwarg.value
-
-        if expected is None:
-            error.fatal(_unsupported.format("dictionary unpacking"), fn_call)
-            return list(), dict()  # Make mypy happy
-
-        kwargs[expected] = get_fullname(got, safe=True)
-
-    if self_name is not None:
-        args = [self_name, *args]
-
-    return args, kwargs
-
-
-def remove_call_brackets(call: str):
-    """Return the given string with the trailing `()` removed, if present.
-
-    NOTE Made redundant by `str.removesuffix("()")` in Python 3.9+
-    """
-    if call.endswith("()"):
-        return call[:-2]
-
-    return call
+    _arguments = CallArguments.from_call(call, self=self)
+    return _arguments.args, _arguments.kwargs
 
 
 class timer:

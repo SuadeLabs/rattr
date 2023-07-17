@@ -47,7 +47,6 @@ from rattr.analyser.util import (
     lambda_in_rhs,
     module_name_from_file_path,
     namedtuple_in_rhs,
-    remove_call_brackets,
     unravel_names,
 )
 from rattr.ast.types import (
@@ -58,6 +57,7 @@ from rattr.ast.types import (
 )
 from rattr.config import Config
 from rattr.config.state import enter_file
+from rattr.models.symbol.util import without_call_brackets
 
 _Context = TypeVar("_Context", bound="Context")
 
@@ -143,12 +143,12 @@ class Context:
 
     def get_call_target(
         self, callee: str, culprit: ast.Call, warn: bool = True
-    ) -> Optional[Symbol]:
+    ) -> Optional[CallableSymbol]:
         """Return the target of the given AST call, if within the context."""
         if not isinstance(callee, str) or not callee.endswith("()"):
             raise ValueError("'callee' must a string ending with '()'")
 
-        name = remove_call_brackets(callee).replace("*", "")
+        name = without_call_brackets(callee).replace("*", "")
         stripped = name.replace("*", "").replace("[]", "").replace("()", "")
 
         if stripped.startswith("@"):

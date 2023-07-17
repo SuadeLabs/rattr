@@ -22,10 +22,10 @@ from rattr.analyser.util import (
     is_pip_module,
     is_stdlib_module,
     module_name_from_file_path,
-    remove_call_brackets,
 )
 from rattr.config import Config
 from rattr.models.ir import FileIr
+from rattr.models.symbol.util import without_call_brackets
 
 
 def __prefix(func: Func) -> str:
@@ -149,7 +149,7 @@ def resolve_import(
         raise ImportError(f"Import '{module}' not found")
 
     local_name = name.replace(as_name, qualified_name).replace(f"{module}.", "")
-    local_name = remove_call_brackets(local_name)
+    local_name = without_call_brackets(local_name)
 
     new_target: Optional[Symbol] = module_ir.context.get(local_name)
     if isinstance(new_target, (Func, Class)):

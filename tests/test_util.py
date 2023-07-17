@@ -48,7 +48,6 @@ from rattr.analyser.util import (
     namedtuple_in_rhs,
     parse_annotation,
     parse_rattr_results_from_annotation,
-    remove_call_brackets,
     unravel_names,
     walrus_in_rhs,
 )
@@ -896,108 +895,6 @@ class TestUtil:
         assert not is_in_builtins("foo_bar_baz")
         assert not is_in_builtins("")
 
-    def test_get_function_def_args(self, parse):
-        # def fn()
-        fn_def = parse(
-            """
-            def fn():
-                pass
-            """
-        ).body[0]
-
-        assert get_function_def_args(fn_def) == ([], None, None)
-
-        # def fn(a, b, c)
-        fn_def = parse(
-            """
-            def fn(a, b, c):
-                pass
-            """
-        ).body[0]
-
-        assert get_function_def_args(fn_def) == (["a", "b", "c"], None, None)
-
-        # def fn(a, b=c, *d)
-        fn_def = parse(
-            """
-            def fn(a, b=c, *d):
-                pass
-            """
-        ).body[0]
-
-        assert get_function_def_args(fn_def) == (["a", "b"], "d", None)
-
-        # def fn(a, b="val", *c, **d)
-        fn_def = parse(
-            """
-            def fn(a, b="val", *c, **d):
-                pass
-            """
-        ).body[0]
-
-        assert get_function_def_args(fn_def) == (["a", "b"], "c", "d")
-
-        # def fn(*args, **kwargs)
-        fn_def = parse(
-            """
-            def fn(*args, **kwargs):
-                pass
-            """
-        ).body[0]
-
-        assert get_function_def_args(fn_def) == ([], "args", "kwargs")
-
-    def test_get_function_call_args(self, capfd, constant):
-        # fn()
-        fn_call = ast.parse("fn()").body[0].value
-        assert get_function_call_args(fn_call) == ([], {})
-
-        # fn(a, b)
-        fn_call = ast.parse("fn(a, b)").body[0].value
-        assert get_function_call_args(fn_call) == (["a", "b"], {})
-
-        # fn(a, b, c="val", d=e)
-        fn_call = ast.parse("fn(a, b, c='val', d=e)").body[0].value
-        assert get_function_call_args(fn_call) == (
-            ["a", "b"],
-            {"c": constant("Str"), "d": "e"},
-        )
-
-        # fn(a=b)
-        fn_call = ast.parse("fn(a=b)").body[0].value
-        assert get_function_call_args(fn_call) == ([], {"a": "b"})
-
-        # fn(*args)
-        fn_call = ast.parse("fn(*args)").body[0].value
-
-        assert get_function_call_args(fn_call) == (["*args"], {})
-
-        _, stderr = capfd.readouterr()
-
-        assert "iterable unpacking" in stderr
-
-        # fn(**kwargs)
-        fn_call = ast.parse("fn(**kwargs)").body[0].value
-        with mock.patch("sys.exit") as _exit:
-            get_function_call_args(fn_call)
-
-        _, stderr = capfd.readouterr()
-
-        assert "dictionary unpacking" in stderr
-        assert _exit.call_count == 1
-
-        # SomeClass
-        init = ast.parse("SomeClass(a, b)").body[0].value
-        assert get_function_call_args(init, "self") == (["self", "a", "b"], {})
-
-    def test_remove_call_brackets(self):
-        # Identity
-        assert remove_call_brackets("") == ""
-
-        # Standard usecase
-        assert remove_call_brackets("fn_call") == "fn_call"
-        assert remove_call_brackets("fn_call()") == "fn_call"
-
     def test_get_function_body(self):
         # Lambda
         fn = ast.parse("fn = lambda: 2 + 3").body[0].value
@@ -1429,3 +1326,112 @@ class TestGetNamedTupleAttrsFromCall:
 
         expected = ["self", "a", "b", "c", "d"]
         assert get_namedtuple_attrs_from_call(assignment) == expected
+
+
+class TestGetFunctionDefArgs:
+    def test_no_arguments(self, parse):
+        fn = parse(
+            """
+            def fn():
+                pass
+            """
+        ).body[0]
+
+        assert get_function_def_args(fn) == ([], [], [])
+
+    def test_normal_function_def(self, parse):
+        # I.e. no pos-only or keyword-only shenanigans
+        fn = parse(
+            """
+            def fn(a, b, c):
+                pass
+            """
+        ).body[0]
+
+        assert get_function_def_args(fn) == ([], ["a", "b", "c"], [])
+
+    def test_with_default_argument(self, parse):
+        fn = parse(
+            """
+            def fn(a, b, c=None):
+                pass
+            """
+        ).body[0]
+
+        assert get_function_def_args(fn) == ([], ["a", "b", "c"], [])
+
+    def test_with_keyword_only(self, parse):
+        fn = parse(
+            """
+            def fn(a, b, *, c=None):
+                pass
+            """
+        ).body[0]
+
+        assert get_function_def_args(fn) == ([], ["a", "b"], ["c"])
+
+    def test_with_positional_only(self, parse):
+        fn = parse(
+            """
+            def fn(a, b, /, c=None):
+                pass
+            """
+        ).body[0]
+
+        assert get_function_def_args(fn) == (["a", "b"], ["c"], [])
+
+    def test_with_all_argument_types(self, parse):
+        fn = parse(
+            """
+            def fn(a, b, /, c, d=None, *, e):
+                pass
+            """
+        ).body[0]
+
+        assert get_function_def_args(fn) == (["a", "b"], ["c", "d"], ["e"])
+
+
+class TestGetFunctionCallArgs:
+    def test_no_arguments(self):
+        call = ast.parse("fn()").body[0].value
+        assert get_function_call_args(call) == ([], {})
+
+    def test_positional_arguments(self):
+        call = ast.parse("fn(a, b)").body[0].value
+        assert get_function_call_args(call) == (["a", "b"], {})
+
+    def test_keyword_arguments(self, constant):
+        call = ast.parse("fn(a='val', b=var)").body[0].value
+        assert get_function_call_args(call) == ([], {"a": constant("Str"), "b": "var"})
+
+    def test_positional_and_keyword_arguments(self, constant):
+        call = ast.parse("fn(a, b, c='val', d=foobar)").body[0].value
+        assert get_function_call_args(call) == (
+            ["a", "b"],
+            {"c": constant("Str"), "d": "foobar"},
+        )
+
+    def test_iterable_unpacking(self, capfd):
+        call = ast.parse("fn(*args)").body[0].value
+        assert get_function_call_args(call) == (["*args"], {})
+
+        _, stderr = capfd.readouterr()
+        assert "iterable unpacking not supported in function calls" in stderr
+
+    def test_dictionary_unpacking(self, capfd):
+        call = ast.parse("fn(**kwargs)").body[0].value
+        with mock.patch("sys.exit") as _exit:
+            get_function_call_args(call)
+
+        _, stderr = capfd.readouterr()
+        assert "dictionary unpacking not supported in function calls" in stderr
+        assert _exit.call_count == 1
+
+    def test_class_init_with_self(self):
+        init = ast.parse("SomeClass(a, b)").body[0].value
+
+        # were it just a function
+        assert get_function_call_args(init) == (["a", "b"], {})
+
+        # as an __init__
+        assert get_function_call_args(init, self="self") == (["self", "a", "b"], {})
