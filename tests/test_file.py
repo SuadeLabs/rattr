@@ -21,7 +21,7 @@ class TestModuleLevelStatements:
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     def test_typed_assignment(self, parse):
         _ast = parse(
@@ -33,7 +33,7 @@ class TestModuleLevelStatements:
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     def test_augmented_assignment(self, parse):
         _ast = parse(
@@ -45,7 +45,7 @@ class TestModuleLevelStatements:
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_operator(self, parse):
@@ -57,7 +57,7 @@ class TestModuleLevelStatements:
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     def test_multiple_assignment(self, parse):
         _ast = parse(
@@ -69,7 +69,7 @@ class TestModuleLevelStatements:
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     def test_lambda(self, parse):
         # Anonymous
@@ -100,7 +100,7 @@ class TestModuleLevelStatements:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment(self, parse):
@@ -113,9 +113,7 @@ class TestModuleLevelStatements:
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
-        expected = {}
-
-        assert results == expected
+        assert results.ir_as_dict() == {}
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_list(self, parse):
@@ -128,9 +126,7 @@ class TestModuleLevelStatements:
         )
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
-        expected = {}
-
-        assert results == expected
+        assert results.ir_as_dict() == {}
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_lambda(self, parse):
@@ -161,7 +157,7 @@ class TestModuleLevelStatements:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_lambda(self, parse):
@@ -184,7 +180,7 @@ class TestModuleLevelStatements:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_lambda_list(self, parse):
@@ -207,4 +203,4 @@ class TestModuleLevelStatements:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected

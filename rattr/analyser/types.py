@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import ast
-from typing import Dict, Literal, Set, Union
+from typing import Dict, Literal, MutableMapping, Set, Union
 
-from rattr.analyser.context.symbol import Class, Func, Symbol
-from rattr.models.ir import FileIr
+from rattr.models.symbol import Symbol, UserDefinedCallableSymbol
 from rattr.versioning.typing import TypeAlias
 
 ResultsCategory: TypeAlias = Literal["gets", "sets", "dels", "calls"]
@@ -41,20 +40,21 @@ PythonLiteral: TypeAlias = Union[
 """Python literals."""
 
 
-FunctionIr = Dict[ResultsCategory, Set[Symbol]]
+FunctionIr: TypeAlias = Dict[ResultsCategory, Set[Symbol]]
 """The intermediate representation for a function."""
 
-ClassIr = Dict[Union[Func, Class], FunctionIr]
+ClassIr: TypeAlias = Dict[UserDefinedCallableSymbol, FunctionIr]
 """The intermediate representation for a class."""
 
 
 _ModuleName: TypeAlias = str
-ImportsIr = Dict[_ModuleName, FileIr]
+_FileIr: TypeAlias = MutableMapping[UserDefinedCallableSymbol, FunctionIr]
+ImportsIr: TypeAlias = Dict[_ModuleName, _FileIr]
 
 
 _Identifier: TypeAlias = str
-FunctionResults = Dict[ResultsCategory, Set[_Identifier]]
+FunctionResults: TypeAlias = Dict[ResultsCategory, Set[_Identifier]]
 
 
 _FunctionName: TypeAlias = str
-FileResults = Dict[_FunctionName, FunctionResults]
+FileResults: TypeAlias = Dict[_FunctionName, FunctionResults]

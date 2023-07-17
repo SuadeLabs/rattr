@@ -12,7 +12,7 @@ from rattr.analyser.base import NodeVisitor
 from rattr.analyser.cls import ClassAnalyser
 from rattr.analyser.context import Context, Func, Import, RootContext
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import FileIr, ImportsIr
+from rattr.analyser.types import ImportsIr
 from rattr.analyser.util import (
     Changes,
     assignment_is_one_to_one,
@@ -33,6 +33,7 @@ from rattr.analyser.util import (
 from rattr.ast.types import AnyAssign, AnyFunctionDef
 from rattr.config import Config
 from rattr.config.state import enter_file
+from rattr.models.ir import FileIr
 from rattr.plugins import plugins
 
 RattrStats = namedtuple(
@@ -182,7 +183,7 @@ class FileAnalyser(NodeVisitor):
         """Set configuration and initialise results."""
         self._ast = _ast
         self.context = context
-        self.file_ir = FileIr(context)
+        self.file_ir = FileIr(context=context)
 
     def analyse(self) -> FileIr:
         """Entry point of FileAnalyser, return the results of analysis."""

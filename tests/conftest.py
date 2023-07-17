@@ -17,10 +17,11 @@ from rattr.analyser.context import Context, RootContext
 from rattr.analyser.context.symbol import Builtin, Call, Name, Symbol
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
-from rattr.analyser.types import FileIr, FunctionIr
+from rattr.analyser.types import FunctionIr
 from rattr.analyser.util import LOCAL_VALUE_PREFIX, has_affect
 from rattr.ast.types import AstFunctionDef
 from rattr.config import Arguments, Config, Output, State
+from rattr.models.ir import FileIr
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -598,7 +599,7 @@ def file_ir_from_dict():
         ctx.add_all(ir.keys())
 
         # Create FileIR
-        file_ir = FileIr(ctx)
+        file_ir = FileIr(context=ctx)
         file_ir._file_ir = ir
 
         return file_ir

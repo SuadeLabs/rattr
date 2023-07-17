@@ -5,7 +5,8 @@ import json
 
 from rattr.analyser.context import Symbol
 from rattr.analyser.ir_dag import IrDagNode
-from rattr.analyser.types import FileIr, FileResults, ImportsIr
+from rattr.analyser.types import FileResults, ImportsIr
+from rattr.models.ir import FileIr
 
 
 class ResultsEncoder(json.JSONEncoder):

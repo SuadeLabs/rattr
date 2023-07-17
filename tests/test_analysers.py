@@ -32,7 +32,7 @@ class TestAnnotations:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
         # AsyncFunctionDef
         _ast = parse(
@@ -48,7 +48,7 @@ class TestAnnotations:
         results = FileAnalyser(_ast, RootContext(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None, is_async=True): {
+            Func("a_func", ["arg"], is_async=True): {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -58,7 +58,8 @@ class TestAnnotations:
             },
         }
 
-        assert results == expected
+        print(results.ir_as_dict())
+        assert results.ir_as_dict() == expected
 
         # ClassDef
         # AsyncFunctionDef
@@ -86,7 +87,7 @@ class TestAnnotations:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
     def test_rattr_results(self, parse):
         # FunctionDef
@@ -123,7 +124,7 @@ class TestAnnotations:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
         # AsyncFunctionDef
         # Use incorrect results to show override is working
@@ -156,7 +157,7 @@ class TestAnnotations:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
         # ClassDef
         # TODO When classes added
@@ -201,4 +202,4 @@ class TestAnnotations:
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected

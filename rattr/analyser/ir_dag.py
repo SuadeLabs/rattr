@@ -15,7 +15,7 @@ from rattr.analyser.context import (
     Name,
     Symbol,
 )
-from rattr.analyser.types import FileIr, FunctionIr, ImportsIr
+from rattr.analyser.types import FunctionIr, ImportsIr
 from rattr.analyser.util import (
     is_blacklisted_module,
     is_excluded_name,
@@ -25,6 +25,7 @@ from rattr.analyser.util import (
     remove_call_brackets,
 )
 from rattr.config import Config
+from rattr.models.ir import FileIr
 
 
 def __prefix(func: Func) -> str:
