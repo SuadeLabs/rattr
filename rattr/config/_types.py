@@ -7,7 +7,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rattr.config.util import (
+from rattr.config._util import (
     find_project_root,
     find_pyproject_toml,
     validate_arguments,

@@ -8,7 +8,7 @@ import attrs
 from attrs import field
 from frozendict import frozendict
 
-from rattr.config import Config
+from rattr.config.util import get_current_file
 from rattr.models.symbol._util import arg_name, kwarg_name
 
 if TYPE_CHECKING:
@@ -107,17 +107,7 @@ class CallArguments:
 
 @attrs.frozen
 class Location:
-    _derived_location: Path = field(kw_only=True)
-
-    @_derived_location.default
-    def _defined_in_default(self) -> str:
-        config = Config()
-        file = config.state.current_file
-
-        if file is None:
-            raise ValueError("unable to derive location (current file is None)")
-
-        return file
+    _derived_location: Path = field(factory=get_current_file, kw_only=True)
 
     @property
     def defined_in(self) -> Path:
