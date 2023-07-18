@@ -1,26 +1,31 @@
 from __future__ import annotations
 
+import abc
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import attrs
 from attrs import field
+from frozendict import frozendict
 
 from rattr.config import Config
 from rattr.models.symbol._util import arg_name, kwarg_name
-from rattr.models.symbol.util import without_call_brackets
 
 if TYPE_CHECKING:
     import ast
+    from typing import Literal
 
     from rattr.ast.types import AnyFunctionDef
 
 
 @attrs.frozen
-class Symbol:
-    name: str = field(converter=without_call_brackets)
-    interface: CallInterface | None = None
-    location: Location | None = None
+class Symbol(abc.ABC):
+    # NOTE
+    #   Derived classes should still implement the below attrs or else the editor will
+    #   be unhappy. This still has utility as a declaration of interface, however.
+    name: str = field()
+    interface: CallInterface | None = field(default=None, kw_only=True)
+    location: Location | None = field(default=None, kw_only=True)
 
     def __attrs_pre_init__(self) -> None:
         if type(self) == Symbol:
@@ -34,16 +39,20 @@ class Symbol:
     def has_location(self) -> bool:
         return self.location is not None
 
+    @property
+    def is_import(self) -> Literal[False]:
+        return False
+
 
 @attrs.frozen
 class CallInterface:
     # Naming inherited from `ast.arguments`
-    posonlyargs: list[str] = []
-    args: list[str] = []
-    kwonlyargs: list[str] = []
+    posonlyargs: tuple[str] = field(default=(), converter=tuple)
+    args: tuple[str] = field(default=(), converter=tuple)
+    kwonlyargs: tuple[str] = field(default=(), converter=tuple)
 
     @property
-    def all(self) -> list[str]:
+    def all(self) -> tuple[str]:
         return self.posonlyargs + self.args + self.kwonlyargs
 
     @classmethod
@@ -69,15 +78,15 @@ class AnyCallInterface(CallInterface):
 
 @attrs.frozen
 class CallArguments:
-    args: list[str]
-    kwargs: dict[str, str]
+    args: tuple[str] = field(default=(), converter=tuple)
+    kwargs: frozendict[str, str] = field(default=frozendict(), converter=frozendict)
 
     @classmethod
     def from_call(
         cls: type[CallArguments],
         call: ast.Call,
         *,
-        self: str | None
+        self: str | None = None,
     ) -> CallArguments:
         """Return a new `CallArguments` parsed from the given function call."""
         args: list[str] = [arg_name(arg) for arg in call.args]

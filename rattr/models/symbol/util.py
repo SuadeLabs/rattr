@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from importlib.util import find_spec
 from itertools import accumulate
 from typing import TYPE_CHECKING
@@ -67,6 +68,7 @@ def get_possible_module_names(name: str) -> list[str]:
     return [m for m in reversed(valid_module_names)]
 
 
+@lru_cache(maxsize=None)
 def get_module_name_and_spec(name: str) -> tuple[str, ModuleSpec] | tuple[None, None]:
     """Return the `ModuleSpec` for an imported name.
 

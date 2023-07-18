@@ -24,7 +24,6 @@ from rattr.analyser.types import (
 )
 from rattr.analyser.util import (
     LOCAL_VALUE_PREFIX,
-    PYTHON_ATTR_BUILTINS,
     assignment_is_one_to_one,
     class_in_rhs,
     get_assignment_targets,
@@ -44,6 +43,7 @@ from rattr.ast.types import (
     AnyFunctionDef,
     AstFunctionDefOrLambda,
 )
+from rattr.models.symbol import PYTHON_ATTR_ACCESS_BUILTINS
 from rattr.models.symbol.util import without_call_brackets
 from rattr.plugins import plugins
 
@@ -467,7 +467,7 @@ class FunctionAnalyser(NodeVisitor):
             # NOTE
             #   get_basename_fullname_pair on getattr, etc. produces a name
             #   incompatible with Context::get_call_target
-            if any(is_call_to(f, node) for f in PYTHON_ATTR_BUILTINS):
+            if any(is_call_to(f, node) for f in PYTHON_ATTR_ACCESS_BUILTINS):
                 return False
 
             target = self.context.get_call_target(

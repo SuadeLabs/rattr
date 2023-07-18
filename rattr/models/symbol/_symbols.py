@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import ast
 import builtins
-from functools import cached_property
 from importlib.machinery import ModuleSpec
 from typing import TYPE_CHECKING
 
@@ -15,11 +15,14 @@ from rattr.models.symbol._symbol import (
     Location,
     Symbol,
 )
-from rattr.models.symbol.util import get_module_name_and_spec
+from rattr.models.symbol.util import (
+    get_basename_from_name,
+    get_module_name_and_spec,
+    without_call_brackets,
+)
 
 if TYPE_CHECKING:
-    import ast
-    from typing import Final
+    from typing import Final, Literal
 
     from rattr.ast.types import AnyFunctionDef
 
@@ -41,32 +44,39 @@ PYTHON_BUILTINS: Final = tuple(
 
 @attrs.frozen
 class Name(Symbol):
+    name: str = field()
     basename: str = field()
+    interface: CallInterface | None = field(default=None, kw_only=True)
+    location: Location | None = field(default=None, kw_only=True)
 
     @basename.default
     def _basename_default(self) -> str:
-        return self.name
+        return get_basename_from_name(self.name)
 
 
 @attrs.frozen
 class Builtin(Symbol):
-    interface: AnyCallInterface = field(factory=AnyCallInterface)
+    name: str = field()
+    interface: AnyCallInterface = field(factory=AnyCallInterface, kw_only=True)
+    location: Location | None = field(default=None, kw_only=True)
 
-    @cached_property
+    @property
     def has_affect(self) -> bool:
         return self.name in PYTHON_ATTR_ACCESS_BUILTINS
 
 
 @attrs.frozen
 class Import(Symbol):
+    name: str = field()
     qualified_name: str = field()
-    interface: AnyCallInterface = field(factory=AnyCallInterface)
+    interface: AnyCallInterface = field(factory=AnyCallInterface, kw_only=True)
+    location: Location | None = field(default=None, kw_only=True)
 
     @qualified_name.default
     def _qualified_name_default(self) -> str:
         return self.name
 
-    @cached_property
+    @property
     def _module_name_and_spec(self) -> tuple[str, ModuleSpec] | tuple[None, None]:
         return get_module_name_and_spec(self.qualified_name)
 
@@ -78,22 +88,33 @@ class Import(Symbol):
     def module_spec(self) -> ModuleSpec | None:
         return self._module_name_and_spec[1]
 
+    @property
+    def is_import(self) -> Literal[True]:
+        return True
+
 
 @attrs.frozen
 class Func(Symbol):
-    interface: CallInterface
-    location: Location = field(factory=Location)
+    name: str = field(converter=without_call_brackets)
+    interface: CallInterface = field(kw_only=True)
+    location: Location = field(factory=Location, kw_only=True)
+    is_async: bool = field(default=False, kw_only=True)
 
     @classmethod
     def from_fn_def(cls: type[Func], fn: AnyFunctionDef) -> Func:
         """Return a new `Func` parsed from the given function def."""
-        return Func(name=fn.name, interface=CallInterface.from_fn_def(fn))
+        return Func(
+            name=fn.name,
+            interface=CallInterface.from_fn_def(fn),
+            is_async=isinstance(fn, ast.AsyncFunctionDef),
+        )
 
 
 @attrs.frozen
 class Class(Symbol):
-    interface: CallInterface
-    location: Location = field(factory=Location)
+    name: str = field(converter=without_call_brackets)
+    interface: CallInterface = field(factory=AnyCallInterface, kw_only=True)
+    location: Location = field(factory=Location, kw_only=True)
 
     def with_init(self, init: ast.FunctionDef) -> Class:
         """Return a copy of the class with the initialiser set to the given function."""
@@ -102,8 +123,13 @@ class Class(Symbol):
 
 @attrs.frozen
 class Call(Symbol):
+    name: str = field(converter=without_call_brackets)
+
     args: CallArguments = field(factory=CallArguments)
     target: Builtin | Import | Func | Class | None = field(default=None)
+
+    interface: CallInterface | None = field(default=None, kw_only=True)
+    location: Location | None = field(default=None, kw_only=True)
 
     @classmethod
     def from_call(
