@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-from rattr.analyser.context import Builtin, Call, Func, Name, RootContext
+from unittest import mock
+
+import pytest
+
+from rattr.analyser.context import Builtin, Call, Class, Func, Name, RootContext
 from rattr.analyser.file import FileAnalyser
+from rattr.analyser.results import generate_results_from_ir
 
 
 class TestRegression:
@@ -548,3 +553,87 @@ class TestRegression:
 
         print(results)
         assert results == expected
+
+
+class TestNamedTuple:
+    @pytest.fixture(autouse=True)
+    def _set_current_file(self, config) -> None:
+        with config("current_file", "my_test_file.py"):
+            with config("strict", True):
+                yield
+
+    def test_allow_named_tuple_from_call(self, config, parse):
+        _ast = parse(
+            """
+            from collections import namedtuple
+
+            point = namedtuple("point", ["x", "y"])
+
+            def fn():
+                return point(x=1, y=2)
+            """
+        )
+
+        # This failed at analyse, but we should show that simplification also works
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Name(name="point")
+        expected = {
+            Func("fn", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {
+                    Call(
+                        name="point()",
+                        args=[],
+                        kwargs={"x": "@Constant", "y": "@Constant"},
+                        target=point,
+                    )
+                },
+            }
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0
+
+    def test_allow_named_tuple_from_class(self, config, parse):
+        _ast = parse(
+            """
+            from typing import NamedTuple
+
+            class Point(NamedTuple):
+                x: int
+                y: int
+
+            def fn():
+                return Point(x=1, y=2)
+            """
+        )
+
+        # Before the fix this failed at the simplification in "generate_results_from_ir"
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class(name="Point")
+        expected = {
+            Func("fn", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {
+                    Call(
+                        name="Point()",
+                        args=["@ReturnValue"],
+                        kwargs={"x": "@Constant", "y": "@Constant"},
+                        target=point,
+                    )
+                },
+            }
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0

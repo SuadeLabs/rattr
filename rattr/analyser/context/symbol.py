@@ -69,8 +69,8 @@ class Import(Symbol):
 @dataclass
 class Func(Symbol):
     args: List[str]
-    vararg: Optional[str]
-    kwarg: Optional[str]
+    vararg: Optional[str] = None
+    kwarg: Optional[str] = None
     is_async: bool = False
     defined_in: Optional[str] = None
 
@@ -92,9 +92,9 @@ class Class(Symbol):
 
     """
 
-    args: Optional[List[str]]
-    vararg: Optional[str]
-    kwarg: Optional[str]
+    args: Optional[List[str]] = None
+    vararg: Optional[str] = None
+    kwarg: Optional[str] = None
     defined_in: Optional[str] = None
 
     def __post_init__(self) -> None:
