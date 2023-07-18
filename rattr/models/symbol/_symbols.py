@@ -77,6 +77,14 @@ class Import(Symbol):
         return self.name
 
     @property
+    def id(self) -> str:
+        # We must prepend the qualified name to starred-imports or else they'd all have
+        # the same name ("*")!
+        if self.name == "*":
+            return f"{self.qualified_name}.*"
+        return self.name
+
+    @property
     def _module_name_and_spec(self) -> tuple[str, ModuleSpec] | tuple[None, None]:
         return get_module_name_and_spec(self.qualified_name)
 

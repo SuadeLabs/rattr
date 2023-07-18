@@ -61,6 +61,22 @@ class TestAttrsDerivedProperties:
         assert isinstance(hash(symbol), int)
 
 
+class TestId:
+    @pytest.mark.parametrize(
+        "symbol_fixture",
+        ["simple_name", "simple_builtin", "simple_func", "simple_class", "simple_call"],
+    )
+    def test_id(self, symbol_fixture: str, request: pytest.FixtureRequest):
+        symbol: Symbol = request.getfixturevalue(symbol_fixture)
+        assert symbol.id == symbol.name
+
+    def test_id_for_direct_import(self):
+        assert Import(name="pi", qualified_name="math.pi").id == "pi"
+
+    def test_id_for_starred_import(self):
+        assert Import(name="*", qualified_name="math").id == "math.*"
+
+
 class TestIsCallable:
     @pytest.mark.parametrize(
         "symbol_fixture",

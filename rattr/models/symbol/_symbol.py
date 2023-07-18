@@ -32,6 +32,13 @@ class Symbol(abc.ABC):
             raise NotImplementedError("symbol should be sub-classed")
 
     @property
+    def id(self) -> str:
+        # For most symbols the name is already the identifier, but for starred-imports
+        # we must prepend the qualified name to avoid namespace collisions.
+        # See: Import.id(...)
+        return self.name
+
+    @property
     def is_callable(self) -> bool:
         return self.interface is not None
 
