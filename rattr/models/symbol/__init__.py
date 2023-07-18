@@ -18,12 +18,8 @@ from rattr.models.symbol._symbols import (
     Import,
     Name,
 )
-from rattr.models.symbol._types import (
-    UserDefinedCallableSymbol,
-)
-from rattr.models.symbol.util import (
-    without_call_brackets,
-)
+from rattr.models.symbol._types import UserDefinedCallableSymbol
+from rattr.models.symbol.util import without_call_brackets
 
 __all__ = [
     "AnyCallInterface",
