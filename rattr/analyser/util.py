@@ -826,9 +826,7 @@ def namedtuple_in_rhs(node: AnyAssign) -> bool:
         return _target_is_namedtuple(node.value)
     elif isinstance(node.value, _iterable):
         return any(
-            _target_is_namedtuple(v)
-            for v in node.value.elts
-            if isinstance(v, ast.Call)
+            _target_is_namedtuple(v) for v in node.value.elts if isinstance(v, ast.Call)
         )
     else:
         return False

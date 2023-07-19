@@ -4,7 +4,14 @@ from unittest import mock
 
 import pytest
 
-from rattr.analyser.context import Builtin, Call, Class, Func, Name, RootContext
+from rattr.analyser.context import (
+    Builtin,
+    Call,
+    Class,
+    Func,
+    Name,
+    RootContext,
+)
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
 

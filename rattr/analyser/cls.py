@@ -182,7 +182,7 @@ class ClassAnalyser(NodeVisitor):
     def visit_named_tuple_initialiser(self) -> None:
         prefix = f"{self.class_name}."
         tuple_items = [
-            symbol.name[len(prefix):]
+            symbol.name[len(prefix) :]
             for symbol in self.context.symbol_table.symbols()
             if isinstance(symbol, Name)
             if symbol.name.startswith(prefix)
