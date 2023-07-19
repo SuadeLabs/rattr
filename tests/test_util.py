@@ -26,6 +26,7 @@ from rattr.analyser.util import (
     get_function_call_args,
     get_function_def_args,
     get_function_form,
+    get_namedtuple_attrs_from_call,
     get_xattr_obj_name_pair,
     has_affect,
     has_annotation,
@@ -44,6 +45,7 @@ from rattr.analyser.util import (
     is_starred_import,
     is_stdlib_module,
     lambda_in_rhs,
+    namedtuple_in_rhs,
     parse_annotation,
     parse_rattr_results_from_annotation,
     remove_call_brackets,
@@ -1336,3 +1338,94 @@ class TestUtil:
 
         assert diff.added == {"x"}
         assert diff.removed == {"a", "b"}
+
+
+class TestNamedTupleInRhs:
+    def test_namedtuple_in_rhs(self):
+        ast_ = ast.parse("point = namedtuple('point', ['x', 'y'])")
+        assignment = ast_.body[0]
+        assert namedtuple_in_rhs(assignment)
+
+    def test_user_namedtuple_in_rhs(self):
+        ast_ = ast.parse("point = user_extended.namedtuple('point', ['x', 'y'])")
+        assignment = ast_.body[0]
+        assert namedtuple_in_rhs(assignment)
+
+    def test_namedtuple_not_in_rhs(self):
+        ast_ = ast.parse("point = noomedtoople('point', ['x', 'y'])")
+        assignment = ast_.body[0]
+        assert not namedtuple_in_rhs(assignment)
+
+
+class TestGetNamedTupleAttrsFromCall:
+    def test_rhs_is_not_call(self):
+        ast_ = ast.parse("point = 'not_a_call'")
+        assignment = ast_.body[0]
+
+        with pytest.raises(TypeError):
+            get_namedtuple_attrs_from_call(assignment)
+
+    def test_too_few_arguments(self):
+        ast_ = ast.parse("point = namedtuple('point')")
+        assignment = ast_.body[0]
+
+        with pytest.raises(SystemExit):
+            get_namedtuple_attrs_from_call(assignment)
+
+    def test_too_many_arguments(self):
+        ast_ = ast.parse("point = namedtuple('point', 'x', 'y')")
+        assignment = ast_.body[0]
+
+        with pytest.raises(SystemExit):
+            get_namedtuple_attrs_from_call(assignment)
+
+    def test_second_argument_is_not_a_list(self):
+        ast_ = ast.parse("point = namedtuple('point', ('x', 'y'))")
+        assignment = ast_.body[0]
+
+        with pytest.raises(SystemExit):
+            get_namedtuple_attrs_from_call(assignment)
+
+    def test_second_argument_is_not_a_list_of_string_literals(self):
+        # Non-string literal
+        ast_ = ast.parse("point = namedtuple('point', ['x', 123])")
+        assignment = ast_.body[0]
+
+        with pytest.raises(SystemExit):
+            get_namedtuple_attrs_from_call(assignment)
+
+        # Non-literal
+        ast_ = ast.parse("point = namedtuple('point', ['x', some_variable])")
+        assignment = ast_.body[0]
+
+        with pytest.raises(SystemExit):
+            get_namedtuple_attrs_from_call(assignment)
+
+    def test_attrs_from_named_tuple_call_the_empty_list(self):
+        # Non-string literal
+        ast_ = ast.parse("point = namedtuple('point', [])")
+        assignment = ast_.body[0]
+
+        assert get_namedtuple_attrs_from_call(assignment) == ["self"]
+
+    def test_attrs_from_named_tuple_call_one_item(self):
+        # Non-string literal
+        ast_ = ast.parse("point = namedtuple('point', ['x'])")
+        assignment = ast_.body[0]
+
+        assert get_namedtuple_attrs_from_call(assignment) == ["self", "x"]
+
+    def test_attrs_from_named_tuple_call_two_items(self):
+        # Non-string literal
+        ast_ = ast.parse("point = namedtuple('point', ['x', 'y'])")
+        assignment = ast_.body[0]
+
+        assert get_namedtuple_attrs_from_call(assignment) == ["self", "x", "y"]
+
+    def test_attrs_from_named_tuple_call_multiple_items(self):
+        # Non-string literal
+        ast_ = ast.parse("vec4 = vec4('vector', ['a', 'b', 'c', 'd'])")
+        assignment = ast_.body[0]
+
+        expected = ["self", "a", "b", "c", "d"]
+        assert get_namedtuple_attrs_from_call(assignment) == expected

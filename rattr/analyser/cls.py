@@ -63,7 +63,7 @@ def is_enum(cls: ast.ClassDef) -> bool:
     return any(n == "Enum" or n.endswith(".Enum") for n in get_base_names(cls))
 
 
-def is_named_tuple(cls: ast.ClassDef) -> bool:
+def is_namedtuple(cls: ast.ClassDef) -> bool:
     # NOTE Purely heuristic, though it does allow for user defined Enum bases
     bases = get_base_names(cls)
     return any(b == "NamedTuple" or b.endswith(".NamedTuple") for b in bases)
@@ -133,7 +133,7 @@ class ClassAnalyser(NodeVisitor):
         if init is None and is_enum(self._ast):
             self.visit_enum_initialiser()
 
-        if init is None and is_named_tuple(self._ast):
+        if init is None and is_namedtuple(self._ast):
             self.visit_named_tuple_initialiser()
 
         # Visit static methods

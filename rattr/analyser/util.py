@@ -810,6 +810,75 @@ def walrus_in_rhs(node: AnyAssign) -> bool:
         return False
 
 
+def namedtuple_in_rhs(node: AnyAssign) -> bool:
+    """Return `True` if the RHS contains a namedtuple creation."""
+    _iterable = (ast.Tuple, ast.List)
+
+    def _target_is_namedtuple(call: ast.Call) -> bool:
+        # HACK
+        #   This is a naive approach, when enum / class-namedtuple / etc detection is
+        #   refactored we can do this a bit better.
+        #   See: cls.py::is_enum, cls.py::is_namedtuple
+        name = get_fullname(call.func)
+        return name == "namedtuple" or name.endswith(".namedtuple")
+
+    if isinstance(node.value, ast.Call):
+        return _target_is_namedtuple(node.value)
+    elif isinstance(node.value, _iterable):
+        return any(
+            _target_is_namedtuple(v)
+            for v in node.value.elts
+            if isinstance(v, ast.Call)
+        )
+    else:
+        return False
+
+
+def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str, str]]:
+    """Return the args/attrs of the namedtuple constructed by this assignment by call.
+
+    #### Note
+    Assumes one-to-one assignment.
+
+    #### Examples
+    >>> node = ast.parse("p = namedtuple('p', ['x', 'y'])").body[0].value
+    >>> get_namedtuple_init_signature_from_assignment(node)
+    ["self", "x", "y]
+
+    Raises:
+        TypeError: The node is not an assignment of a call.
+
+    Returns:
+        tuple[list[str], dict[str, str]]: The positional and keyword args of the init.
+    """
+    _type_error = (
+        "namedtuple expects the second positional argument to be a list of "
+        "string-literals"
+    )
+
+    if not isinstance(call := node.value, ast.Call):
+        raise TypeError
+
+    if len(call.args) != 2:
+        error.fatal("namedtuple expects exactly two positional arguments")
+
+    _, arguments = call.args
+
+    if not isinstance(arguments, ast.List):
+        error.fatal(_type_error)
+
+    # Get argument names
+    argument_names: list[str] = []
+    for arg in arguments.elts:
+        if not isinstance(arg, ast.Constant):
+            error.fatal(_type_error)
+        if not isinstance(arg.value, str):
+            error.fatal(_type_error)
+        argument_names.append(arg.value)
+
+    return ["self", *argument_names]
+
+
 def class_in_rhs(node: AnyAssign, context: Any) -> bool:
     """Return `True` if the RHS of the given assignment is a class init."""
     _iterable = (ast.Tuple, ast.List)
