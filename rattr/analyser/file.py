@@ -32,6 +32,7 @@ from rattr.analyser.util import (
     is_pip_module,
     is_stdlib_module,
     lambda_in_rhs,
+    namedtuple_in_rhs,
     parse_rattr_results_from_annotation,
     read,
     timer,
@@ -240,9 +241,26 @@ class FileAnalyser(NodeVisitor):
         fn, context = self.context.get(name), self.context
         self.file_ir[fn] = FunctionAnalyser(node.value, context).analyse()
 
+    def visit_NamedTupleAssign(self, node: AnyAssign) -> None:
+        if not assignment_is_one_to_one(node):
+            return error.fatal("namedtuple assignment must be one-to-one", node)
+
+        name = get_fullname(get_assignment_targets(node)[0])
+        cls = self.context.get(name)
+
+        self.file_ir[cls] = {
+            "gets": set(),
+            "sets": set(),
+            "dels": set(),
+            "calls": set(),
+        }
+
     def visit_AnyAssign(self, node: AnyAssign) -> None:
         if lambda_in_rhs(node):
             self.visit_LambdaAssign(node)
+
+        if namedtuple_in_rhs(node):
+            self.visit_NamedTupleAssign(node)
 
         # Walrus may obscure a lambda, so peek in and visit the nice walruses
         for walrus in get_contained_walruses(node):

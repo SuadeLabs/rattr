@@ -39,6 +39,7 @@ from rattr.analyser.util import (
     get_contained_walruses,
     get_fullname,
     get_function_def_args,
+    get_namedtuple_attrs_from_call,
     get_starred_imports,
     has_affect,
     is_blacklisted_module,
@@ -47,6 +48,7 @@ from rattr.analyser.util import (
     is_starred_import,
     lambda_in_rhs,
     module_name_from_file_path,
+    namedtuple_in_rhs,
     remove_call_brackets,
     unravel_names,
 )
@@ -469,6 +471,14 @@ class RootContext(Context):
             else:
                 name = get_fullname(targets[0])
                 self.add(Func(name, *get_function_def_args(node.value)))
+            return
+
+        if namedtuple_in_rhs(node):
+            if not assignment_is_one_to_one(node):
+                error.fatal("namedtuple assignment must be one-to-one", node)
+
+            name = get_fullname(targets[0])
+            self.add(Class(name, args=get_namedtuple_attrs_from_call(node)))
             return
 
         # Walrus operator in the right-hand side of containing assignment
