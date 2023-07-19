@@ -63,6 +63,12 @@ def is_enum(cls: ast.ClassDef) -> bool:
     return any(n == "Enum" or n.endswith(".Enum") for n in get_base_names(cls))
 
 
+def is_named_tuple(cls: ast.ClassDef) -> bool:
+    # NOTE Purely heuristic, though it does allow for user defined Enum bases
+    bases = get_base_names(cls)
+    return any(b == "NamedTuple" or b.endswith(".NamedTuple") for b in bases)
+
+
 class ClassAnalyser(NodeVisitor):
     """Walk a class's AST to determine the accessed attributes.
 
@@ -127,6 +133,9 @@ class ClassAnalyser(NodeVisitor):
         if init is None and is_enum(self._ast):
             self.visit_enum_initialiser()
 
+        if init is None and is_named_tuple(self._ast):
+            self.visit_named_tuple_initialiser()
+
         # Visit static methods
         for method in get_static_methods(methods):
             self.visit_static_method(method)
@@ -154,14 +163,7 @@ class ClassAnalyser(NodeVisitor):
 
     def visit_enum_initialiser(self) -> None:
         cls: Class = self.context.get(self.class_name)
-        cls.args, cls.vararg, cls.kwarg = (
-            [
-                "self",
-                "_id",
-            ],
-            None,
-            None,
-        )
+        cls.args, cls.vararg, cls.kwarg = ["self", "_id"], None, None
 
         # NOTE Can't determine result at compile-time, thus give every option
         symbols = self.context.symbol_table.symbols()
@@ -176,6 +178,25 @@ class ClassAnalyser(NodeVisitor):
         }
 
         self.class_ir[cls] = ir
+
+    def visit_named_tuple_initialiser(self) -> None:
+        prefix = f"{self.class_name}."
+        tuple_items = [
+            symbol.name[len(prefix):]
+            for symbol in self.context.symbol_table.symbols()
+            if isinstance(symbol, Name)
+            if symbol.name.startswith(prefix)
+        ]
+
+        cls: Class = self.context.get(self.class_name)
+        cls.args, cls.vararg, cls.kwarg = ["self", *tuple_items], None, None
+
+        self.class_ir[cls] = {
+            "sets": set(),
+            "gets": set(),
+            "calls": set(),
+            "dels": set(),
+        }
 
     def visit_static_method(self, method: AnyFunctionDef) -> None:
         qualified_name = f"{self.class_name}.{method.name}"
