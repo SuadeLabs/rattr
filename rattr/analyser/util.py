@@ -849,32 +849,40 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
     Returns:
         tuple[list[str], dict[str, str]]: The positional and keyword args of the init.
     """
-    _type_error = (
+    _invalid_signature_error = (
+        "namedtuple expects exactly two positional arguments (i.e. name, attrs)"
+    )
+    _invalid_second_parameter_value_error = (
         "namedtuple expects the second positional argument to be a list of "
         "string-literals"
     )
 
-    if not isinstance(call := node.value, ast.Call):
+    # Parse call arguments
+    if not isinstance(node.value, ast.Call):
         raise TypeError
 
-    if len(call.args) != 2:
-        error.fatal("namedtuple expects exactly two positional arguments")
+    namedtuple_call_arguments = node.value.args
 
-    _, arguments = call.args
+    if len(namedtuple_call_arguments) != 2:
+        error.fatal(_invalid_signature_error)
 
-    if not isinstance(arguments, ast.List):
-        error.fatal(_type_error)
+    _, namedtuple_attrs_argument = namedtuple_call_arguments
 
-    # Get argument names
-    argument_names: list[str] = []
-    for arg in arguments.elts:
-        if not isinstance(arg, ast.Constant):
-            error.fatal(_type_error)
-        if not isinstance(arg.value, str):
-            error.fatal(_type_error)
-        argument_names.append(arg.value)
+    if not isinstance(namedtuple_attrs_argument, ast.List):
+        error.fatal(_invalid_second_parameter_value_error)
 
-    return ["self", *argument_names]
+    # Get attribute names from second positional argument
+    attrs: list[str] = [
+        arg.value
+        for arg in namedtuple_attrs_argument.elts
+        if isinstance(arg, ast.Constant)
+        if isinstance(arg.value, str)
+    ]
+
+    if len(attrs) != len(namedtuple_attrs_argument.elts):
+        error.fatal(_invalid_second_parameter_value_error)
+
+    return ["self", *attrs]
 
 
 def class_in_rhs(node: AnyAssign, context: Any) -> bool:
