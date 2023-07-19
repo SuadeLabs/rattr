@@ -75,18 +75,18 @@ class TestClassAnalyser:
         cls = Class("SomeClass", ["self", "some_arg"], None, None)
         expected = {
             func: {
-                "sets": set(),
                 "gets": {Name("arg")},
+                "sets": set(),
                 "dels": set(),
                 "calls": {Call("SomeClass()", ["@ReturnValue", "arg"], {}, target=cls)},
             },
             cls: {
+                "gets": {
+                    Name("some_arg.whatever", "some_arg"),
+                },
                 "sets": {
                     Name("self.whatever", "self"),
                     Name("some_arg.good_number", "some_arg"),
-                },
-                "gets": {
-                    Name("some_arg.whatever", "some_arg"),
                 },
                 "dels": set(),
                 "calls": set(),

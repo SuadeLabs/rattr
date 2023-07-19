@@ -37,8 +37,10 @@ from rattr.analyser.util import (
     get_function_body,
     get_function_call_args,
     get_function_def_args,
+    get_namedtuple_attrs_from_call,
     is_call_to,
     lambda_in_rhs,
+    namedtuple_in_rhs,
     remove_call_brackets,
 )
 from rattr.plugins import plugins
@@ -55,8 +57,8 @@ class FunctionAnalyser(NodeVisitor):
         self._ast: AnyFunctionDef = _ast
 
         self.func_ir: FunctionIR = {
-            "sets": set(),
             "gets": set(),
+            "sets": set(),
             "dels": set(),
             "calls": set(),
         }
@@ -223,6 +225,18 @@ class FunctionAnalyser(NodeVisitor):
 
         self.context.add(func)
 
+    def visit_NamedTupleAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
+        """Helper method for handling non-anonymous lambdas."""
+        target = targets[0]
+
+        if not assignment_is_one_to_one(node):
+            error.fatal("namedtuple assignment must be one-to-one", node)
+
+        name = get_fullname(target)
+        cls = Class(name, args=get_namedtuple_attrs_from_call(node))
+
+        self.context.add(cls)
+
     def visit_ClassAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
         """Helper method for assignments where RHS is a new class instance."""
         target = targets[0]
@@ -263,6 +277,10 @@ class FunctionAnalyser(NodeVisitor):
         # NOTE Handle special case, non-anonymous lambda
         if lambda_in_rhs(node):
             self.visit_LambdaAssign(node, targets)
+            return
+
+        if namedtuple_in_rhs(node):
+            self.visit_NamedTupleAssign(node, targets)
             return
 
         # NOTE Handle special case, rhs is class
