@@ -64,7 +64,7 @@ def is_enum(cls: ast.ClassDef) -> bool:
 
 
 def is_namedtuple(cls: ast.ClassDef) -> bool:
-    # NOTE Purely heuristic, though it does allow for user defined Enum bases
+    # NOTE Purely heuristic, though it does allow for user defined NamedTuple bases
     bases = get_base_names(cls)
     return any(b == "NamedTuple" or b.endswith(".NamedTuple") for b in bases)
 
