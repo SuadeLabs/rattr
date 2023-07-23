@@ -5,7 +5,7 @@ import ast
 import sys
 from enum import Enum
 from os.path import expanduser
-from typing import List, Optional, Tuple
+from typing import List, NoReturn, Optional, Tuple
 
 from rattr import config
 
@@ -91,7 +91,7 @@ def fatal(
     message: str,
     culprit: Optional[ast.AST] = None,
     badness: int = 0,  # noqa
-) -> None:
+) -> NoReturn:
     """Log a fatal error and, if given, include culprit line and file info.
 
     NOTE

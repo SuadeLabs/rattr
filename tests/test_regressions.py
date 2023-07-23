@@ -1,7 +1,19 @@
 from __future__ import annotations
 
-from rattr.analyser.context import Builtin, Call, Func, Name, RootContext
+from unittest import mock
+
+import pytest
+
+from rattr.analyser.context import (
+    Builtin,
+    Call,
+    Class,
+    Func,
+    Name,
+    RootContext,
+)
 from rattr.analyser.file import FileAnalyser
+from rattr.analyser.results import generate_results_from_ir
 
 
 class TestRegression:
@@ -548,3 +560,320 @@ class TestRegression:
 
         print(results)
         assert results == expected
+
+
+class TestNamedTupleFromCall:
+    # Test namedtuples constructed by calls to `collections.namedtuple`.
+    # This failed at analyse, not simplification, but we should confirm that it passes
+    # simplification nonetheless.
+
+    @pytest.fixture(autouse=True)
+    def _set_current_file(self, config) -> None:
+        with config("current_file", "my_test_file.py"):
+            with config("strict", True):
+                yield
+
+    def test_call_with_positional_arguments(self, constant, parse):
+        _ast = parse(
+            """
+            from collections import namedtuple
+
+            point = namedtuple("point", ["x", "y"])
+
+            def by_pos():
+                return point(1, 2)
+            """
+        )
+
+        # This failed at analyse, but we should show that simplification also works
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class("point", args=["self", "x", "y"])
+        point_call = Call(
+            name="point()",
+            args=["@ReturnValue", constant("Str"), constant("Str")],
+            kwargs={},
+            target=point,
+        )
+        expected = {
+            point: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            Func("by_pos", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {point_call},
+            },
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0
+
+    def test_call_with_keyword_arguments(self, constant, parse):
+        _ast = parse(
+            """
+            from collections import namedtuple
+
+            point = namedtuple("point", ["x", "y"])
+
+            def by_keyword():
+                return point(x=1, y=2)
+            """
+        )
+
+        # This failed at analyse, but we should show that simplification also works
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class("point", args=["self", "x", "y"])
+        point_call = Call(
+            name="point()",
+            args=["@ReturnValue"],
+            kwargs={"x": constant("Str"), "y": constant("Str")},
+            target=point,
+        )
+        expected = {
+            point: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            Func("by_keyword", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {point_call},
+            },
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0
+
+    def test_call_with_positional_and_keyword_arguments(self, constant, parse):
+        _ast = parse(
+            """
+            from collections import namedtuple
+
+            point = namedtuple("point", ["x", "y"])
+
+            def by_mixture():
+                return point(1, y=2)
+            """
+        )
+
+        # This failed at analyse, but we should show that simplification also works
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class("point", args=["self", "x", "y"])
+        point_call = Call(
+            name="point()",
+            args=["@ReturnValue", constant("Str")],
+            kwargs={"y": constant("Str")},
+            target=point,
+        )
+        expected = {
+            point: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            Func("by_mixture", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {point_call},
+            },
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0
+
+    def test_locally_defined_named_tuple(self, constant, parse):
+        _ast = parse(
+            """
+            from collections import namedtuple
+
+            def fn():
+                point = namedtuple("point", ["x", "y"])
+                return point(1, y=2)
+            """
+        )
+
+        # This failed at analyse, but we should show that simplification also works
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class("point", args=["self", "x", "y"])
+        point_call = Call(
+            name="point()",
+            args=["@ReturnValue", constant("Str")],
+            kwargs={"y": constant("Str")},
+            target=point,
+        )
+        expected = {
+            Func("fn", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {point_call},
+            },
+        }
+
+        # `point` is defined as a local callable, which is no yet supported, thus this
+        # should fail in strict mode.
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 1
+
+
+class TestNamedTupleFromInheritance:
+    # Test namedtuples constructed by inheriting from `typing.NamedTuple`.
+    # This previously had a fatal error at simplification.
+
+    @pytest.fixture(autouse=True)
+    def _set_current_file(self, config) -> None:
+        with config("current_file", "my_test_file.py"):
+            with config("strict", True):
+                yield
+
+    def test_call_with_positional_arguments(self, constant, parse):
+        _ast = parse(
+            """
+            from typing import NamedTuple
+
+            class Point(NamedTuple):
+                x: int
+                y: int
+
+            def by_pos():
+                return Point(1, 2)
+            """
+        )
+
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class(name="Point", args=["self", "x", "y"])
+        point_call = Call(
+            "Point()",
+            args=["@ReturnValue", constant("Str"), constant("str")],
+            kwargs={},
+            target=point,
+        )
+        expected = {
+            point: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            Func("by_pos", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {point_call},
+            },
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0
+
+    def test_call_with_keyword_arguments(self, constant, parse):
+        _ast = parse(
+            """
+            from typing import NamedTuple
+
+            class Point(NamedTuple):
+                x: int
+                y: int
+
+            def by_keyword():
+                return Point(x=1, y=2)
+            """
+        )
+
+        # Before the fix this failed at the simplification in "generate_results_from_ir"
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class(name="Point", args=["self", "x", "y"])
+        point_call = Call(
+            name="Point()",
+            args=["@ReturnValue"],
+            kwargs={"x": constant("Str"), "y": constant("Str")},
+            target=point,
+        )
+        expected = {
+            point: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            Func("by_keyword", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {point_call},
+            },
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0
+
+    def test_call_with_positional_and_keyword_arguments(self, constant, parse):
+        _ast = parse(
+            """
+            from typing import NamedTuple
+
+            class Point(NamedTuple):
+                x: int
+                y: int
+
+            def by_mixture():
+                return Point(1, y=2)
+            """
+        )
+
+        # Before the fix this failed at the simplification in "generate_results_from_ir"
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class(name="Point", args=["self", "x", "y"])
+        point_call = Call(
+            name="Point()",
+            args=["@ReturnValue", constant("Str")],
+            kwargs={"y": constant("Str")},
+            target=point,
+        )
+        expected = {
+            point: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            Func("by_mixture", []): {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {point_call},
+            },
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0
