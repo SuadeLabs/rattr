@@ -866,12 +866,12 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
     namedtuple_call_arguments = node.value.args
 
     if len(namedtuple_call_arguments) != 2:
-        error.fatal(_invalid_signature_error)
+        error.fatal(_invalid_signature_error, culprit=node.value)
 
     _, namedtuple_attrs_argument = namedtuple_call_arguments
 
     if not isinstance(namedtuple_attrs_argument, ast.List):
-        error.fatal(_invalid_second_parameter_value_error)
+        error.fatal(_invalid_second_parameter_value_error, culprit=node.value)
 
     # Get attribute names from second positional argument
     attrs: list[str] = [
@@ -882,7 +882,7 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
     ]
 
     if len(attrs) != len(namedtuple_attrs_argument.elts):
-        error.fatal(_invalid_second_parameter_value_error)
+        error.fatal(_invalid_second_parameter_value_error, culprit=node.value)
 
     return ["self", *attrs]
 
