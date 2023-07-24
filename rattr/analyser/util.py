@@ -834,6 +834,42 @@ def namedtuple_in_rhs(node: AnyAssign) -> bool:
         return False
 
 
+def _attrs_from_list_of_strings(attrs_argument: ast.List) -> list[str]:
+    attrs: list[str] = [
+        arg.value
+        for arg in attrs_argument.elts
+        if isinstance(arg, ast.Constant)
+        if isinstance(arg.value, str)
+    ]
+
+    if len(attrs) != len(attrs_argument.elts):
+        raise SyntaxError
+
+    return attrs
+
+
+def _attrs_from_space_delimited_string(attrs_argument: ast.Constant) -> list[str]:
+    if not isinstance(attrs_argument.value, str):
+        raise SyntaxError
+
+    attrs = attrs_argument.value.split(" ")
+
+    if not all(attr.isidentifier() for attr in attrs):
+        raise SyntaxError
+
+    return attrs
+
+
+def _namedtuple_attrs_from_second_argument(attrs_argument: ast.AST) -> list[str]:
+    if isinstance(attrs_argument, ast.List):
+        return _attrs_from_list_of_strings(attrs_argument)
+
+    if isinstance(attrs_argument, ast.Constant):
+        return _attrs_from_space_delimited_string(attrs_argument)
+
+    raise SyntaxError
+
+
 def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str, str]]:
     """Return the args/attrs of the namedtuple constructed by this assignment by call.
 
@@ -855,8 +891,9 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
         "namedtuple expects exactly two positional arguments (i.e. name, attrs)"
     )
     _invalid_second_parameter_value_error = (
-        "namedtuple expects the second positional argument to be a list of "
-        "string-literals"
+        "namedtuple expects the second positional argument to be a list of valid "
+        "identifiers as either a list of string-literals or a space-delimited "
+        "string-literal"
     )
 
     # Parse call arguments
@@ -870,18 +907,9 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
 
     _, namedtuple_attrs_argument = namedtuple_call_arguments
 
-    if not isinstance(namedtuple_attrs_argument, ast.List):
-        error.fatal(_invalid_second_parameter_value_error, culprit=node.value)
-
-    # Get attribute names from second positional argument
-    attrs: list[str] = [
-        arg.value
-        for arg in namedtuple_attrs_argument.elts
-        if isinstance(arg, ast.Constant)
-        if isinstance(arg.value, str)
-    ]
-
-    if len(attrs) != len(namedtuple_attrs_argument.elts):
+    try:
+        attrs = _namedtuple_attrs_from_second_argument(namedtuple_attrs_argument)
+    except SyntaxError:
         error.fatal(_invalid_second_parameter_value_error, culprit=node.value)
 
     return ["self", *attrs]

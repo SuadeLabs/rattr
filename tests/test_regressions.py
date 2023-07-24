@@ -736,6 +736,51 @@ class TestNamedTupleFromCall:
         assert file_ir._file_ir == expected
         assert _exit.call_count == 1
 
+    def test_call_with_space_delimited_string_argument(self, constant, parse):
+        _ast = parse(
+            """
+            from collections import namedtuple
+
+            point = namedtuple("point", "x y")
+
+            def my_function():
+                return point(1, y=2)
+            """
+        )
+
+        # This failed at analyse, but we should show that simplification also works
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        point = Class("point", args=["self", "x", "y"])
+        point_call = Call(
+            name="point()",
+            args=["@ReturnValue", constant("Str")],
+            kwargs={"y": constant("Str")},
+            target=point,
+        )
+
+        my_function = Func("my_function", [])
+
+        expected = {
+            point: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            my_function: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": {point_call},
+            },
+        }
+
+        assert file_ir._file_ir == expected
+        assert _exit.call_count == 0
+
 
 class TestNamedTupleFromInheritance:
     # Test namedtuples constructed by inheriting from `typing.NamedTuple`.
