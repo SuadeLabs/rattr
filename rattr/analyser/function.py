@@ -230,7 +230,7 @@ class FunctionAnalyser(NodeVisitor):
         target = targets[0]
 
         if not assignment_is_one_to_one(node):
-            error.fatal("namedtuple assignment must be one-to-one", node)
+            error.fatal("namedtuple assignment must be one-to-one", culprit=node)
 
         name = get_fullname(target)
         cls = Class(name, args=get_namedtuple_attrs_from_call(node))
