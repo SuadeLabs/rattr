@@ -877,3 +877,43 @@ class TestNamedTupleFromInheritance:
 
         assert file_ir._file_ir == expected
         assert _exit.call_count == 0
+
+
+class TestRattrConstantInNameableOnCheckForNamedTuple:
+    """
+    Brief:
+    On checking if there is a named-tuple in the right-hand side of an expression,
+    when the right hand side is a non-safely nameable expression an error is given.
+
+    Introduced: 0.1.7
+    Fixed: 0.1.8
+    """
+
+    def test_safely_determine_rhs_name_on_namedtuple_check(self, parse, constant):
+        _ast = parse(
+            """
+            def my_function(foobar, info=None):
+                i_cause_the_error = "_".join(info.parts)
+            """
+        )
+
+        with mock.patch("sys.exit") as _exit:
+            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            _ = generate_results_from_ir(file_ir, imports_ir={})
+
+        my_function = Func("my_function", ["foobar", "info"])
+
+        string_join = f"{constant('@Str')}.join()"
+        string_join_call = Call(string_join, ["info.parts"], {})
+
+        expected_file_ir = {
+            my_function: {
+                "gets": {Name("info.parts", basename="info")},
+                "sets": {Name("i_cause_the_error")},
+                "dels": set(),
+                "calls": {string_join_call},
+            }
+        }
+
+        assert not _exit.called
+        assert file_ir._file_ir == expected_file_ir
