@@ -819,14 +819,16 @@ def namedtuple_in_rhs(node: AnyAssign) -> bool:
         #   This is a naive approach, when enum / class-namedtuple / etc detection is
         #   refactored we can do this a bit better.
         #   See: cls.py::is_enum, cls.py::is_namedtuple
-        name = get_fullname(call.func)
+        name = get_fullname(call.func, safe=True)
         return name == "namedtuple" or name.endswith(".namedtuple")
 
     if isinstance(node.value, ast.Call):
         return _target_is_namedtuple(node.value)
     elif isinstance(node.value, _iterable):
         return any(
-            _target_is_namedtuple(v) for v in node.value.elts if isinstance(v, ast.Call)
+            _target_is_namedtuple(value)
+            for value in node.value.elts
+            if isinstance(value, ast.Call)
         )
     else:
         return False
