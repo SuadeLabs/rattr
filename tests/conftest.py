@@ -18,7 +18,7 @@ from rattr.analyser.context.symbol import Builtin, Call, Name, Symbol
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
 from rattr.analyser.types import FunctionIr
-from rattr.analyser.util import LOCAL_VALUE_PREFIX, has_affect
+from rattr.analyser.util import has_affect
 from rattr.ast.types import AstFunctionDef
 from rattr.config import Arguments, Config, Output, State
 from rattr.models.ir import FileIr
@@ -710,22 +710,27 @@ def handler():
 
 @pytest.fixture
 def constant():
-    """Return the version specific name for a constant of the given type.
+    config = Config()
 
-    In Python <= 3.7, constants are named as such "@Str", "@Num", etc.
+    _prefix = config.LOCAL_VALUE_PREFIX
+    _constant = ast.Constant.__name__
 
-    In Python >= 3.8, constants are all named "@Constant".
+    return f"{_prefix}{_constant}"
 
-    """
 
-    def _inner(node_type: str):
-        if sys.version_info.major != 3:
-            raise AssertionError
+@pytest.fixture
+def literal():
+    config = Config()
 
-        if sys.version_info.minor <= 7:
-            return f"{LOCAL_VALUE_PREFIX}{node_type}"
+    _prefix = config.LOCAL_VALUE_PREFIX
+
+    def _inner(node: ast.AST | type[ast.AST]) -> str:
+        if isinstance(node, ast.AST):
+            cls = node.__class__
         else:
-            return f"{LOCAL_VALUE_PREFIX}Constant"
+            cls = node
+
+        return f"{_prefix}{cls.__name__}"
 
     return _inner
 

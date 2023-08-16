@@ -23,7 +23,6 @@ from rattr.analyser.types import (
     Nameable,
 )
 from rattr.analyser.util import (
-    LOCAL_VALUE_PREFIX,
     assignment_is_one_to_one,
     class_in_rhs,
     get_assignment_targets,
@@ -43,6 +42,7 @@ from rattr.ast.types import (
     AnyFunctionDef,
     AstFunctionDefOrLambda,
 )
+from rattr.config import Config
 from rattr.models.symbol import PYTHON_ATTR_ACCESS_BUILTINS
 from rattr.models.symbol.util import without_call_brackets
 from rattr.plugins import plugins
@@ -82,11 +82,13 @@ class FunctionAnalyser(NodeVisitor):
         self, node: Nameable, ctx: ast.expr_context
     ) -> Tuple[str, str]:
         """Return the name, also verify validity."""
+        config = Config()
+
         base, full = get_basename_fullname_pair(node, safe=True)
 
         is_undeclared = base not in self.context
         is_assignment = isinstance(ctx, ast.Store)
-        is_local = base.startswith(LOCAL_VALUE_PREFIX)
+        is_local = base.startswith(config.LOCAL_VALUE_PREFIX)
 
         if is_undeclared and not is_assignment and not is_local:
             error.warning(f"'{base}' potentially undefined", node)
@@ -154,6 +156,8 @@ class FunctionAnalyser(NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> None:
         """Visit ast.Call(func, args, keywords)."""
+        config = Config()
+
         _, fullname = self.get_and_verify_name(node, ast.Load())
 
         # Handle special builtins such as getattr, setattr, etc
@@ -170,7 +174,7 @@ class FunctionAnalyser(NodeVisitor):
             args = get_function_call_args(node)
         else:
             error.warning(f"'{target.name}' initialised but not stored", node)
-            args = get_function_call_args(node, LOCAL_VALUE_PREFIX + target.name)
+            args = get_function_call_args(node, config.LOCAL_VALUE_PREFIX + target.name)
 
         # NOTE
         #   If this is a call to a method on an attribute, then it necessarily

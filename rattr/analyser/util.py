@@ -55,19 +55,6 @@ from rattr.models.symbol import (
     CallInterface,
 )
 
-# The prefix given to local constants, literals, etc to produce a name
-# E.g. "hi" -> get_basename_fullname_pair(.) = "@Str"
-# This must be a character that is not legal for standard Python _identifiers
-# or else code elsewhere may break
-LOCAL_VALUE_PREFIX = "@"
-
-
-# RegEx patterns for blacklisted modules
-MODULE_BLACKLIST_PATTERNS = {
-    "(rattr|rattr\\..*)",
-    "(package.rattr|packages.rattr\\..*)",
-}
-
 
 def get_basename_fullname_pair(
     node: Nameable,
@@ -105,6 +92,8 @@ def get_basename_fullname_pair(
     For the third example, the fact that `a.attr` is accessed is lost!
 
     """
+    config = Config()
+
     # Base case
     # ast.Name ⊂ StrictlyNameable
     if isinstance(node, ast.Name):
@@ -136,8 +125,8 @@ def get_basename_fullname_pair(
     # node ⊂ Nameable ^ node ⊄ StrictlyNameable
     if safe:
         return (
-            f"{LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
-            f"{LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
+            f"{config.LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
+            f"{config.LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
         )
 
     _error_class: Type[TypeError] = TypeError
@@ -524,10 +513,7 @@ def is_blacklisted_module(module: str) -> bool:
     if is_stdlib_module(module):
         return False
 
-    return any(
-        re.fullmatch(p, module)
-        for p in MODULE_BLACKLIST_PATTERNS | config.arguments.excluded_imports
-    )
+    return any(re.fullmatch(p, module) for p in config.blacklist_patterns)
 
 
 def is_pip_module(module: str) -> bool:

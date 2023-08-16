@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, IntFlag, auto
 from functools import cached_property
 from pathlib import Path
@@ -14,7 +14,7 @@ from rattr.config._util import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from typing import Final, Literal
 
 
 class FollowImports(IntFlag):
@@ -173,6 +173,22 @@ class Config(metaclass=ConfigMetaclass):
     arguments: Arguments
     state: State
 
+    LOCAL_VALUE_PREFIX: Final = "@"
+    """The prefix given to local constants, literals, etc to produce a name."""
+
+    MODULE_BLACKLIST_PATTERNS: Final = frozenset(
+        (
+            r"rattr",
+            r"rattr\..*",
+            r"packages?\.rattr",
+            r"packages?\.rattr\..*",
+        )
+    )
+    """The set of perennial module blacklist patterns, i.e. rattr itself."""
+
+    PLUGIN_BLACKLIST_PATTERNS: set[str] = field(default_factory=set)
+    """The set of blacklist patterns set by custom plugins."""
+
     @cached_property
     def project_root(self) -> Path:
         return find_project_root()
@@ -260,3 +276,11 @@ class Config(metaclass=ConfigMetaclass):
     @property
     def formatted_target_path(self) -> str | None:
         return self.get_formatted_path(self.arguments.target)
+
+    @property
+    def blacklist_patterns(self) -> set[str]:
+        return (
+            self.arguments.excluded_imports
+            | self.MODULE_BLACKLIST_PATTERNS
+            | self.PLUGIN_BLACKLIST_PATTERNS
+        )

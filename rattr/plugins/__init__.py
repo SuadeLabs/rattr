@@ -8,7 +8,7 @@ from rattr.analyser.base import (
     CustomFunctionAnalyser,
     CustomFunctionHandler,
 )
-from rattr.analyser.util import MODULE_BLACKLIST_PATTERNS
+from rattr.config import Config
 from rattr.plugins.analysers import DEFAULT_FUNCTION_ANALYSERS as DEFAULTS
 
 Plugin = Union[Assertor, CustomFunctionAnalyser]
@@ -40,6 +40,8 @@ class Plugins:
 
     def blacklist(self, module_or_modules: Union[str, Set[str]]) -> None:
         """Add the given module pattern to the module blacklist."""
+        config = Config()
+
         if not isinstance(module_or_modules, (str, set)):
             raise TypeError
 
@@ -52,7 +54,7 @@ class Plugins:
             modules = module_or_modules
 
         for module in modules:
-            MODULE_BLACKLIST_PATTERNS.add(module)
+            config.PLUGIN_BLACKLIST_PATTERNS.add(module)
 
 
 plugins = Plugins(list(), list())

@@ -8,8 +8,36 @@ from rattr.models.symbol.util import (
     get_basename_from_name,
     get_module_name_and_spec,
     get_possible_module_names,
+    with_call_brackets,
     without_call_brackets,
 )
+
+
+class WithCallBrackets:
+    def test_the_empty_string(self):
+        assert with_call_brackets("") == ""
+
+    def test_no_call_brackets(self):
+        assert (
+            with_call_brackets("i_dont_have_call_brackets")
+            == "i_dont_have_call_brackets()"
+        )
+
+    def test_call_brackets(self):
+        assert (
+            with_call_brackets("keep_my_call_brackets()")
+            == "keep_my_call_brackets()"
+        )
+
+    def test_just_brackets(self):
+        assert with_call_brackets("()") == "()"
+        assert with_call_brackets(")(") == ")(()"
+
+    def test_separated_brackets(self):
+        assert (
+            with_call_brackets("do_not_count(my_brackets)")
+            == "do_not_count(my_brackets)()"
+        )
 
 
 class TestWithoutCallBrackets:

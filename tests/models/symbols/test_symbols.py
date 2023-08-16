@@ -259,7 +259,7 @@ class TestCall:
             name="fn",
             args=CallArguments(
                 args=["a", "b"],
-                kwargs={"c": "var", "d": constant("Str")},
+                kwargs={"c": "var", "d": constant},
             ),
             target=None,
         )
