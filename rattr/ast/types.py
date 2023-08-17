@@ -110,3 +110,30 @@ AnyAssign = Union[
     AstNamedExpr,
 ]
 """An AST assignment node."""
+
+
+AstStrictlyNameable = (
+    ast.Name,
+    ast.Attribute,
+    ast.Subscript,
+    ast.Starred,
+    ast.Call,
+)
+"""AST nodes whose exact name can be resolved (via `node.id`, etc)."""
+
+
+AstCompoundNameable = (
+    ast.Attribute,
+    ast.Subscript,
+    ast.Starred,
+)
+
+CompoundNameable: TypeAlias = Union[
+    ast.Attribute,
+    ast.Subscript,
+    ast.Starred,
+]
+"""An AST node which contains a nameable component."""
+
+Nameable: TypeAlias = ast.expr
+"""An `ast.expr` whose "name" can be resolved."""

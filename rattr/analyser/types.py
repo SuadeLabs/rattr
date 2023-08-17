@@ -1,32 +1,17 @@
 from __future__ import annotations
 
-import ast
 from typing import Dict, Literal, MutableMapping, Set, Union
 
+from rattr.ast.types import (  # noqa: F401
+    AstStrictlyNameable,
+    CompoundNameable,
+    Nameable,
+)
 from rattr.models.symbol import Symbol, UserDefinedCallableSymbol
 from rattr.versioning.typing import TypeAlias
 
 ResultsCategory: TypeAlias = Literal["gets", "sets", "dels", "calls"]
 
-# Not in `rattr.ast.types` as "nameability" is a rattr concept
-AstStrictlyNameable = (
-    ast.Name,
-    ast.Attribute,
-    ast.Subscript,
-    ast.Starred,
-    ast.Call,
-)
-"""AST nodes whose exact name can be resolved (via `node.id`, etc)."""
-
-CompoundNameable: TypeAlias = Union[
-    ast.Attribute,
-    ast.Subscript,
-    ast.Starred,
-]
-"""An AST node which contains a nameable component."""
-
-Nameable: TypeAlias = ast.expr
-"""An `ast.expr` whose "name" can be resolved."""
 
 PythonLiteral: TypeAlias = Union[
     None,
