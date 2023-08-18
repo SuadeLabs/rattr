@@ -484,7 +484,7 @@ class FunctionAnalyser(NodeVisitor):
             # Create call to class initialiser
             class_name = get_fullname(node)
 
-            init_args = get_function_call_args(node, "@ReturnValue")
+            init_args = get_function_call_args(node, self="@ReturnValue")
             init_body = self.context.get_call_target(class_name, node)
 
             self.func_ir["calls"].add(Call(class_name, *init_args, init_body))

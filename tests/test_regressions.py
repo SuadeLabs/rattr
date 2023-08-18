@@ -18,7 +18,7 @@ from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from typing import Callable, Iterator
 
     from rattr.analyser.context import Context
     from rattr.analyser.context.symbol import Symbol
@@ -574,8 +574,8 @@ class TestNamedTupleFromCall:
     # simplification nonetheless.
 
     @pytest.fixture(autouse=True)
-    def _run_tests_in_strict_mode(self, config) -> None:
-        with config("strict", True):
+    def _test_in_strict_mode(self, arguments) -> Iterator[None]:
+        with arguments(is_strict=True):
             yield
 
     def test_call_with_positional_arguments(self, constant, parse):
@@ -792,8 +792,8 @@ class TestNamedTupleFromInheritance:
     # This previously had a fatal error at simplification.
 
     @pytest.fixture(autouse=True)
-    def _run_tests_in_strict_mode(self, config) -> None:
-        with config("strict", True):
+    def _test_in_strict_mode(self, arguments) -> Iterator[None]:
+        with arguments(is_strict=True):
             yield
 
     def test_call_with_positional_arguments(self, constant, parse):
