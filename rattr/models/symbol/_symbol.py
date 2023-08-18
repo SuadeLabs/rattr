@@ -10,7 +10,7 @@ from attrs import field
 from frozendict import frozendict
 
 from rattr.config.util import get_current_file
-from rattr.models.symbol._util import arg_name, kwarg_name
+from rattr.models.symbol._util import PYTHON_BUILTINS_LOCATION, arg_name, kwarg_name
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -20,12 +20,12 @@ if TYPE_CHECKING:
 
 @attrs.frozen
 class Symbol(abc.ABC):
-    # NOTE
-    #   Derived classes should still implement the below attrs or else the editor will
-    #   be unhappy. This still has utility as a declaration of interface, however.
     name: str = field()
-    interface: CallInterface | None = field(default=None, kw_only=True)
+
+    token: ast.AST | None = field(default=None, kw_only=True)
     location: Location | None = field(default=None, kw_only=True)
+
+    interface: CallInterface | None = field(default=None, kw_only=True)
 
     def __attrs_pre_init__(self) -> None:
         if type(self) == Symbol:
@@ -44,7 +44,10 @@ class Symbol(abc.ABC):
 
     @property
     def has_location(self) -> bool:
-        return self.location is not None
+        return (
+            self.location is not None
+            and str(self.location.defined_in) != PYTHON_BUILTINS_LOCATION
+        )
 
     @property
     def is_import(self) -> Literal[False]:
@@ -139,6 +142,7 @@ class CallArguments:
 
 @attrs.frozen
 class Location:
+    token: ast.AST | None = field(default=None)
     _derived_location: Path = field(factory=get_current_file, kw_only=True)
 
     @property

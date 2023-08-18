@@ -93,7 +93,10 @@ class TestIsCallable:
 
 
 class TestHasLocation:
-    @pytest.mark.parametrize("symbol_fixture", ["simple_func", "simple_class"])
+    @pytest.mark.parametrize(
+        "symbol_fixture",
+        ["simple_name", "simple_func", "simple_class", "simple_import", "simple_call"],
+    )
     def test_has_location(
         self,
         symbol_fixture: str,
@@ -106,7 +109,7 @@ class TestHasLocation:
 
     @pytest.mark.parametrize(
         "symbol_fixture",
-        ["simple_name", "simple_builtin", "simple_import", "simple_call"],
+        ["simple_builtin"],
     )
     def test_does_not_have_location(
         self,
@@ -209,8 +212,8 @@ class TestFunc:
                 kwonlyargs=["c"],
             ),
         }
-        expected = Func(**fn_spec)
-        expected_async = Func(**fn_spec, is_async=True)
+        expected = Func(**fn_spec, token=fn)
+        expected_async = Func(**fn_spec, token=async_fn, is_async=True)
 
         assert Func.from_fn_def(fn) == expected
         assert Func.from_fn_def(async_fn) == expected_async
@@ -227,6 +230,7 @@ class TestFunc:
                 kwonlyargs=["d", "e"],
                 kwarg="f",
             ),
+            "token": fn,
         }
         expected = Func(**fn_spec)
 
@@ -279,6 +283,7 @@ class TestCall:
                 kwargs={"c": "var", "d": constant},
             ),
             target=None,
+            token=call,
         )
 
         assert Call.from_call("fn", call, target=None) == expected

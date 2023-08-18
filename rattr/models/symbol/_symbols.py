@@ -42,23 +42,41 @@ PYTHON_BUILTINS: Final = tuple(
 """Python's callable builtins."""
 
 
+This is the module spec origin for several stdlib modules.
+"""
+
+
 @attrs.frozen
 class Name(Symbol):
     name: str = field()
     basename: str = field()
+
+    token: ast.AST | None = field(default=None, kw_only=True)
+    location: Location = field(kw_only=True)
+
     interface: CallInterface | None = field(default=None, kw_only=True)
-    location: Location | None = field(default=None, kw_only=True)
 
     @basename.default
     def _basename_default(self) -> str:
         return get_basename_from_name(self.name)
 
+    @location.default
+    def _location_default(self) -> Location:
+        return Location(token=self.token)
+
 
 @attrs.frozen
 class Builtin(Symbol):
     name: str = field()
+
+    token: ast.AST | None = field(default=None, kw_only=True)
+    location: Location = field(kw_only=True)
+
     interface: AnyCallInterface = field(factory=AnyCallInterface, kw_only=True)
-    location: Location | None = field(default=None, kw_only=True)
+
+    @location.default
+    def _location_default(self) -> Location:
+        return Location(token=self.token, derived_location=Path(PYTHON_BUILTINS_LOCATION))
 
     @property
     def has_affect(self) -> bool:
@@ -69,12 +87,19 @@ class Builtin(Symbol):
 class Import(Symbol):
     name: str = field()
     qualified_name: str = field()
+
+    token: ast.AST | None = field(default=None, kw_only=True)
+    location: Location = field(kw_only=True)
+
     interface: AnyCallInterface = field(factory=AnyCallInterface, kw_only=True)
-    location: Location | None = field(default=None, kw_only=True)
 
     @qualified_name.default
     def _qualified_name_default(self) -> str:
         return self.name
+
+    @location.default
+    def _location_default(self) -> Location:
+        return Location(token=self.token)
 
     @property
     def id(self) -> str:
@@ -104,15 +129,24 @@ class Import(Symbol):
 @attrs.frozen
 class Func(Symbol):
     name: str = field(converter=without_call_brackets)
+
+    token: ast.AST | None = field(default=None, kw_only=True)
+    location: Location = field(kw_only=True)
+
     interface: CallInterface = field(kw_only=True)
-    location: Location = field(factory=Location, kw_only=True)
+
     is_async: bool = field(default=False, kw_only=True)
+
+    @location.default
+    def _location_default(self) -> Location:
+        return Location(token=self.token)
 
     @classmethod
     def from_fn_def(cls: type[Func], fn: AnyFunctionDef) -> Func:
         """Return a new `Func` parsed from the given function def."""
         return Func(
             name=fn.name,
+            token=fn,
             interface=CallInterface.from_fn_def(fn),
             is_async=isinstance(fn, ast.AsyncFunctionDef),
         )
@@ -121,8 +155,15 @@ class Func(Symbol):
 @attrs.frozen
 class Class(Symbol):
     name: str = field(converter=without_call_brackets)
+
+    token: ast.AST | None = field(default=None, kw_only=True)
+    location: Location = field(kw_only=True)
+
     interface: CallInterface = field(factory=AnyCallInterface, kw_only=True)
-    location: Location = field(factory=Location, kw_only=True)
+
+    @location.default
+    def _location_default(self) -> Location:
+        return Location(token=self.token)
 
     def with_init(self, init: ast.FunctionDef) -> Class:
         """Return a copy of the class with the initialiser set to the given function."""
@@ -136,8 +177,14 @@ class Call(Symbol):
     args: CallArguments = field(factory=CallArguments)
     target: Builtin | Import | Func | Class | None = field(default=None)
 
+    token: ast.AST | None = field(default=None, kw_only=True)
+    location: Location = field(kw_only=True)
+
     interface: CallInterface | None = field(default=None, kw_only=True)
-    location: Location | None = field(default=None, kw_only=True)
+
+    @location.default
+    def _location_default(self) -> Location:
+        return Location(token=self.token)
 
     @classmethod
     def from_call(
@@ -146,4 +193,9 @@ class Call(Symbol):
         call: ast.Call,
         target: Builtin | Import | Func | Class | None,
     ) -> Call:
-        return Call(name=name, args=CallArguments.from_call(call), target=target)
+        return Call(
+            name=name,
+            args=CallArguments.from_call(call),
+            target=target,
+            token=call,
+        )

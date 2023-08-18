@@ -12,6 +12,12 @@ if TYPE_CHECKING:
 
 _unsupported_feature: Final = "{feature} not supported in function calls"
 
+PYTHON_BUILTINS_LOCATION: Final = "built-in"
+"""Python's built-in function location.
+
+This is the module spec origin for several stdlib modules.
+"""
+
 
 def arg_name(arg: ast.expr) -> str:
     """Return the safely-evaluated argument name."""
