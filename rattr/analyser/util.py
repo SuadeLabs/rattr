@@ -91,6 +91,8 @@ def get_basename_fullname_pair(
 
     For the third example, the fact that `a.attr` is accessed is lost!
 
+    TODO Deprecated, see rattr.ast.utils
+
     """
     config = Config()
 
@@ -149,12 +151,18 @@ def get_basename_fullname_pair(
 
 
 def get_basename(node: Nameable, safe: bool = False) -> str:
-    """Return the `_identifier` of the innermost ast.Name node."""
+    """Return the `_identifier` of the innermost ast.Name node.
+
+    TODO Deprecated, see rattr.ast.utils
+    """
     return get_basename_fullname_pair(node, safe)[0]
 
 
 def get_fullname(node: Nameable, safe: bool = False) -> str:
-    """Return the fullname of the given node."""
+    """Return the fullname of the given node.
+
+    TODO Deprecated, see rattr.ast.utils
+    """
     return get_basename_fullname_pair(node, safe)[1]
 
 
@@ -198,6 +206,8 @@ def unravel_names(
     >>> list(unravel_names(ravelled_names, get_name=get_fullname))
     ["a.attr"]
 
+    TODO Deprecated, see rattr.ast.utils
+
     """
     if isinstance(node, AstStrictlyNameable):
         return [get_name(node)]
@@ -220,6 +230,8 @@ def is_call_to(target: str, node: ast.Call) -> bool:
     Thus rather than determining if a call is to `getattr` by checking the
     basename against "getattr", use `is_call_to("getattr", node)`.
 
+    TODO Deprecated, see rattr.ast.utils
+
     """
     if not isinstance(node, ast.Call):
         raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
@@ -241,7 +253,10 @@ def has_affect(builtin: str) -> bool:
 def get_xattr_obj_name_pair(
     xattr: str, node: ast.Call, warn: bool = False
 ) -> Tuple[str, str]:
-    """Return the object-name pair for a call to getattr, setattr, etc."""
+    """Return the object-name pair for a call to getattr, setattr, etc.
+
+    TODO Deprecated, see rattr.ast.utils
+    """
     if len(node.args) < 2:
         error.fatal(f"invalid call to '{xattr}', not enough args", node)
 
@@ -591,6 +606,7 @@ def get_function_call_args(
     >>> get_function_call_args(ast.parse("MyClass(a, b)").body[0].value, self="blah")
     (["blah", "a", "b"], {})
     """
+    # TODO Does this need to account for vararg, kwarg, etc?
     _arguments = CallArguments.from_call(call, self=self)
     return _arguments.args, _arguments.kwargs
 

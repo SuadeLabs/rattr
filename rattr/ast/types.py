@@ -32,7 +32,6 @@ AnyConstant: TypeAlias = Union[
 
 
 AstLiterals = (
-    ast.FormattedValue,
     ast.JoinedStr,
     ast.List,
     ast.Tuple,
