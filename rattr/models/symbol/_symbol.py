@@ -86,21 +86,29 @@ class CallInterface:
         fn: ast.Lambda | AnyFunctionDef,
     ) -> CallInterface:
         """Return a new `CallInterface` parsed from the given function def."""
-        if isinstance(_vararg := fn.args.vararg, ast.arg):
+        return cls.from_arguments(fn.args)
+
+    @classmethod
+    def from_arguments(
+        cls: type[CallInterface],
+        arguments: ast.arguments,
+    ) -> CallInterface:
+        """Return a new `CallInterface` parsed from the given arguments."""
+        if isinstance(_vararg := arguments.vararg, ast.arg):
             vararg = _vararg.arg
         else:
             vararg = None
 
-        if isinstance(_kwarg := fn.args.kwarg, ast.arg):
+        if isinstance(_kwarg := arguments.kwarg, ast.arg):
             kwarg = _kwarg.arg
         else:
             kwarg = None
 
         return CallInterface(
-            posonlyargs=[_a.arg for _a in fn.args.posonlyargs],
-            args=[_arg.arg for _arg in fn.args.args],
+            posonlyargs=[_a.arg for _a in arguments.posonlyargs],
+            args=[_arg.arg for _arg in arguments.args],
             vararg=vararg,
-            kwonlyargs=[_arg.arg for _arg in fn.args.kwonlyargs],
+            kwonlyargs=[_arg.arg for _arg in arguments.kwonlyargs],
             kwarg=kwarg,
         )
 
@@ -113,6 +121,14 @@ class AnyCallInterface(CallInterface):
     def from_fn_def(
         cls: type[CallInterface],
         fn: ast.Lambda | AnyFunctionDef,
+    ) -> CallInterface:
+        if cls != CallInterface:
+            raise NotImplementedError(f"not applicable to {cls.__name__}")
+
+    @classmethod
+    def from_arguments(
+        cls: type[CallInterface],
+        arguments: ast.arguments,
     ) -> CallInterface:
         if cls != CallInterface:
             raise NotImplementedError(f"not applicable to {cls.__name__}")

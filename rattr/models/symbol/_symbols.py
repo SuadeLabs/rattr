@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import builtins
 from importlib.machinery import ModuleSpec
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import attrs
@@ -15,6 +16,7 @@ from rattr.models.symbol._symbol import (
     Location,
     Symbol,
 )
+from rattr.models.symbol._util import PYTHON_BUILTINS_LOCATION
 from rattr.models.symbol.util import (
     get_basename_from_name,
     get_module_name_and_spec,
@@ -41,9 +43,19 @@ PYTHON_BUILTINS: Final = tuple(
 )
 """Python's callable builtins."""
 
-
-This is the module spec origin for several stdlib modules.
-"""
+PYTHON_NON_PRIMITIVE_RETURNING_BUILTINS: Final = frozenset(
+    (
+        "eval",
+        "exec",
+        "getattr",
+        "iter",
+        "next",
+        "slice",
+        "super",
+        "type",
+    )
+)
+"""Python's builtins may-or-will return a non-primitive."""
 
 
 @attrs.frozen
@@ -124,6 +136,25 @@ class Import(Symbol):
     @property
     def is_import(self) -> Literal[True]:
         return True
+
+    @property
+    def origin(self) -> Path | None:
+        if self.module_spec is None:
+            return None
+
+        if self.module_spec.origin is None:
+            return None
+
+        return Path(self.module_spec.origin).resolve()
+
+    @property
+    def code(self) -> str:
+        # Take a stab at decompiling, for the sake of error messages.
+        # Manually determine module name from qualified name rather than
+        # `self.module_name` as that is from the spec and could be `None` on resolution
+        # error.
+        module = self.qualified_name.replace(f".{self.name}", "")
+        return f"from {module} import {self.name}"
 
 
 @attrs.frozen

@@ -9,8 +9,22 @@ if TYPE_CHECKING:
     from importlib.machinery import ModuleSpec
 
 
+def with_call_brackets(call: str) -> str:
+    """Return the given string with call brackets added if absent.
+
+    >>> without_call_brackets("keep_my_call_brackets()")
+    "keep_my_call_brackets()"
+    >>> without_call_brackets("i_dont_have_call_brackets")
+    "i_dont_have_call_brackets()"
+    """
+    if not call.endswith("()"):
+        return f"{call}()"
+
+    return call
+
+
 def without_call_brackets(call: str) -> str:
-    """Return a copy of the given string with call brackets removed if present.
+    """Return the given string with call brackets removed if present.
 
     >>> without_call_brackets("remove_my_call_brackets()")
     "remove_my_call_brackets"
