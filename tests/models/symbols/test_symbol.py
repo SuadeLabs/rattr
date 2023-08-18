@@ -47,6 +47,25 @@ class TestCallInterface:
             "another_kwonly",
         )
 
+    def test_all_with_vararg_and_kwarg(self):
+        interface = CallInterface(
+            posonlyargs=["a", "b"],
+            args=["arg", "another_arg"],
+            vararg="vararg",
+            kwonlyargs=["kwonly_1", "another_kwonly"],
+            kwarg="kwarg",
+        )
+        assert interface.all == (
+            "a",
+            "b",
+            "arg",
+            "another_arg",
+            "vararg",
+            "kwonly_1",
+            "another_kwonly",
+            "kwarg",
+        )
+
     def test_from_fn_def(self, parse):
         fn = parse(
             """
@@ -59,6 +78,22 @@ class TestCallInterface:
             posonlyargs=["a", "b"],
             args=["c", "d"],
             kwonlyargs=["e"],
+        )
+
+    def test_from_fn_def_with_vararg_and_kwarg(self, parse):
+        fn = parse(
+            """
+            def fn(a, b, /, c, d=None, *e, f=1, g=2, **h):
+                pass
+            """
+        ).body[0]
+
+        assert CallInterface.from_fn_def(fn) == CallInterface(
+            posonlyargs=["a", "b"],
+            args=["c", "d"],
+            vararg="e",
+            kwonlyargs=["f", "g"],
+            kwarg="h",
         )
 
     def test_is_hashable(self):

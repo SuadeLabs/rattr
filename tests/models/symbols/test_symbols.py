@@ -215,6 +215,23 @@ class TestFunc:
         assert Func.from_fn_def(fn) == expected
         assert Func.from_fn_def(async_fn) == expected_async
 
+    def test_from_fn_def_with_vararg_and_kwarg(self):
+        fn = ast.parse("def fn(a, /, b=None, *c, d=False, e=1, **f): pass").body[0]
+
+        fn_spec = {
+            "name": "fn",
+            "interface": CallInterface(
+                posonlyargs=["a"],
+                args=["b"],
+                vararg="c",
+                kwonlyargs=["d", "e"],
+                kwarg="f",
+            ),
+        }
+        expected = Func(**fn_spec)
+
+        assert Func.from_fn_def(fn) == expected
+
 
 class TestClass:
     def test_name_excludes_call_brackets(self):

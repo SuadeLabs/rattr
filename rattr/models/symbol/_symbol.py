@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,7 +13,6 @@ from rattr.config.util import get_current_file
 from rattr.models.symbol._util import arg_name, kwarg_name
 
 if TYPE_CHECKING:
-    import ast
     from typing import Literal
 
     from rattr.ast.types import AnyFunctionDef
@@ -56,11 +56,26 @@ class CallInterface:
     # Naming inherited from `ast.arguments`
     posonlyargs: tuple[str] = field(default=(), converter=tuple)
     args: tuple[str] = field(default=(), converter=tuple)
+    vararg: str | None = field(default=None)
     kwonlyargs: tuple[str] = field(default=(), converter=tuple)
+    kwarg: str | None = field(default=None)
 
     @property
     def all(self) -> tuple[str]:
-        return self.posonlyargs + self.args + self.kwonlyargs
+        arguments: list[str] = []
+
+        arguments += self.posonlyargs
+        arguments += self.args
+
+        if self.vararg is not None:
+            arguments.append(self.vararg)
+
+        arguments += self.kwonlyargs
+
+        if self.kwarg is not None:
+            arguments.append(self.kwarg)
+
+        return tuple(arguments)
 
     @classmethod
     def from_fn_def(
@@ -68,19 +83,36 @@ class CallInterface:
         fn: ast.Lambda | AnyFunctionDef,
     ) -> CallInterface:
         """Return a new `CallInterface` parsed from the given function def."""
-        if cls != CallInterface:
-            raise NotImplementedError(f"not applicable to {cls.__name__}")
+        if isinstance(_vararg := fn.args.vararg, ast.arg):
+            vararg = _vararg.arg
+        else:
+            vararg = None
+
+        if isinstance(_kwarg := fn.args.kwarg, ast.arg):
+            kwarg = _kwarg.arg
+        else:
+            kwarg = None
 
         return CallInterface(
             posonlyargs=[_a.arg for _a in fn.args.posonlyargs],
             args=[_arg.arg for _arg in fn.args.args],
+            vararg=vararg,
             kwonlyargs=[_arg.arg for _arg in fn.args.kwonlyargs],
+            kwarg=kwarg,
         )
 
 
 @attrs.frozen
 class AnyCallInterface(CallInterface):
     """Denote that the interface is unknown/unknowable; thus all calls are accepted."""
+
+    @classmethod
+    def from_fn_def(
+        cls: type[CallInterface],
+        fn: ast.Lambda | AnyFunctionDef,
+    ) -> CallInterface:
+        if cls != CallInterface:
+            raise NotImplementedError(f"not applicable to {cls.__name__}")
 
 
 @attrs.frozen
