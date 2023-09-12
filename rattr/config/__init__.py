@@ -29,7 +29,7 @@ class Config:
 
     # File name in error messages
     show_path: bool = True
-    use_short_path: bool = True
+    use_short_path: bool = False
 
     # Results and output
     show_ir: bool = False

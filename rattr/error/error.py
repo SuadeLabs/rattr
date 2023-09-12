@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import os
 import sys
 from enum import Enum
 from os.path import expanduser
@@ -9,9 +10,9 @@ from typing import List, NoReturn, Optional, Tuple
 
 from rattr import config
 
-__ERROR = "{prefix}: {optional_file_info}{optional_line_info}{message}"
-__FILE_INFO = "\033[1m{}: \033[0m"
-__LINE_INFO = "\033[1mline {}:{}: \033[0m"
+__ERROR = "{prefix}: {optional_file_info}{optional_line_info}: {message}"
+__FILE_INFO = "\033[1m{}\033[0m"
+__LINE_INFO = "\033[1m:{}:{}\033[0m"
 
 
 # --------------------------------------------------------------------------- #
@@ -223,15 +224,16 @@ def format_path(path: Optional[str]) -> Optional[str]:
     if path is None:
         return None
 
-    if not config.use_short_path:
-        return path
+    # Make relative to $CWD
+    if path.startswith(cwd := f"{os.getcwd()}/"):
+        path = path[len(cwd) :]
 
     # Replace $HOME with "~"
-    path = path.replace(expanduser("~"), "~")
+    if path.startswith(home := expanduser("~")):
+        path = path[len(home)]
 
-    # Abbreviate long heirachies
-    segments = split_path(path)
-    if len(segments) > 5:
+    # Abbreviate long hierarchies
+    if config.use_short_path and len(segments := split_path(path)) > 8:
         path = "/".join([segments[0], "...", *segments[-3:]])
 
     return path
