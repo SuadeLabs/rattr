@@ -42,7 +42,7 @@ class TestRead:
     def test_file(self, get_test_file, filename):
         the_file: Path = get_test_file(filename)
 
-        with read(the_file) as (content, number_of_lines):
+        with read(the_file) as (number_of_lines, content):
             assert content == the_file.read_text()
             assert number_of_lines == len(the_file.read_text().splitlines()) + 1
 

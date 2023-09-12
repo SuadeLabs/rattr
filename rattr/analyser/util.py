@@ -662,12 +662,12 @@ class read:
     def __init__(self, file: str) -> None:
         self.file = file
 
-    def __enter__(self):
+    def __enter__(self) -> tuple[int, str]:
         with open(self.file, "r") as f:
             lines = f.readlines()
-        return "".join(lines), len(lines) + 1
+        return len(lines) + 1, "".join(lines)
 
-    def __exit__(self, *_):
+    def __exit__(self, *_) -> None:
         pass
 
 
