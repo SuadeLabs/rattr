@@ -417,14 +417,20 @@ class RootContext(Context):
         if base is None:
             error.fatal("unable to resolve parent in relative import", node)
 
-        module = get_absolute_module_name(base, node.level, node.module)
+        if node.module is not None:
+            module = get_absolute_module_name(base, node.level, node.module)
+        else:
+            module = base
 
         if get_module_name_and_spec(module) == (None, None):
             error.error("unable to resolve relative import", node)
 
         for target in node.names:
             _import = _new_import_symbol(
-                target.asname or target.name, f"{module}.{target.name}", module, node
+                target.asname or target.name,
+                f"{module}.{target.name}",
+                module,
+                node,
             )
             self.add(_import)
 
