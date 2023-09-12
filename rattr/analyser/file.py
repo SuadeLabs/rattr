@@ -135,7 +135,7 @@ def parse_and_analyse_imports(imports: List[Import]) -> Tuple[ImportsIR, ImportS
                 )
                 continue
 
-            error.fatal(f"unable to resolve import '{_i.qualified_name}'")
+            error.fatal(f"unable to resolve import {_i.qualified_name!r}")
             continue
 
         if module_path in seen_module_paths:
