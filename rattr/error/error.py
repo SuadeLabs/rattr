@@ -20,11 +20,11 @@ __LINE_INFO = "\033[1mline {}:{}: \033[0m"
 
 
 class Level(Enum):
-    RATTR = "\033[34;1mrattr\033[0m"  # Blue
-    INFO = "\033[33;1minfo\033[0m"  # Yellow / Orange
-    WARNING = "\033[33;1mwarning\033[0m"  # Yellow / Orange
-    ERROR = "\033[31;1merror\033[0m"  # Red
-    FATAL = "\033[31;1mfatal\033[0m"  # Red
+    rattr = "\033[34;1mrattr\033[0m"  # Blue
+    info = "\033[33;1minfo\033[0m"  # Yellow / Orange
+    warning = "\033[33;1mwarning\033[0m"  # Yellow / Orange
+    error = "\033[31;1merror\033[0m"  # Red
+    fatal = "\033[31;1mfatal\033[0m"  # Red
 
 
 def rattr(
@@ -33,7 +33,7 @@ def rattr(
     badness: int = 0,  # noqa
 ) -> None:
     """Log a message with the prefix "rattr", not for analyser errors."""
-    __log(Level.RATTR, message, culprit)
+    __log(Level.rattr, message, culprit)
 
 
 def info(
@@ -53,7 +53,7 @@ def info(
     if not config.show_imports_warnings and config.current_file != config.file:
         return
 
-    __log(Level.INFO, message, culprit)
+    __log(Level.info, message, culprit)
 
 
 def warning(
@@ -70,7 +70,7 @@ def warning(
     if not config.show_imports_warnings and config.current_file != config.file:
         return
 
-    __log(Level.WARNING, message, culprit)
+    __log(Level.warning, message, culprit)
 
 
 def error(
@@ -84,7 +84,7 @@ def error(
     if config.strict and badness > 0:
         fatal(message, culprit)
 
-    __log(Level.ERROR, message, culprit)
+    __log(Level.error, message, culprit)
 
 
 def fatal(
@@ -104,7 +104,7 @@ def fatal(
     """
     __increment_badness(0)
 
-    __log(Level.FATAL, message, culprit)
+    __log(Level.fatal, message, culprit)
 
     sys.exit(1)
 
