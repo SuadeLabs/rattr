@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import ast
-from typing import List, Union
+from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 from rattr.analyser.base import Assertor
 from rattr.analyser.types import AnyAssign, AnyFunctionDef, Comprehension
@@ -13,9 +14,12 @@ from rattr.analyser.util import (
     unravel_names,
 )
 
+if TYPE_CHECKING:
+    from typing import Generator
 
-def get_lhs_names(lhs: AnyAssign) -> List[str]:
-    """Return the names in the lhs of the given assignemnt."""
+
+def get_lhs_names(lhs: AnyAssign) -> list[str]:
+    """Return the names in the lhs of the given assignment."""
     if hasattr(lhs, "targets"):
         targets = lhs.targets
     else:
@@ -25,6 +29,16 @@ def get_lhs_names(lhs: AnyAssign) -> List[str]:
 
 
 class ImportClobberingAssertor(Assertor):
+    def __init__(self, is_strict: bool = True) -> None:
+        super().__init__(is_strict=is_strict)
+        self.class_stack: list[str] = []
+
+    @contextmanager
+    def enter_class_name(self, name: str) -> Generator[None, None, None]:
+        self.class_stack.append(name)
+        yield
+        self.class_stack.pop()
+
     def __clobbered(self, name: str, node: ast.AST) -> None:
         self.failed(f"redefinition of imported name '{name}'", node)
 
@@ -62,9 +76,10 @@ class ImportClobberingAssertor(Assertor):
         if has_annotation("rattr_results", node):
             return
 
-        if self.context.is_import(node.name):
-            self.__clobbered(node.name, node)
-            return
+        is_in_method = self.class_stack != []
+
+        if not is_in_method and self.context.is_import(node.name):
+            return self.__clobbered(node.name, node)
 
         self.check_arguments(node)
 
@@ -95,9 +110,10 @@ class ImportClobberingAssertor(Assertor):
             self.__clobbered(node.name, node)
             return
 
-        return super().generic_visit(node)
+        with self.enter_class_name(get_fullname(node, safe=True)):
+            super().generic_visit(node)
 
-    def visit_For(self, node: Union[ast.For, ast.AsyncFor]) -> None:
+    def visit_For(self, node: ast.For | ast.AsyncFor) -> None:
         names = [n for n in unravel_names(node.target)]
 
         for name in filter(lambda n: self.context.is_import(n), names):
@@ -108,7 +124,7 @@ class ImportClobberingAssertor(Assertor):
     def visit_AsyncFor(self, node: ast.AsyncFor) -> None:
         return self.visit_For(node)
 
-    def visit_With(self, node: Union[ast.With, ast.AsyncWith]) -> None:
+    def visit_With(self, node: ast.With | ast.AsyncWith) -> None:
         for item in node.items:
             if item.optional_vars is None:
                 continue

@@ -5,7 +5,7 @@ import sys
 from contextlib import contextmanager
 from os.path import dirname, join
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -25,6 +25,9 @@ from rattr.cli.parser import (
     ShowWarnings,
     StrictOrPermissive,
 )
+
+if TYPE_CHECKING:
+    from typing import Callable, Iterable
 
 
 def pytest_configure(config):
@@ -116,6 +119,16 @@ def parse():
                 raise SyntaxError("Incorrect indentation in test code")
 
         return ast.parse("\n".join(lines))
+
+    return _inner
+
+
+@pytest.fixture
+def parse_with_context(parse: Callable[[str], ast.AST]):
+    def _inner(source: str) -> tuple[ast.AST ,Context]:
+        _ast = parse(source)
+        _ctx = RootContext(_ast)
+        return _ast, _ctx
 
     return _inner
 
