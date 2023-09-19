@@ -150,7 +150,7 @@ def parse():
 
 @pytest.fixture
 def parse_with_context(parse: Callable[[str], ast.AST]):
-    def _inner(source: str) -> tuple[ast.AST ,Context]:
+    def _inner(source: str) -> tuple[ast.AST, Context]:
         _ast = parse(source)
         _ctx = RootContext(_ast)
         return _ast, _ctx
@@ -170,6 +170,12 @@ def RootSymbolTable():
         return symtab
 
     return _inner
+
+
+@pytest.fixture(scope="function", autouse=True)
+def _set_current_file(config) -> None:
+    with config("current_file", "_in_test.py"):
+        yield
 
 
 @pytest.fixture

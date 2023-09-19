@@ -568,10 +568,9 @@ class TestNamedTupleFromCall:
     # simplification nonetheless.
 
     @pytest.fixture(autouse=True)
-    def _set_current_file(self, config) -> None:
-        with config("current_file", "my_test_file.py"):
-            with config("strict", True):
-                yield
+    def _run_tests_in_strict_mode(self, config) -> None:
+        with config("strict", True):
+            yield
 
     def test_call_with_positional_arguments(self, constant, parse):
         _ast = parse(
@@ -787,10 +786,9 @@ class TestNamedTupleFromInheritance:
     # This previously had a fatal error at simplification.
 
     @pytest.fixture(autouse=True)
-    def _set_current_file(self, config) -> None:
-        with config("current_file", "my_test_file.py"):
-            with config("strict", True):
-                yield
+    def _run_tests_in_strict_mode(self, config) -> None:
+        with config("strict", True):
+            yield
 
     def test_call_with_positional_arguments(self, constant, parse):
         _ast = parse(
