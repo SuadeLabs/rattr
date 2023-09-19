@@ -71,7 +71,7 @@ def resolve_function(
     imports_ir: ImportsIR,
     caller: Optional[Func] = None,
 ) -> Union[Tuple[None, None], Tuple[Func, FunctionIR]]:
-    _msg = f"{__prefix(caller)} unable to resolve call to " f"'{callee.target.name}'"
+    _msg = f"{__prefix(caller)} unable to resolve call to {callee.target.name!r}"
 
     if caller is not None:
         _msg = f"{_msg} in '{caller.name}'"
@@ -101,7 +101,7 @@ def resolve_class(
     try:
         cls, ir = __resolve_target_and_ir(callee, file_ir, imports_ir)
     except ImportError:
-        error.error(f"{_where} unable to resolve initialiser for '{callee.name}'")
+        error.error(f"{_where} unable to resolve initialiser for {callee.name!r}")
         return None, None
 
     return cls, ir
@@ -158,8 +158,8 @@ def resolve_import(
         # NOTE If the imported function is ignored then it will have no IR
         if ir is None:
             error.error(
-                f"{_where} unable to resolve imported callable '{local_name}'"
-                f" in '{module}', it is likely ignored"
+                f"{_where} unable to resolve imported callable {local_name!r}"
+                f" in {module!r}, it is likely ignored"
             )
             return None, None
 
@@ -175,13 +175,13 @@ def resolve_import(
     if new_target is None and "." in local_name:
         error.info(
             f"{__prefix(caller)} unable to resolve call to method "
-            f"'{local_name}' in import '{module}'"
+            f"{local_name!r} in import {module!r}"
         )
         return None, None
 
     error.error(
-        f"{__prefix(caller)} unable to resolve call to '{local_name}' in "
-        f"import '{module}'"
+        f"{__prefix(caller)} unable to resolve call to {local_name!r} in "
+        f"import {module!r}"
     )
     return None, None
 

@@ -181,18 +181,18 @@ class Context:
         if warn and target is not None and not isinstance(target, CallTarget.__args__):
             if "." not in callee and self.declares(target.name):
                 error.error(
-                    f"unable to resolve call to '{name}', likely a procedural "
+                    f"unable to resolve call to {name!r}, likely a procedural "
                     f"parameter",
                     culprit,
                 )
             elif "." in callee:
                 # TODO Once method support is added, elevate this to an error
-                error.info(f"unable to resolve call to method '{name}'", culprit)
+                error.info(f"unable to resolve call to method {name!r}", culprit)
             else:
-                error.error(f"'{name}' is not callable", culprit)
+                error.error(f"{name!r} is not callable", culprit)
 
         if warn and target is None and not is_method_on_primitive(name):
-            error.error(f"unable to resolve call to '{name}'", culprit)
+            error.error(f"unable to resolve call to {name!r}", culprit)
 
         if warn and target is not None and callee.endswith("()()"):
             error.warning("unable to resolve call result of call", culprit)
@@ -256,7 +256,7 @@ class Context:
         for _i in starred:
             if _i.module_spec is None or _i.module_spec.origin is None:
                 error.error(
-                    f"unable to resolve import '{_i.name}' while expanding "
+                    f"unable to resolve import {_i.name!r} while expanding "
                     f"syntactic sugar 'from {_i.qualified_name} import *' "
                     f"in {self.file}"
                 )
@@ -417,14 +417,20 @@ class RootContext(Context):
         if base is None:
             error.fatal("unable to resolve parent in relative import", node)
 
-        module = get_absolute_module_name(base, node.level, node.module)
+        if node.module is not None:
+            module = get_absolute_module_name(base, node.level, node.module)
+        else:
+            module = base
 
         if get_module_name_and_spec(module) == (None, None):
             error.error("unable to resolve relative import", node)
 
         for target in node.names:
             _import = _new_import_symbol(
-                target.asname or target.name, f"{module}.{target.name}", module, node
+                target.asname or target.name,
+                f"{module}.{target.name}",
+                module,
+                node,
             )
             self.add(_import)
 

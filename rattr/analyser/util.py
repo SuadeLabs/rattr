@@ -660,18 +660,14 @@ class read:
     """Context manager to return file contents and the number of lines."""
 
     def __init__(self, file: str) -> None:
-        self.lines = 0
-        self.contents = ""
         self.file = file
 
-    def __enter__(self):
+    def __enter__(self) -> tuple[int, str]:
         with open(self.file, "r") as f:
-            for _lineno, line in enumerate(f):
-                self.contents += line
-            self.lines = _lineno + 1
-        return self.lines, self.contents
+            lines = f.readlines()
+        return len(lines) + 1, "".join(lines)
 
-    def __exit__(self, *_):
+    def __exit__(self, *_) -> None:
         pass
 
 

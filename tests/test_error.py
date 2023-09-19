@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from unittest import mock
 
+import pytest
+
 from rattr import error
 from rattr.analyser.util import enter_file
 
@@ -35,7 +37,7 @@ class TestError:
         assert _exit.called and _exit.call_count == 1
 
 
-class TestError_Util:
+class TestErrorUtil:
     def test_get_file_and_line_info(self, parse):
         _ast = parse(
             """
@@ -48,10 +50,8 @@ class TestError_Util:
         culprit = _ast.body[0]
 
         file = "some_file_name.py"
-        line_info = "\033[1mline {}:{}: \033[0m".format(
-            culprit.lineno, culprit.col_offset
-        )
-        file_info = "\033[1m{}: \033[0m".format(file)
+        line_info = "\033[1m:{}:{}\033[0m".format(culprit.lineno, culprit.col_offset)
+        file_info = "\033[1m{}\033[0m".format(file)
 
         # No file, no culprit
         # No file, w/ culprit
@@ -65,54 +65,97 @@ class TestError_Util:
             assert error.get_file_and_line_info(None) == ("", "")
             assert error.get_file_and_line_info(culprit) == (file_info, line_info)
 
-    def test_split_path(self):
-        tests = {
-            "": [""],
-            # Absolute
-            "/": [""],
-            "/a": ["", "a"],
-            "/a/b": ["", "a", "b"],
-            "/a/b/c": ["", "a", "b", "c"],
-            # Relative
-            ".": ["."],
-            # Relative, implicit
-            "a": [".", "a"],
-            "a/b": [".", "a", "b"],
-            "a/b/c": [".", "a", "b", "c"],
-            # Relative, explicit
-            "./a": [".", "a"],
-            "./a/b": [".", "a", "b"],
-            "./a/b/c": [".", "a", "b", "c"],
-            # Relative to home
-            "~": ["~"],
-            "~/a": ["~", "a"],
-            "~/a/b": ["~", "a", "b"],
-            "~/a/b/c": ["~", "a", "b", "c"],
-        }
 
-        for test_case, expected in tests.items():
-            assert error.split_path(test_case) == expected
+class TestSplitPath:
+    def test_the_empty_string(self):
+        assert error.split_path("") == [""]
 
-    def test_format_path(self):
+    @pytest.mark.parametrize(
+        "path,parts",
+        testcases := [
+            ("/", [""]),
+            ("/a", ["", "a"]),
+            ("/a/b", ["", "a", "b"]),
+            ("/a/b/c", ["", "a", "b", "c"]),
+        ],
+        ids=[t[0] for t in testcases],
+    )
+    def test_absolute_path(self, path, parts):
+        assert error.split_path(path) == parts
+
+    @pytest.mark.parametrize("path,parts", ts := [(".", ["."])], ids=[t[0] for t in ts])
+    def test_relative_to_this_dir(self, path, parts):
+        assert error.split_path(path) == parts
+
+    @pytest.mark.parametrize(
+        "path,parts",
+        testcases := [
+            ("a", [".", "a"]),
+            ("a/b", [".", "a", "b"]),
+            ("a/b/c", [".", "a", "b", "c"]),
+        ],
+        ids=[t[0] for t in testcases],
+    )
+    def test_relative_implicit(self, path, parts):
+        assert error.split_path(path) == parts
+
+    @pytest.mark.parametrize(
+        "path,parts",
+        testcases := [
+            ("./a", [".", "a"]),
+            ("./a/b", [".", "a", "b"]),
+            ("./a/b/c", [".", "a", "b", "c"]),
+        ],
+        ids=[t[0] for t in testcases],
+    )
+    def test_relative_explicit(self, path, parts):
+        assert error.split_path(path) == parts
+
+    @pytest.mark.parametrize(
+        "path,parts",
+        testcases := [
+            ("~", ["~"]),
+            ("~/a", ["~", "a"]),
+            ("~/a/b", ["~", "a", "b"]),
+            ("~/a/b/c", ["~", "a", "b", "c"]),
+        ],
+        ids=[t[0] for t in testcases],
+    )
+    def test_path_is_in_home(self, path, parts):
+        assert error.split_path(path) == parts
+
+
+class TestFormatPath:
+    def test_null_path(self):
         assert error.format_path(None) is None
+
+    def test_the_empty_string(self):
         assert error.format_path("") == ""
 
-        short_paths = [
-            "/i/am/short",
-            "i/am/short",
-            "./i/am/short",
-            "~/i/am/short",
-        ]
+    @pytest.mark.parametrize(
+        "raw,formatted",
+        testcases := [
+            ("/i/am/short", "/i/am/short"),
+            ("i/am/short", "i/am/short"),
+            ("./i/am/short", "./i/am/short"),
+            ("~/i/am/short", "~/i/am/short"),
+        ],
+        ids=[t[0] for t in testcases],
+    )
+    def test_short_path(self, config, raw, formatted):
+        with config("use_short_path", True):
+            assert error.format_path(raw) == formatted
 
-        for path, expected in zip(short_paths, short_paths):
-            assert error.format_path(path) == expected
-
-        long_paths = {
-            "/fill/fill/fill/i/am/a/long/path": "/.../a/long/path",
-            "fill/fill/fill/i/am/a/long/path": "./.../a/long/path",
-            "./fill/fill/fill/i/am/a/long/path": "./.../a/long/path",
-            "~/fill/fill/fill/i/am/a/long/path": "~/.../a/long/path",
-        }
-
-        for path, expected in long_paths.items():
-            assert error.format_path(path) == expected
+    @pytest.mark.parametrize(
+        "raw,formatted",
+        testcases := [
+            ("/a/very/deeply/nested/path/gt/than/8/parts/long", "/.../8/parts/long"),
+            ("a/very/deeply/nested/path/gt/than/8/parts/long", "./.../8/parts/long"),
+            ("./a/very/deeply/nested/path/gt/than/8/parts/long", "./.../8/parts/long"),
+            ("~/a/very/deeply/nested/path/gt/than/8/parts/long", "~/.../8/parts/long"),
+        ],
+        ids=[t[0] for t in testcases],
+    )
+    def test_long_path(self, config, raw, formatted):
+        with config("use_short_path", True):
+            assert error.format_path(raw) == formatted
