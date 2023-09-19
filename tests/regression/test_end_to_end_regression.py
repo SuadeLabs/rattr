@@ -155,7 +155,7 @@ class TestEndToEndRegressionTests:
         zip(code_files, results_files),
         ids=[str(f.relative_to(code_dir)) for f in code_files],
     )
-    def test_update_expected_results(self, code_file,results_file):
+    def test_update_expected_results(self, code_file, results_file):
         _cli_arguments = ["-w", "all", "--permissive", "0", "-r"]
 
         load_config(parse_arguments([*_cli_arguments, str(code_file)]))

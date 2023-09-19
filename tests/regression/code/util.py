@@ -66,7 +66,7 @@ _functions_by_thing = {
         ("_two_fn()", (["data.wrapped"], {})),
         ("_three_fn()", (["data.wrapped"], {})),
         ("_four_fn()", (["data.wrapped"], {})),
-    ]
+    ],
 )
 def dispatcher(data):
     return _functions_by_thing[data.discriminator](data.wrapped)
