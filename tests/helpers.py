@@ -14,10 +14,13 @@ if TYPE_CHECKING:
     from typing import Final
 
 
-_ERROR_FORMAT: Final = "{level}: {location}{message}"
+ERROR_MESSAGE_TEMPLATE: Final = "{level}: {file_info}{line_info}: {message}"
 
-_LOCATION: Final = "\033[1mline {line}:{col}: \033[0m"
-_LOCATION_PATTERN: Final = r"\033\[1mline {line}:{col}: \033\[0m"
+ERROR_FILE_INFO_TEMPLATE: Final = "\033[1m{file}\033[0m"
+ERROR_FILE_INFO_ESCAPED: Final = r"\033\[1m{file}\033\[0m"
+
+ERROR_LINE_INFO_TEMPLATE: Final = "\033[1m:{line}:{col}\033[0m"
+ERROR_LINE_INFO_ESCAPED: Final = r"\033\[1m:{line}:{col}\033\[0m"
 
 
 class ReLevel(Enum):
@@ -36,8 +39,9 @@ class ExpectedError:
     re_level: ReLevel = ReLevel.fatal
 
     expect_location: bool = True
-    line: str = r"\w+"
-    col: str = r"\w+"
+    file: str = r"\w+.py"
+    line: str = r"\d+"
+    col: str = r"\d+"
 
     def __post_init__(self) -> None:
         # Allow line/col as int
@@ -50,14 +54,16 @@ class ExpectedError:
     @property
     def re_expected(self) -> re.Pattern[str]:
         if self.expect_location:
-            # re_location = f"line {self.line}:{self.col}: "
-            re_location = _LOCATION_PATTERN.format(line=self.line, col=self.col)
+            re_file_info = ERROR_FILE_INFO_ESCAPED.format(file=self.file)
+            re_line_info = ERROR_LINE_INFO_ESCAPED.format(line=self.line, col=self.col)
         else:
-            re_location = ""
+            re_file_info = ""
+            re_line_info = ""
 
-        pattern = _ERROR_FORMAT.format(
+        pattern = ERROR_MESSAGE_TEMPLATE.format(
             level=self.re_level.value,
-            location=re_location,
+            file_info=re_file_info,
+            line_info=re_line_info,
             message=self.message,
         )
 
@@ -65,13 +71,16 @@ class ExpectedError:
 
     def as_debug_output(self) -> str:
         if self.expect_location:
-            location = _LOCATION.format(line=self.line, col=self.col)
+            file_info = ERROR_FILE_INFO_TEMPLATE.format(file=self.file)
+            line_info = ERROR_LINE_INFO_TEMPLATE.format(line=self.line, col=self.col)
         else:
-            location = ""
+            file_info = ""
+            line_info = ""
 
-        return _ERROR_FORMAT.format(
+        return ERROR_MESSAGE_TEMPLATE.format(
             level=self.level.value,
-            location=location,
+            file_info=file_info,
+            line_info=line_info,
             message=self.message,
         )
 
