@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-import tests.heplers as helpers
+import tests.helpers as helpers
 from rattr.analyser.context import Context
 from rattr.plugins.assertors.import_clobbering import ImportClobberingAssertor
 
