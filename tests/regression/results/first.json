@@ -54,18 +54,22 @@
     },
     "i_use_a_lib_function": {
         "gets": [
+            "data",
             "data[].goodness",
             "datum",
-            "good_data",
-            "my_lib_function"
+            "datum.is_a_good_thing",
+            "datum.type",
+            "good_data"
         ],
         "sets": [
+            "datum",
             "good_data"
         ],
         "dels": [],
         "calls": [
             "Exception()",
-            "len()"
+            "len()",
+            "my_lib_function()"
         ]
     }
 }
