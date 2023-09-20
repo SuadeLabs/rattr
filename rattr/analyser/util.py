@@ -43,7 +43,6 @@ from rattr.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
     AstDef,
-    AstNamedExpr,
     Comprehension,
     Constant,
     FileResults,
@@ -745,13 +744,13 @@ def get_assignment_targets(node: AnyAssign) -> List[ast.expr]:
     if isinstance(node, ast.Assign):
         return node.targets
 
-    if isinstance(node, (ast.AnnAssign, ast.AugAssign, AstNamedExpr)):
+    if isinstance(node, (ast.AnnAssign, ast.AugAssign, ast.NamedExpr)):
         return [node.target]
 
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def get_contained_walruses(node: AnyAssign) -> List[AstNamedExpr]:
+def get_contained_walruses(node: AnyAssign) -> List[ast.NamedExpr]:
     """Return the walruses in the RHS of the given assignment.
 
     >>> get_nested_walruses(ast.parse("a = (b := c)"))
@@ -768,7 +767,7 @@ def get_contained_walruses(node: AnyAssign) -> List[AstNamedExpr]:
     else:
         rhs_values = [node.value]
 
-    return list(filter(lambda v: isinstance(v, AstNamedExpr), rhs_values))
+    return list(filter(lambda v: isinstance(v, ast.NamedExpr), rhs_values))
 
 
 def assignment_is_one_to_one(node: AnyAssign) -> bool:
@@ -800,10 +799,10 @@ def walrus_in_rhs(node: AnyAssign) -> bool:
     """Return `True` if the RHS contains a walrus operator."""
     _iterable = (ast.Tuple, ast.List)
 
-    if isinstance(node.value, AstNamedExpr):
+    if isinstance(node.value, ast.NamedExpr):
         return True
     elif isinstance(node.value, _iterable):
-        return any(isinstance(v, AstNamedExpr) for v in node.value.elts)
+        return any(isinstance(v, ast.NamedExpr) for v in node.value.elts)
     else:
         return False
 

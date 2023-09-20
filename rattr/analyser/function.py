@@ -19,7 +19,6 @@ from rattr.analyser.context import (
 from rattr.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
-    AstNamedExpr,
     CompoundStrictlyNameable,
     Comprehension,
     FunctionIR,
@@ -137,7 +136,7 @@ class FunctionAnalyser(NodeVisitor):
         #       In `a.thing`, the expr should be visted once as a whole
         #       (neither `a` nor `thing` should be visited directly)
         if not isinstance(node.value, StrictlyNameable.__args__):
-            self.generic_visit(node.value)
+            self.visit(node.value)
 
         self.update_results(Name(fullname, basename), node.ctx)
 
@@ -302,11 +301,11 @@ class FunctionAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: AstNamedExpr) -> None:
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
         self.func_ir["sets"].add(Name(*get_basename_fullname_pair(node.target)))
 
         if lambda_in_rhs(node):
-            self.generic_visit(node.value)
+            self.visit(node.value)
 
         self.visit_AnyAssign(node)
 
@@ -315,19 +314,17 @@ class FunctionAnalyser(NodeVisitor):
         for target in node.targets:
             self.context.del_identifiers_from_context(target)
 
-        return self.generic_visit(node)
+        self.generic_visit(node)
+
+    def _visit_for_loop(self, node: ast.For | ast.AsyncFor) -> None:
+        self.context.add_identifiers_to_context(node.target)
+        self.generic_visit(node)
 
     def visit_For(self, node: ast.For) -> None:
-        """Visit ast.For(target, iter, body, orelse, type_comment)."""
-        self.context.add_identifiers_to_context(node.target)
-
-        return self.generic_visit(node)
+        self._visit_for_loop(node)
 
     def visit_AsyncFor(self, node: ast.AsyncFor) -> None:
-        """Visit ast.AsyncFor(target, iter, body, orelse)."""
-        self.context.add_identifiers_to_context(node.target)
-
-        return self.generic_visit(node)
+        self._visit_for_loop(node)
 
     def visit_With(self, node: ast.With) -> None:
         """Visit ast.With(items, body, type_comment)."""
@@ -336,7 +333,7 @@ class FunctionAnalyser(NodeVisitor):
                 continue
             self.context.add_identifiers_to_context(item.optional_vars)
 
-        return self.generic_visit(node)
+        self.generic_visit(node)
 
     def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
         """Visit ast.class AsyncWith(items, body)."""

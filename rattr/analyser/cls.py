@@ -16,7 +16,6 @@ from rattr.analyser.function import FunctionAnalyser
 from rattr.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
-    AstNamedExpr,
     ClassIR,
     FunctionIR,
 )
@@ -234,5 +233,5 @@ class ClassAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: AstNamedExpr) -> None:
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
         self.visit_AnyAssign(node)
