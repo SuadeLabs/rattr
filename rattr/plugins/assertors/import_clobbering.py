@@ -139,7 +139,7 @@ class ImportClobberingAssertor(Assertor):
     def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
         return self.visit_With(node)
 
-    def check_comprehension(self, node: Comprehension) -> None:
+    def check_comprehension(self, node: Comprehension | ast.GeneratorExp) -> None:
         for generator in node.generators:
             names = [n for n in unravel_names(generator.target)]
 

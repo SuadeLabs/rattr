@@ -163,6 +163,8 @@ def get_basename_fullname_pair(
         _error_class = error.RattrLiteralInNameable
     elif isinstance(node, Comprehension.__args__):
         _error_class = error.RattrComprehensionInNameable
+    elif isinstance(node, ast.GeneratorExp):
+        _error_class = error.RattrComprehensionInNameable
     else:
         _error_class = TypeError
 

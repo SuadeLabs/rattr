@@ -40,7 +40,6 @@ Literal = Union[
 Comprehension = Union[
     ast.ListComp,
     ast.SetComp,
-    ast.GeneratorExp,
     ast.DictComp,
 ]
 
