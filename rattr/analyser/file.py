@@ -12,12 +12,7 @@ from rattr.analyser.base import NodeVisitor
 from rattr.analyser.cls import ClassAnalyser
 from rattr.analyser.context import Context, Func, Import, RootContext
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import (
-    AnyAssign,
-    AnyFunctionDef,
-    FileIR,
-    ImportsIR,
-)
+from rattr.analyser.types import AnyAssign, AnyFunctionDef, FileIR, ImportsIR
 from rattr.analyser.util import (
     Changes,
     assignment_is_one_to_one,

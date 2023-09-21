@@ -13,12 +13,7 @@ from rattr.analyser.base import NodeVisitor
 from rattr.analyser.context import Context
 from rattr.analyser.context.symbol import Class, Func, Name, Symbol
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import (
-    AnyAssign,
-    AnyFunctionDef,
-    ClassIR,
-    FunctionIR,
-)
+from rattr.analyser.types import AnyAssign, AnyFunctionDef, ClassIR, FunctionIR
 from rattr.analyser.util import (
     get_assignment_targets,
     get_fullname,
