@@ -1,0 +1,13 @@
+{
+    "my_lib_function": {
+        "gets": [
+            "thing.is_a_good_thing",
+            "thing.type"
+        ],
+        "sets": [],
+        "dels": [],
+        "calls": [
+            "Exception()"
+        ]
+    }
+}

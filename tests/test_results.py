@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
+from textwrap import dedent
 from unittest import mock
+
+import pytest
 
 from rattr.analyser.context import Call, Func, Import, Name
 from rattr.analyser.context.symbol import Class
-from rattr.analyser.results import generate_results_from_ir
+from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
 
 
 class TestResults:
@@ -484,3 +488,78 @@ class TestResults:
         }
 
         assert generate_results_from_ir(file_ir, dict()) == expected
+
+
+class TestResultsEncoder:
+    @pytest.fixture
+    def example_file_results_unordered(self):
+        return {
+            "my_func": {
+                "gets": {
+                    "z_should_come_after_a",
+                    "z_should_come_after_a.yet_it_did_not",
+                    "a_should_come_before_z",
+                    "a_should_come_before_z[]",
+                    "argument.attrs[].whatever.item",
+                    "@ListComp",
+                    "@Str",
+                },
+                "sets": {
+                    "z_should_come_after_a",
+                    "a_should_come_before_z",
+                },
+                "dels": {
+                    "a_should_come_before_z",
+                    "z_should_come_after_a",
+                },
+                "calls": {
+                    "my_amazing_function()",
+                    "your_amazing_function()",
+                    "library.your_amazing_function()",
+                    "argument.callbacks[].exec()",
+                },
+            }
+        }
+
+    @pytest.fixture
+    def example_file_results_ordered_str(self):
+        return dedent(
+            """\
+            {
+                "my_func": {
+                    "gets": [
+                        "@ListComp",
+                        "@Str",
+                        "a_should_come_before_z",
+                        "a_should_come_before_z[]",
+                        "argument.attrs[].whatever.item",
+                        "z_should_come_after_a",
+                        "z_should_come_after_a.yet_it_did_not"
+                    ],
+                    "sets": [
+                        "a_should_come_before_z",
+                        "z_should_come_after_a"
+                    ],
+                    "dels": [
+                        "a_should_come_before_z",
+                        "z_should_come_after_a"
+                    ],
+                    "calls": [
+                        "argument.callbacks[].exec()",
+                        "library.your_amazing_function()",
+                        "my_amazing_function()",
+                        "your_amazing_function()"
+                    ]
+                }
+            }"""
+        )
+
+    def test_is_sorted_from_unordered_container(
+        self,
+        example_file_results_unordered,
+        example_file_results_ordered_str,
+    ):
+        assert (
+            json.dumps(example_file_results_unordered, indent=4, cls=ResultsEncoder)
+            == example_file_results_ordered_str
+        )

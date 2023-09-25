@@ -13,7 +13,10 @@ class ResultsEncoder(json.JSONEncoder):
 
     def default(self, obj):
         if isinstance(obj, set):
-            return list(obj)
+            return sorted(obj)
+
+        if isinstance(obj, list):
+            return sorted(obj)
 
         if isinstance(obj, Symbol):
             return repr(obj)
@@ -60,8 +63,8 @@ def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResu
         composed_ir = ir_dag.simplify()
 
         simplified[foc.name] = {
-            "sets": {s.name for s in composed_ir["sets"]},
             "gets": {s.name for s in composed_ir["gets"]},
+            "sets": {s.name for s in composed_ir["sets"]},
             "dels": {s.name for s in composed_ir["dels"]},
             "calls": {s.name for s in composed_ir["calls"]},
         }
