@@ -137,7 +137,6 @@ class TestRegression:
             },
         }
 
-        print(results)
         assert results == expected
 
     def test_resolve_getattr_name(self, parse):
@@ -470,7 +469,6 @@ class TestRegression:
             }
         }
 
-        print(results)
         assert results == expected
 
     def test_regression_gets_in_method_call(self, parse):
@@ -516,7 +514,6 @@ class TestRegression:
             }
         }
 
-        print(results)
         assert results == expected
 
         # REGRESSION 1
@@ -541,7 +538,6 @@ class TestRegression:
             }
         }
 
-        print(results)
         assert results == expected
 
         # REGRESSION 2
@@ -569,7 +565,6 @@ class TestRegression:
             }
         }
 
-        print(results)
         assert results == expected
 
 
@@ -973,6 +968,7 @@ class TestRattrConstantInNameableOnCheckForNamedTuple:
         assert file_ir._file_ir == expected_file_ir
 
 
+@pytest.mark.usefixtures("run_in_strict_mode")
 class TestGeneratorAndComprehensionsAreDeeplyVisited:
     def test_generator_expression(
         self,
@@ -1032,6 +1028,205 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
             }
         }
 
+    def test_simple_ternary_in_generator_expression(
+        self,
+        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
+        root_context_with: Callable[[list[Symbol]], Context],
+        capfd: pytest.CaptureFixture[str],
+        builtin: Callable[[str], Builtin],
+    ):
+        file_ir, file_results = analyse_single_file(
+            """
+            def fn(foos):
+                return any(foo.bar if foo.bar else foo.baz for foo in foos)
+            """
+        )
+
+        stdout, _ = capfd.readouterr()
+        assert helpers.stdout_matches(stdout, [])
+
+        symbols = {
+            "fn": Func("fn", ["foos"]),
+        }
+
+        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir._file_ir == {
+            symbols["fn"]: {
+                "gets": {
+                    Name("foo.bar", "foo"),
+                    Name("foo.baz", "foo"),
+                    Name("foos"),
+                },
+                "sets": {
+                    Name("foo"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("any()", ["@GeneratorExp"], {}, target=builtin("any")),
+                },
+            }
+        }
+        assert file_results == {
+            "fn": {
+                "gets": {"foo.bar", "foo.baz", "foos"},
+                "sets": {"foo"},
+                "dels": set(),
+                "calls": {"any()"},
+            }
+        }
+
+    def test_simple_walrus_in_generator_expression(
+        self,
+        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
+        root_context_with: Callable[[list[Symbol]], Context],
+        capfd: pytest.CaptureFixture[str],
+        builtin: Callable[[str], Builtin],
+    ):
+        file_ir, file_results = analyse_single_file(
+            """
+            def fn(foos):
+                return any(sum(baz) for foo in foos if (baz := foo.bars))
+            """
+        )
+
+        stdout, _ = capfd.readouterr()
+        assert helpers.stdout_matches(stdout, [])
+
+        symbols = {
+            "fn": Func("fn", ["foos"]),
+        }
+
+        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir._file_ir == {
+            symbols["fn"]: {
+                "gets": {
+                    Name("foo.bars", "foo"),
+                    Name("foos"),
+                    Name("baz"),
+                },
+                "sets": {
+                    Name("foo"),
+                    Name("baz"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("any()", ["@GeneratorExp"], {}, target=builtin("any")),
+                    Call("sum()", ["baz"], {}, target=builtin("sum")),
+                },
+            }
+        }
+        assert file_results == {
+            "fn": {
+                "gets": {"foo.bars", "foos", "baz"},
+                "sets": {"foo", "baz"},
+                "dels": set(),
+                "calls": {"any()", "sum()"},
+            }
+        }
+
+    def test_nested_ternary_in_generator_expression(
+        self,
+        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
+        root_context_with: Callable[[list[Symbol]], Context],
+        capfd: pytest.CaptureFixture[str],
+        builtin: Callable[[str], Builtin],
+    ):
+        file_ir, file_results = analyse_single_file(
+            """
+            def fn(foos):
+                return any(f for f in [foo.bar if foo.bar else foo.baz for foo in foos])
+            """
+        )
+
+        stdout, _ = capfd.readouterr()
+        assert helpers.stdout_matches(stdout, [])
+
+        symbols = {
+            "fn": Func("fn", ["foos"]),
+        }
+
+        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir._file_ir == {
+            symbols["fn"]: {
+                "gets": {
+                    Name("foo.bar", "foo"),
+                    Name("foo.baz", "foo"),
+                    Name("foos"),
+                    Name("f"),
+                },
+                "sets": {
+                    Name("foo"),
+                    Name("f"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("any()", ["@GeneratorExp"], {}, target=builtin("any")),
+                },
+            }
+        }
+        assert file_results == {
+            "fn": {
+                "gets": {"foo.bar", "foo.baz", "foos", "f"},
+                "sets": {"foo", "f"},
+                "dels": set(),
+                "calls": {"any()"},
+            }
+        }
+
+    def test_nested_walrus_in_generator_expression(
+        self,
+        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
+        root_context_with: Callable[[list[Symbol]], Context],
+        capfd: pytest.CaptureFixture[str],
+        builtin: Callable[[str], Builtin],
+    ):
+        file_ir, file_results = analyse_single_file(
+            """
+            def fn(foos):
+                return any(sum(b) for b in [baz for foo in foos if (baz := foo.bars)])
+            """
+        )
+
+        stdout, _ = capfd.readouterr()
+        assert helpers.stdout_matches(stdout, [])
+
+        symbols = {
+            "fn": Func("fn", ["foos"]),
+        }
+
+        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir._file_ir == {
+            symbols["fn"]: {
+                "gets": {
+                    Name("foo.bars", "foo"),
+                    Name("foos"),
+                    Name("baz"),
+                    Name("b"),
+                },
+                "sets": {
+                    Name("foo"),
+                    Name("baz"),
+                    Name("b"),
+                },
+                "dels": set(),
+                "calls": {
+                    Call("any()", ["@GeneratorExp"], {}, target=builtin("any")),
+                    Call("sum()", ["b"], {}, target=builtin("sum")),
+                },
+            }
+        }
+        assert file_results == {
+            "fn": {
+                "gets": {"foo.bars", "foos", "baz", "b"},
+                "sets": {"foo", "baz", "b"},
+                "dels": set(),
+                "calls": {"any()", "sum()"},
+            }
+        }
+
+
+@pytest.mark.usefixtures("run_in_permissive_mode")
+class TestGeneratorAndComprehensionsAreDeeplyVisitedPermissive:
     def test_deeply_nested_comprehensions(
         self,
         analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
@@ -1089,7 +1284,6 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
         }
 
         assert file_ir.context == root_context_with(symbols.values())
-        print(file_ir._file_ir)
         assert file_ir._file_ir == {
             symbols["fn"]: {
                 "gets": {
@@ -1125,7 +1319,6 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
                     Call("any()", ["@GeneratorExp"], {}, builtin("any")),
                     Call("p()", [], {}, Name("p")),
                     Call("isinstance()", ["p", "Callable"], {}, builtin("isinstance")),
-
                     Call("foo.as_dict()", [], {}, Name("foo")),
                 },
             }

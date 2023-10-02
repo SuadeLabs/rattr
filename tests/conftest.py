@@ -219,6 +219,18 @@ def _set_current_file(config) -> None:
         yield
 
 
+@pytest.fixture()
+def run_in_strict_mode(config) -> None:
+    with config("strict", True):
+        yield
+
+
+@pytest.fixture()
+def run_in_permissive_mode(config) -> None:
+    with config("strict", False):
+        yield
+
+
 @pytest.fixture
 def config():
     @contextmanager
