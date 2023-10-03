@@ -37,7 +37,7 @@
             "_walrus_or_walruses_by_name",
             "happiness",
             "unhappy_walruses",
-            "w",
+            "w.name",
             "walrus",
             "walrus.happiness",
             "walrus.max_happiness",
@@ -51,6 +51,7 @@
             "_walrus_or_walruses_by_name",
             "happiness",
             "unhappy_walruses",
+            "w",
             "walrus"
         ],
         "dels": [],

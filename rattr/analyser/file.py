@@ -12,13 +12,7 @@ from rattr.analyser.base import NodeVisitor
 from rattr.analyser.cls import ClassAnalyser
 from rattr.analyser.context import Context, Func, Import, RootContext
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import (
-    AnyAssign,
-    AnyFunctionDef,
-    AstNamedExpr,
-    FileIR,
-    ImportsIR,
-)
+from rattr.analyser.types import AnyAssign, AnyFunctionDef, FileIR, ImportsIR
 from rattr.analyser.util import (
     Changes,
     assignment_is_one_to_one,
@@ -87,7 +81,7 @@ def __parse_and_analyse_file() -> Tuple[FileIR, ImportsIR, NamedTuple]:
     with timer() as analyse_imports_timer:
         if config.follow_imports:
             symbols = context.symbol_table.symbols()
-            imports = list(filter(lambda s: s._is(Import), symbols))
+            imports = [s for s in symbols if isinstance(s, Import)]
             imports_ir, import_stats = parse_and_analyse_imports(imports)
         else:
             imports_ir, import_stats = dict(), ImportStats(0, 0, 0)
@@ -288,7 +282,7 @@ class FileAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: AstNamedExpr) -> None:
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
         self.visit_AnyAssign(node)
 
     def visit_Lambda(self, node: ast.Lambda) -> None:

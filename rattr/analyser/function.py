@@ -19,8 +19,8 @@ from rattr.analyser.context import (
 from rattr.analyser.types import (
     AnyAssign,
     AnyFunctionDef,
-    AstNamedExpr,
     CompoundStrictlyNameable,
+    Comprehension,
     FunctionIR,
     Nameable,
     StrictlyNameable,
@@ -31,7 +31,6 @@ from rattr.analyser.util import (
     assignment_is_one_to_one,
     class_in_rhs,
     get_assignment_targets,
-    get_basename,
     get_basename_fullname_pair,
     get_fullname,
     get_function_body,
@@ -137,7 +136,7 @@ class FunctionAnalyser(NodeVisitor):
         #       In `a.thing`, the expr should be visted once as a whole
         #       (neither `a` nor `thing` should be visited directly)
         if not isinstance(node.value, StrictlyNameable.__args__):
-            self.generic_visit(node.value)
+            self.visit(node.value)
 
         self.update_results(Name(fullname, basename), node.ctx)
 
@@ -302,11 +301,11 @@ class FunctionAnalyser(NodeVisitor):
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit_AnyAssign(node)
 
-    def visit_NamedExpr(self, node: AstNamedExpr) -> None:
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
         self.func_ir["sets"].add(Name(*get_basename_fullname_pair(node.target)))
 
         if lambda_in_rhs(node):
-            self.generic_visit(node.value)
+            self.visit(node.value)
 
         self.visit_AnyAssign(node)
 
@@ -315,19 +314,17 @@ class FunctionAnalyser(NodeVisitor):
         for target in node.targets:
             self.context.del_identifiers_from_context(target)
 
-        return self.generic_visit(node)
+        self.generic_visit(node)
+
+    def _visit_for_loop(self, node: ast.For | ast.AsyncFor) -> None:
+        self.context.add_identifiers_to_context(node.target)
+        self.generic_visit(node)
 
     def visit_For(self, node: ast.For) -> None:
-        """Visit ast.For(target, iter, body, orelse, type_comment)."""
-        self.context.add_identifiers_to_context(node.target)
-
-        return self.generic_visit(node)
+        self._visit_for_loop(node)
 
     def visit_AsyncFor(self, node: ast.AsyncFor) -> None:
-        """Visit ast.AsyncFor(target, iter, body, orelse)."""
-        self.context.add_identifiers_to_context(node.target)
-
-        return self.generic_visit(node)
+        self._visit_for_loop(node)
 
     def visit_With(self, node: ast.With) -> None:
         """Visit ast.With(items, body, type_comment)."""
@@ -336,7 +333,7 @@ class FunctionAnalyser(NodeVisitor):
                 continue
             self.context.add_identifiers_to_context(item.optional_vars)
 
-        return self.generic_visit(node)
+        self.generic_visit(node)
 
     def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
         """Visit ast.class AsyncWith(items, body)."""
@@ -394,59 +391,43 @@ class FunctionAnalyser(NodeVisitor):
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         return error.error("nested classes unsupported", node)
 
-    # ----------------------------------------------------------------------- #
-    # Context creators: comprehensions and generators
-    # ----------------------------------------------------------------------- #
+    # -------------------------------------------------------------------------------- #
+    # Comprehensions and generators
+    # -------------------------------------------------------------------------------- #
+
+    def _visit_any_comprehension_or_generator_expr(
+        self,
+        node: Comprehension | ast.GeneratorExp,
+        names: list[ast.expr],
+    ) -> None:
+        with new_context(self):
+            # Visit the comprehensions first as they may define some of the names in
+            # `names`, thus avoiding erroneous "potentially undefined" warnings.
+            for comprehension in node.generators:
+                self.visit(comprehension)
+
+            for name in names:
+                self.visit(name)
 
     def visit_comprehension(self, node: ast.comprehension) -> None:
-        """Visit ast.comprehension(target, iter, ifs, is_async)."""
-        # Add target to context
+        # Add the target (i.e. in `for x in xs` then `x` is the target) to the context
+        # first to avoid "'x' potentially undefined".
         self.context.add_identifiers_to_context(node.target)
 
-        # If iter isn't defined by another target, visit it
-        basename = get_basename(node.iter, safe=True)
-        if not self.context.declares(basename):
-            self.generic_visit(node.iter)
-
-        for if_stmt in node.ifs:
-            self.generic_visit(if_stmt)
-
-    def visit_GenericComp(
-        self, generators: List[ast.comprehension], exprs: List[ast.expr]
-    ) -> None:
-        """Helper method visit an arbitrary comprehension.
-
-        Visit ast.ListComp(elt: ast.expr, generators: ast.comprehension).
-        Visit ast.SetComp(elt, generators).
-        Visit ast.GeneratorExp(elt, generators).
-        Visit ast.DictComp(key, value, generators).
-
-        NOTE:
-            Ordinarily, the attributes are visited in order:
-                elt / key, value
-                generators
-            However, as the generators create a local scope, we wish to visit
-            them first.
-
-        """
-        with new_context(self):
-            for comp in generators:
-                self.visit_comprehension(comp)
-
-            for expr in exprs:
-                self.generic_visit(expr)
+        for expr in (node.target, node.iter, *node.ifs):
+            self.visit(expr)
 
     def visit_ListComp(self, node: ast.ListComp) -> None:
-        self.visit_GenericComp(node.generators, [node.elt])
+        self._visit_any_comprehension_or_generator_expr(node, [node.elt])
 
     def visit_SetComp(self, node: ast.SetComp) -> None:
-        self.visit_GenericComp(node.generators, [node.elt])
+        self._visit_any_comprehension_or_generator_expr(node, [node.elt])
 
     def visit_GeneratorExp(self, node: ast.GeneratorExp) -> None:
-        self.visit_GenericComp(node.generators, [node.elt])
+        self._visit_any_comprehension_or_generator_expr(node, [node.elt])
 
     def visit_DictComp(self, node: ast.DictComp) -> None:
-        self.visit_GenericComp(node.generators, [node.key, node.value])
+        self._visit_any_comprehension_or_generator_expr(node, [node.key, node.value])
 
     # ----------------------------------------------------------------------- #
     # Special cases

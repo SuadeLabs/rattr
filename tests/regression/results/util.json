@@ -1,12 +1,13 @@
 {
     "recursive": {
         "gets": [
-            "_x",
-            "x",
+            "_x.multivalue",
             "x.xs",
             "x.xs[].single_value"
         ],
-        "sets": [],
+        "sets": [
+            "_x"
+        ],
         "dels": [],
         "calls": [
             "len()",

@@ -28,7 +28,7 @@ from rattr.analyser.context.symbol import (
     get_possible_module_names,
 )
 from rattr.analyser.context.symbol_table import SymbolTable
-from rattr.analyser.types import AnyAssign, AstNamedExpr, Constant, Literal
+from rattr.analyser.types import AnyAssign, Constant, Literal
 from rattr.analyser.util import (
     PYTHON_BUILTINS,
     Changes,
@@ -222,6 +222,16 @@ class Context:
     def is_import(self, name: str) -> bool:
         """Return `True` if `name` refferres to an import in this context."""
         return isinstance(self.get(name), Import)
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, Context):
+            return False
+
+        return (
+            self.parent == __value.parent,
+            self.symbol_table == __value.symbol_table,
+            self.file == __value.file,
+        )
 
     # ----------------------------------------------------------------------- #
     # Registration helpers
@@ -526,7 +536,7 @@ class RootContext(Context):
             node,
         )
 
-    def register_NamedExpr(self, node: AstNamedExpr) -> None:
+    def register_NamedExpr(self, node: ast.NamedExpr) -> None:
         RootContext.register_AnyAssign(self, node)
 
     # ----------------------------------------------------------------------- #

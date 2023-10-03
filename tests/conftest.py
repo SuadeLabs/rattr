@@ -12,9 +12,11 @@ import pytest
 import rattr
 from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
 from rattr.analyser.context import Context, RootContext
-from rattr.analyser.context.symbol import Call, Name
+from rattr.analyser.context.symbol import Builtin, Call, Name, Symbol
+from rattr.analyser.file import FileAnalyser
+from rattr.analyser.results import generate_results_from_ir
 from rattr.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
-from rattr.analyser.util import LOCAL_VALUE_PREFIX
+from rattr.analyser.util import LOCAL_VALUE_PREFIX, has_affect
 from rattr.cli.parser import (
     Cache,
     ExcludeImports,
@@ -28,6 +30,8 @@ from rattr.cli.parser import (
 
 if TYPE_CHECKING:
     from typing import Callable
+
+    from rattr.analyser.types import FileResults
 
 
 def pytest_configure(config):
@@ -159,6 +163,43 @@ def parse_with_context(parse: Callable[[str], ast.AST]):
 
 
 @pytest.fixture
+def analyse_single_file(parse_with_context: Callable[[str], tuple[ast.AST, Context]]) -> Callable[[str], tuple[FileIR, FileResults]]:
+    """Parse and analyse the source as though it were a single file.
+
+    NOTE
+        This does not follow imports, for that we will need a more complex fixture or to
+        wait for the new config code to be merged s.t. we can mock the config easier and
+        call the functions used in __main__.py more directly.
+    """
+    def _inner(source: str) -> tuple[ast.AST, Context]:
+        _ast, _ctx = parse_with_context(source)
+        file_ir = FileAnalyser(_ast, _ctx).analyse()
+        file_results = generate_results_from_ir(file_ir, {})
+
+        return file_ir, file_results
+
+    return _inner
+
+
+@pytest.fixture
+def root_context_with() -> Callable[[list[Symbol]], Context]:
+    def _inner(extra: list[Symbol]) -> Context:
+        context = RootContext(ast.Module(body=[]))
+        context.add_all(extra)
+        return context
+
+    return _inner
+
+
+@pytest.fixture
+def builtin() -> Callable[[str], Builtin]:
+    def _inner(name: str) -> Builtin:
+        return Builtin(name, has_affect=has_affect(name))
+
+    return _inner
+
+
+@pytest.fixture
 def RootSymbolTable():
     def _inner(*args):
         """Create a root context with the addition of the **kwargs."""
@@ -175,6 +216,18 @@ def RootSymbolTable():
 @pytest.fixture(scope="function", autouse=True)
 def _set_current_file(config) -> None:
     with config("current_file", "_in_test.py"):
+        yield
+
+
+@pytest.fixture()
+def run_in_strict_mode(config) -> None:
+    with config("strict", True):
+        yield
+
+
+@pytest.fixture()
+def run_in_permissive_mode(config) -> None:
+    with config("strict", False):
         yield
 
 
