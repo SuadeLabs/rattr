@@ -2,7 +2,7 @@
 
 venvdir=".venv"
 
-python3 -m pip install --upgrade pip
+python3.9 -m pip install --upgrade pip
 
 echo "[mkvenv] deactivating current venv..."
 deactivate 2> /dev/null
@@ -11,7 +11,7 @@ echo "[mkvenv] releting existing venv..."
 rm -rf $venvdir
 
 echo "[mkvenv] creating new venv..."
-python3 -m venv $venvdir
+python3.9 -m venv $venvdir
 
 echo "[mkvenv] activating venv..."
 source $venvdir/bin/activate
