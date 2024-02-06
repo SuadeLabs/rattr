@@ -279,6 +279,9 @@ def parse_space_delimited_ast_string(ast_string: ast.Constant) -> list[str]:
     if not isinstance(ast_string.value, str):
         raise SyntaxError
 
+    if ast_string.value == "":
+        return []
+
     parsed_attrs = ast_string.value.split(" ")
 
     if not all(attr.isidentifier() for attr in parsed_attrs):

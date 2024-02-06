@@ -10,6 +10,7 @@ from rattr import error
 from rattr.ast.util import unravel_names
 from rattr.config.state import enter_file
 from rattr.config.util import get_current_file
+from rattr.models.context._root_context import compile_root_context
 from rattr.models.context._symbol_table import SymbolTable
 from rattr.models.context._util import (
     is_call_to_call_result,
@@ -22,16 +23,15 @@ from rattr.models.context._util import (
 from rattr.models.symbol._symbol import CallInterface, Symbol
 from rattr.models.symbol._symbols import Import, Name
 from rattr.models.symbol.util import (
-    get_possible_module_names,
     with_call_brackets,
     without_call_brackets,
 )
+from rattr.module_locator.util import derive_possible_module_names
 
 if TYPE_CHECKING:
     import ast
     from typing import Container, Iterable, Iterator
 
-    from rattr.ast.types import AnyAssign
     from rattr.models.symbol._types import CallableSymbol
     from rattr.versioning.typing import TypeAlias
 
@@ -55,6 +55,10 @@ class Context(MutableMapping[_Identifier, Symbol]):
             return self
 
         return self.parent.root
+
+    @property
+    def is_init_file(self) -> bool:
+        return self.file.name == "__init__.py"
 
     @property
     def declared_symbols(self) -> set[Symbol]:
@@ -162,7 +166,7 @@ class Context(MutableMapping[_Identifier, Symbol]):
         #   `from math import pi`   ->  pi is in context, already resolved above
         #   `import math`           ->  `math.pi` is not explicitly in context
         if is_call_to_member_of_module_import(name, target):
-            target = self._get_containing_module_target(name)
+            target = self._get_target_in_imported_module(name)
 
         _target_is_callable = target is not None and target.is_callable
 
@@ -188,7 +192,7 @@ class Context(MutableMapping[_Identifier, Symbol]):
 
         return target
 
-    # TODO Note to self: I don't like this, change it!
+    # TODO Note to self: I don't like this method name, change it!
     def declares(self, id: _Identifier) -> bool:
         """Return `True` if the id was defined in this context, not a parent."""
         return id in self.symbol_table
@@ -219,14 +223,17 @@ class Context(MutableMapping[_Identifier, Symbol]):
     # Registration helpers
     # ================================================================================ #
 
-    def add_identifiers_to_context(self, assignment: AnyAssign) -> None:
-        self.add(Name(name) for name in unravel_names(assignment))
+    def add_identifiers_to_context(self, assignment: ast.expr) -> None:
+        self.add(Name(name, token=assignment) for name in unravel_names(assignment))
 
-    def remove_identifiers_from_context(self, assignment: AnyAssign) -> None:
+    def remove_identifiers_from_context(self, assignment: ast.expr) -> None:
         self.remove(unravel_names(assignment))
 
     def add_arguments_to_context(self, arguments: ast.arguments) -> None:
-        self.add(Name(arg) for arg in CallInterface.from_arguments(arguments).all)
+        self.add(
+            Name(arg, token=arguments)
+            for arg in CallInterface.from_arguments(arguments).all
+        )
 
     # ================================================================================ #
     # Syntactic sugar methods
@@ -245,7 +252,7 @@ class Context(MutableMapping[_Identifier, Symbol]):
             if starred.origin is None:
                 error.error(
                     f"unable to resolve import {starred.name!r} while expanding "
-                    f"{starred.code!r}",
+                    f"{starred.code()!r}",
                     culprit=starred.token,
                 )
                 continue
@@ -253,12 +260,10 @@ class Context(MutableMapping[_Identifier, Symbol]):
             if starred.origin in seen:
                 continue
 
-            # TODO NEW ROOT CONTEXT REQUIRED
             # Visit node
             with enter_file(starred.origin):
                 starred_ast = ast.parse(starred.origin.read_text())
-                starred_context: Context = ...
-                raise NotImplementedError(starred_ast)
+                starred_context = compile_root_context(starred_ast)
 
             # Progress breadth-first search queue
             seen.add(starred.origin)
@@ -266,7 +271,14 @@ class Context(MutableMapping[_Identifier, Symbol]):
 
             # Add the resolved names to this context
             for symbol in starred_context.declared_symbols:
-                self.add(Import(symbol.name, f"{starred.qualified_name}.{symbol.name}"))
+                self.add(
+                    Import(
+                        name=symbol.name,
+                        qualified_name=f"{starred.qualified_name}.{symbol.name}",
+                        token=starred.token,
+                        interface=symbol.interface,
+                    )
+                )
 
         return self
 
@@ -274,8 +286,8 @@ class Context(MutableMapping[_Identifier, Symbol]):
     # Private helper methods
     # ================================================================================ #
 
-    def _get_containing_module_target(self, name: _Identifier) -> Symbol | None:
-        modules = [self.get(m) for m in get_possible_module_names(name)]
+    def _get_target_in_imported_module(self, name: _Identifier) -> Symbol | None:
+        modules = [self.get(m) for m in derive_possible_module_names(name)]
         module = next((m for m in modules if m is not None), None)
 
         if not isinstance(module, Import):
@@ -286,6 +298,8 @@ class Context(MutableMapping[_Identifier, Symbol]):
         return Import(
             name=local_name,
             qualified_name=f"{module.qualified_name}.{local_name}",
+            token=module.token,
+            interface=None,
         )
 
     # ================================================================================ #
