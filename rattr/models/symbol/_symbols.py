@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import attrs
 from attrs import field
 
+from rattr.codegen import gen_import_from_stmt
 from rattr.models.symbol._symbol import (
     AnyCallInterface,
     CallArguments,
@@ -16,17 +17,18 @@ from rattr.models.symbol._symbol import (
     Location,
     Symbol,
 )
-from rattr.models.symbol._util import PYTHON_BUILTINS_LOCATION
 from rattr.models.symbol.util import (
+    PYTHON_BUILTINS_LOCATION,
     get_basename_from_name,
-    get_module_name_and_spec,
     without_call_brackets,
 )
+from rattr.module_locator.util import find_module_name_and_spec
 
 if TYPE_CHECKING:
     from typing import Final, Literal
 
     from rattr.ast.types import AnyFunctionDef
+    from rattr.module_locator.util import ModuleName
 
 
 PYTHON_LITERAL_BUILTINS: Final = ("None", "True", "False", "Ellipsis")
@@ -88,7 +90,10 @@ class Builtin(Symbol):
 
     @location.default
     def _location_default(self) -> Location:
-        return Location(token=self.token, derived_location=Path(PYTHON_BUILTINS_LOCATION))
+        return Location(
+            token=self.token,
+            derived_location=Path(PYTHON_BUILTINS_LOCATION),
+        )
 
     @property
     def has_affect(self) -> bool:
@@ -122,11 +127,13 @@ class Import(Symbol):
         return self.name
 
     @property
-    def _module_name_and_spec(self) -> tuple[str, ModuleSpec] | tuple[None, None]:
-        return get_module_name_and_spec(self.qualified_name)
+    def _module_name_and_spec(
+        self,
+    ) -> tuple[ModuleName, ModuleSpec] | tuple[None, None]:
+        return find_module_name_and_spec(self.qualified_name)
 
     @property
-    def module_name(self) -> str | None:
+    def module_name(self) -> ModuleName | None:
         return self._module_name_and_spec[0]
 
     @property
@@ -147,14 +154,10 @@ class Import(Symbol):
 
         return Path(self.module_spec.origin).resolve()
 
-    @property
     def code(self) -> str:
-        # Take a stab at decompiling, for the sake of error messages.
-        # Manually determine module name from qualified name rather than
-        # `self.module_name` as that is from the spec and could be `None` on resolution
-        # error.
+        # NOTE Derive from `self.qualified_name` as `self.module_name` can be `None`
         module = self.qualified_name.replace(f".{self.name}", "")
-        return f"from {module} import {self.name}"
+        return gen_import_from_stmt(module, self.name)
 
 
 @attrs.frozen
@@ -199,6 +202,22 @@ class Class(Symbol):
     def with_init(self, init: ast.FunctionDef) -> Class:
         """Return a copy of the class with the initialiser set to the given function."""
         return attrs.evolve(self, interface=CallInterface.from_fn_def(init))
+
+    @classmethod
+    def from_class_def(cls: type[Class], ast_class: ast.ClassDef) -> None:
+        """Return a new `Class` parsed from the given class def."""
+        init_interface = None
+
+        for stmt in ast_class.body:
+            if not isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+
+            if stmt.name != "__init__":
+                continue
+
+            init_interface = CallInterface.from_fn_def(stmt)
+
+        return Class(name=ast_class.name, token=ast_class, interface=init_interface)
 
 
 @attrs.frozen

@@ -9,7 +9,7 @@ import pytest
 from rattr import error
 from rattr.analyser.context import Call, Class, Context, Name, RootContext
 from rattr.analyser.util import (
-    Changes,
+    DictChanges,
     assignment_is_one_to_one,
     class_in_rhs,
     get_annotation,
@@ -1217,18 +1217,18 @@ class TestUtil:
         with pytest.raises(TypeError):
             assert get_attrname(attr)
 
-    def test_changes(self):
+    def test_dict_changes(self):
         ir = {"a": 1, "b": 2, "c": 3, "d": 4}
 
         # No changes
-        with Changes(ir) as diff:
+        with DictChanges(ir) as diff:
             pass
 
         assert not diff.added
         assert not diff.removed
 
         # Changes
-        with Changes(ir) as diff:
+        with DictChanges(ir) as diff:
             ir["x"] = 99
             del ir["a"]
             del ir["b"]

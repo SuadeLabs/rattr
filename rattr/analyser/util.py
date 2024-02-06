@@ -20,7 +20,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Set,
     Tuple,
     Type,
     Union,
@@ -48,6 +47,7 @@ from rattr.ast.types import (
     Nameable,
 )
 from rattr.config import Config
+from rattr.extra import DictChanges  # noqa: F401
 from rattr.models.symbol import (
     PYTHON_ATTR_ACCESS_BUILTINS,
     PYTHON_BUILTINS,
@@ -91,7 +91,7 @@ def get_basename_fullname_pair(
 
     For the third example, the fact that `a.attr` is accessed is lost!
 
-    TODO Deprecated, see rattr.ast.utils
+    NOTE Deprecated, see rattr.ast.util.names_of
 
     """
     config = Config()
@@ -153,7 +153,7 @@ def get_basename_fullname_pair(
 def get_basename(node: Nameable, safe: bool = False) -> str:
     """Return the `_identifier` of the innermost ast.Name node.
 
-    TODO Deprecated, see rattr.ast.utils
+    NOTE Deprecated, see rattr.ast.utils
     """
     return get_basename_fullname_pair(node, safe)[0]
 
@@ -161,7 +161,7 @@ def get_basename(node: Nameable, safe: bool = False) -> str:
 def get_fullname(node: Nameable, safe: bool = False) -> str:
     """Return the fullname of the given node.
 
-    TODO Deprecated, see rattr.ast.utils
+    NOTE Deprecated, see rattr.ast.utils
     """
     return get_basename_fullname_pair(node, safe)[1]
 
@@ -206,7 +206,7 @@ def unravel_names(
     >>> list(unravel_names(ravelled_names, get_name=get_fullname))
     ["a.attr"]
 
-    TODO Deprecated, see rattr.ast.utils
+    NOTE Deprecated, see rattr.ast.util.unravel_names
 
     """
     if isinstance(node, AstStrictlyNameable):
@@ -230,7 +230,7 @@ def is_call_to(target: str, node: ast.Call) -> bool:
     Thus rather than determining if a call is to `getattr` by checking the
     basename against "getattr", use `is_call_to("getattr", node)`.
 
-    TODO Deprecated, see rattr.ast.utils
+    NOTE Deprecated, see rattr.ast.utils
 
     """
     if not isinstance(node, ast.Call):
@@ -255,7 +255,7 @@ def get_xattr_obj_name_pair(
 ) -> Tuple[str, str]:
     """Return the object-name pair for a call to getattr, setattr, etc.
 
-    TODO Deprecated, see rattr.ast.utils
+    NOTE Deprecated, see rattr.ast.utils
     """
     if len(node.args) < 2:
         error.fatal(f"invalid call to '{xattr}', not enough args", node)
@@ -521,7 +521,10 @@ def parse_rattr_results_from_annotation(fn_def: AnyFunctionDef, context) -> Func
 
 
 def is_blacklisted_module(module: str) -> bool:
-    """Return `True` if the given module matches a blacklisted pattern."""
+    """Return `True` if the given module matches a blacklisted pattern.
+
+    NOTE Deprecated, see rattr.ast.place.is_in_import_blacklist
+    """
     config = Config()
 
     # Exclude stdlib modules such as the built-in "_thread"
@@ -532,7 +535,10 @@ def is_blacklisted_module(module: str) -> bool:
 
 
 def is_pip_module(module: str) -> bool:
-    """Return `True` if the given module is pip installed."""
+    """Return `True` if the given module is pip installed.
+
+    NOTE Deprecated, see rattr.ast.place
+    """
     pip_install_locations = (".+/site-packages.*",)
 
     try:
@@ -558,6 +564,7 @@ def is_stdlib_module(module: str) -> bool:
     >>> is_stdlib_module("math.pi")
     True
 
+    NOTE Deprecated, see rattr.ast.place
     """
     return place_module(module) == "STDLIB"
 
@@ -642,31 +649,6 @@ class read:
         pass
 
 
-class Changes:
-    """Context manager to return the dict-like's changes across the block."""
-
-    def __init__(self, target, keys_fn=lambda t: t.keys()):
-        self.target = target
-        self.keys_fn = keys_fn
-
-    def __enter__(self):
-        self.antecedent: Set = set(self.keys_fn(self.target))
-        return self
-
-    def __exit__(self, *_):
-        self.consequent: Set = set(self.keys_fn(self.target))
-
-    @property
-    def added(self) -> Set:
-        """Return the keys added to the IR."""
-        return self.consequent - self.antecedent
-
-    @property
-    def removed(self) -> Set:
-        """Return the keys removed from the IR, should be the empty set."""
-        return self.antecedent - self.consequent
-
-
 def get_starred_imports(
     symbols: List[Symbol],
     seen: Iterable[Import],
@@ -745,7 +727,10 @@ def assignment_is_one_to_one(node: AnyAssign) -> bool:
 
 
 def lambda_in_rhs(node: AnyAssign) -> bool:
-    """Return `True` if the RHS of the given assignment contains a lambda."""
+    """Return `True` if the RHS of the given assignment contains a lambda.
+
+    NOTE Deprecated, see rattr.ast.util.has_lambda_in_rhs
+    """
     _iterable = (ast.Tuple, ast.List)
 
     if isinstance(node.value, ast.Lambda):
@@ -757,7 +742,10 @@ def lambda_in_rhs(node: AnyAssign) -> bool:
 
 
 def walrus_in_rhs(node: AnyAssign) -> bool:
-    """Return `True` if the RHS contains a walrus operator."""
+    """Return `True` if the RHS contains a walrus operator.
+
+    NOTE Deprecated, see rattr.ast.util.has_walrus_in_rhs
+    """
     _iterable = (ast.Tuple, ast.List)
 
     if isinstance(node.value, ast.NamedExpr):
@@ -769,7 +757,10 @@ def walrus_in_rhs(node: AnyAssign) -> bool:
 
 
 def namedtuple_in_rhs(node: AnyAssign) -> bool:
-    """Return `True` if the RHS contains a namedtuple creation."""
+    """Return `True` if the RHS contains a namedtuple creation.
+
+    NOTE Deprecated, see rattr.ast.util.has_namedtuple_declaration_in_rhs
+    """
     _iterable = (ast.Tuple, ast.List)
 
     def _target_is_namedtuple(call: ast.Call) -> bool:
@@ -793,6 +784,7 @@ def namedtuple_in_rhs(node: AnyAssign) -> bool:
 
 
 def _attrs_from_list_of_strings(attrs_argument: ast.List) -> list[str]:
+    """NOTE Deprecated, see rattr.ast.util.unpack_ast_list_of_strings."""
     attrs: list[str] = [
         arg.value
         for arg in attrs_argument.elts
@@ -807,6 +799,7 @@ def _attrs_from_list_of_strings(attrs_argument: ast.List) -> list[str]:
 
 
 def _attrs_from_space_delimited_string(attrs_argument: ast.Constant) -> list[str]:
+    """NOTE Deprecated, see rattr.ast.util.parse_space_delimited_ast_string."""
     if not isinstance(attrs_argument.value, str):
         raise SyntaxError
 
@@ -819,6 +812,7 @@ def _attrs_from_space_delimited_string(attrs_argument: ast.Constant) -> list[str
 
 
 def _namedtuple_attrs_from_second_argument(attrs_argument: ast.AST) -> list[str]:
+    """NOTE Deprecated."""
     if isinstance(attrs_argument, ast.List):
         return _attrs_from_list_of_strings(attrs_argument)
 
@@ -844,6 +838,8 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
 
     Returns:
         tuple[list[str], dict[str, str]]: The positional and keyword args of the init.
+
+    NOTE Deprecated, see rattr.ast.util.namedtuple_init_signature_from_declaration
     """
     _invalid_signature_error = (
         "namedtuple expects exactly two positional arguments (i.e. name, attrs)"
@@ -896,7 +892,10 @@ def class_in_rhs(node: AnyAssign, context: Any) -> bool:
 
 
 def is_starred_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
-    """Return `True` if the given import is a `from module import *`."""
+    """Return `True` if the given import is a `from module import *`.
+
+    NOTE Deprecated, see rattr.ast.util.is_starred_import
+    """
     if not isinstance(node, ast.ImportFrom):
         return False
 
@@ -904,7 +903,10 @@ def is_starred_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
 
 
 def is_relative_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
-    """Return `True` if the given import is a relative import."""
+    """Return `True` if the given import is a relative import.
+
+    NOTE Deprecated, see rattr.ast.util.is_relative_import
+    """
     if not isinstance(node, ast.ImportFrom):
         return False
 
@@ -912,7 +914,10 @@ def is_relative_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
 
 
 def module_name_from_file_path(file: Path | str | None) -> Optional[str]:
-    """Return the recognised name of the given module."""
+    """Return the recognised name of the given module.
+
+    NOTE Deprecated, see rattr.module_locator.util.derive_module_name_from_path
+    """
     if file is None:
         raise ValueError
 

@@ -30,7 +30,7 @@ from rattr.analyser.context.symbol import (
 from rattr.analyser.context.symbol_table import SymbolTable
 from rattr.analyser.util import (
     PYTHON_BUILTINS,
-    Changes,
+    DictChanges,
     assignment_is_one_to_one,
     get_absolute_module_name,
     get_assignment_targets,
@@ -405,7 +405,10 @@ class RootContext(Context):
 
         for module in node.names:
             _import = _new_import_symbol(
-                module.asname or module.name, module.name, module.name, node
+                module.asname or module.name,
+                module.name,
+                module.name,
+                node,
             )
             self.add(_import)
 
@@ -511,7 +514,7 @@ class RootContext(Context):
 
         # Walrus operator in the right-hand side of containing assignment
         for walrus in get_contained_walruses(node):
-            with Changes(self.symbol_table, keys_fn=lambda t: t.values()) as diff:
+            with DictChanges(self.symbol_table, iter_items=lambda t: t.values()) as diff:
                 RootContext.register_NamedExpr(self, walrus)
 
             # If we have "a = (b := lambda ...)" then "a" will have been registered as a

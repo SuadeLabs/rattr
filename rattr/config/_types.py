@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import re
 from dataclasses import dataclass, field
 from enum import Enum, IntFlag, auto
-from functools import cached_property
+from functools import cached_property, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,11 @@ from rattr.config._util import (
 
 if TYPE_CHECKING:
     from typing import Final, Literal
+
+
+@lru_cache(maxsize=None)
+def _cached_re_compile(pattern: str) -> re.Pattern[str]:
+    return re.compile(pattern)
 
 
 class FollowImports(IntFlag):
@@ -284,3 +290,7 @@ class Config(metaclass=ConfigMetaclass):
             | self.MODULE_BLACKLIST_PATTERNS
             | self.PLUGIN_BLACKLIST_PATTERNS
         )
+
+    @property
+    def re_blacklist_patterns(self) -> tuple(re.Pattern[str], ...):
+        return tuple(_cached_re_compile(p) for p in self.blacklist_patterns)

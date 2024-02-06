@@ -1,18 +1,32 @@
 from __future__ import annotations
 
 import ast
+import re
 
 import pytest
 
 from rattr import error
 from rattr.ast.util import (
+    NAMEDTUPLE_INVALID_SECOND_PARAMETER_VALUE_ERROR,
+    NAMEDTUPLE_INVALID_SIGNATURE_ERROR,
+    assignment_is_one_to_one,
+    assignment_targets,
     basename_of,
     fullname_of,
     get_python_attr_access_fn_obj_attr_pair,
+    has_lambda_in_rhs,
+    has_namedtuple_declaration_in_rhs,
+    has_walrus_in_rhs,
     is_call_to_fn,
+    is_relative_import,
+    is_starred_import,
     is_string_literal,
+    namedtuple_init_signature_from_declaration,
     names_of,
+    parse_space_delimited_ast_string,
+    unpack_ast_list_of_strings,
     unravel_names,
+    walruses_in_rhs,
 )
 from rattr.models.symbol._symbols import PYTHON_ATTR_ACCESS_BUILTINS
 
@@ -221,3 +235,248 @@ class TestUnravelNames:
     def test_unravel_via_fullname(self, expr, expected):
         names = ast.parse(expr).body[0].targets[0]
         assert unravel_names(names, _get_name=fullname_of) == expected
+
+
+class TestIsStarredImport:
+    @pytest.mark.parametrize(
+        "stmt",
+        [
+            "from math import *",
+            "from .relative.module import *",
+        ],
+    )
+    def test_is_starred_import(self, stmt):
+        assert is_starred_import(ast.parse(stmt).body[0])
+
+    @pytest.mark.parametrize(
+        "stmt",
+        [
+            "import math",
+            "from math import pi",
+            "from math import sin, cos, tan",
+        ],
+    )
+    def test_is_not_starred_import(self, stmt):
+        assert not is_starred_import(ast.parse(stmt).body[0])
+
+
+class TestIsRelativeImport:
+    @pytest.mark.parametrize(
+        "stmt",
+        [
+            "from .relative.module import my_util",
+            "from .relative.module import MyClass, my_util, my_other_util",
+            "from .relative.module import *",
+        ],
+    )
+    def test_is_relative_import(self, stmt):
+        assert is_relative_import(ast.parse(stmt).body[0])
+
+    @pytest.mark.parametrize(
+        "stmt",
+        [
+            "import math",
+            "from math import pi",
+            "from math import sin, cos, tan",
+            "from math import *",
+        ],
+    )
+    def test_is_not_relative_import(self, stmt):
+        assert not is_relative_import(ast.parse(stmt).body[0])
+
+
+@pytest.mark.parametrize(
+    "expr, targets",
+    testcases := [
+        ("a = 1", [ast.Name("a")]),
+        ("a, b = 1, 2", [ast.Name("a"), ast.Name("b")]),
+        ("a: int = 1", [ast.Name("a")]),
+        ("a += 1", [ast.Name("a")]),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_assignment_targets(expr: str, targets: list[ast.expr]):
+    assert assignment_targets(ast.parse(expr).body[0]) == targets
+
+
+def test_assignment_targets_in_walrus():
+    parsed = ast.parse("a = (b := 1)")
+
+    a: ast.Assign = parsed.body[0]
+    b: ast.NamedExpr = parsed.body[0].value
+
+    assert assignment_targets(a) == a.targets
+    assert assignment_targets(b) == [b.target]
+
+
+@pytest.mark.parametrize(
+    "expr, expected",
+    testcases := [
+        ("x = 1", True),
+        ("x: int = 1", True),
+        ("x += 1", True),
+        ("x, y = z", False),
+        ("x, y = a, b", False),
+        ("x = y, z", False),
+        ("x += y, z", False),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_assignment_is_one_to_one(expr: str, expected: bool):
+    assert assignment_is_one_to_one(ast.parse(expr).body[0]) == expected
+
+
+@pytest.mark.parametrize(
+    "expr, expected",
+    testcases := [
+        ("a = lambda: 1", True),
+        ("a = 1, lambda: 1", True),
+        ("a: SomeType = lambda: 1", True),
+        ("a += lambda: 1", True),
+        ("a = 1", False),
+        ("a = 1, 2", False),
+        ("a: SomeType = SomeType()", False),
+        ("a += 1", False),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_has_lambda_in_rhs(expr: str, expected: bool):
+    assert has_lambda_in_rhs(ast.parse(expr).body[0]) == expected
+
+
+@pytest.mark.parametrize(
+    "expr, expected",
+    testcases := [
+        ("a = (b := c)", True),
+        ("a = 1, (b := c)", True),
+        ("a: SomeType = (b := c)", True),
+        ("a += (b := c)", True),
+        ("a = 1", False),
+        ("a = 1, 2", False),
+        ("a: SomeType = SomeType()", False),
+        ("a += 1", False),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_has_walrus_in_rhs(expr: str, expected: bool):
+    assert has_walrus_in_rhs(ast.parse(expr).body[0]) == expected
+
+
+@pytest.mark.parametrize(
+    "expr, expected",
+    testcases := [
+        ("a = b", []),
+        ("a = (b := c)", ["b := c"]),
+        ("a = (x := y, m := n)", ["x := y", "m := n"]),
+        ("a = (b, x := y)", ["x := y"]),
+        ("a = (b, (c, x := y))", []),  # we don't handle nested walruses
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_walruses_in_rhs(walrus, expr: str, expected: list[str]):
+    # We stringify the nodes here as the lhs and rhs will be equivalent but have
+    # different addresses so fail "==" (which is an "is" check for ast.NamedExpr it
+    # seems)
+    actual_as_string = [ast.dump(e) for e in walruses_in_rhs(ast.parse(expr).body[0])]
+    expected_as_string = [ast.dump(walrus(e)) for e in expected]
+    return actual_as_string == expected_as_string
+
+
+@pytest.mark.parametrize(
+    "expr, expected",
+    testcases := [
+        ("point = namedtuple('point', ['x', 'y'])", True),
+        ("point = user_extended.namedtuple('point', ['x', 'y'])", True),
+        ("point = noomedtoople('point', ['x', 'y'])", False),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_has_namedtuple_declaration_in_rhs(expr: str, expected: bool):
+    assert has_namedtuple_declaration_in_rhs(ast.parse(expr).body[0]) == expected
+
+
+def test_namedtuple_init_signature_from_declaration_not_a_call():
+    with pytest.raises(TypeError):
+        namedtuple_init_signature_from_declaration(ast.parse("'not_a_call'").body[0])
+
+
+@pytest.mark.parametrize(
+    "expr, error",
+    testcases := [
+        (
+            "namedtuple('point')",
+            re.escape(NAMEDTUPLE_INVALID_SIGNATURE_ERROR),
+        ),
+        (
+            "namedtuple('point', 'x', 'y')",
+            re.escape(NAMEDTUPLE_INVALID_SIGNATURE_ERROR),
+        ),
+        (
+            "namedtuple('point', ('x', 'y'))",
+            re.escape(NAMEDTUPLE_INVALID_SECOND_PARAMETER_VALUE_ERROR),
+        ),
+        (
+            "namedtuple('point', ['x', 123])",
+            re.escape(NAMEDTUPLE_INVALID_SECOND_PARAMETER_VALUE_ERROR),
+        ),
+        (
+            "namedtuple('point', ['x', some_variable])",
+            re.escape(NAMEDTUPLE_INVALID_SECOND_PARAMETER_VALUE_ERROR),
+        ),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_namedtuple_init_signature_from_declaration_invalid(expr: str, error: str):
+    with pytest.raises(ValueError, match=error):
+        namedtuple_init_signature_from_declaration(ast.parse(expr).body[0])
+
+
+@pytest.mark.parametrize(
+    "expr, attributes",
+    testcases := [
+        ("namedtuple('point', [])", ["self"]),
+        ("namedtuple('point', ['x'])", ["self", "x"]),
+        ("namedtuple('point', ['x', 'y'])", ["self", "x", "y"]),
+        ("vec4('vector', ['a', 'b', 'c', 'd'])", ["self", "a", "b", "c", "d"]),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_namedtuple_init_signature_from_declaration(expr: str, attributes: list[str]):
+    assert (
+        namedtuple_init_signature_from_declaration(ast.parse(expr).body[0])
+        == attributes
+    )
+
+
+@pytest.mark.parametrize(
+    "expr, expected",
+    testcases := [
+        ("[]", []),
+        ("['a', 'b', 'c']", ["a", "b", "c"]),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_unpack_ast_list_of_strings(expr: str, expected: list[str]):
+    assert unpack_ast_list_of_strings(ast.parse(expr).body[0].value) == expected
+
+
+def test_unpack_ast_list_of_strings_invalid():
+    with pytest.raises(SyntaxError):
+        unpack_ast_list_of_strings(ast.parse("[not_a_string_literal]").body[0].value)
+
+
+@pytest.mark.parametrize(
+    "expr, expected",
+    testcases := [
+        ("''", []),
+        ("'a b c'", ["a", "b", "c"]),
+    ],
+    ids=[t[0] for t in testcases],
+)
+def test_parse_space_delimited_ast_string(expr: str, expected: list[str]):
+    assert parse_space_delimited_ast_string(ast.parse(expr).body[0].value) == expected
+
+
+def test_parse_space_delimited_ast_string_invalid():
+    with pytest.raises(SyntaxError):
+        parse_space_delimited_ast_string(ast.parse("blah 0invalid").body[0].value)

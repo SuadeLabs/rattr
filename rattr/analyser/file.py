@@ -14,7 +14,7 @@ from rattr.analyser.context import Context, Func, Import, RootContext
 from rattr.analyser.function import FunctionAnalyser
 from rattr.analyser.types import ImportsIr
 from rattr.analyser.util import (
-    Changes,
+    DictChanges,
     assignment_is_one_to_one,
     get_assignment_targets,
     get_contained_walruses,
@@ -267,7 +267,7 @@ class FileAnalyser(NodeVisitor):
 
         # Walrus may obscure a lambda, so peek in and visit the nice walruses
         for walrus in get_contained_walruses(node):
-            with Changes(self.file_ir) as diff:
+            with DictChanges(self.file_ir) as diff:
                 self.visit_AnyAssign(walrus)
 
             # If the walrus is of the form "a = (b := lambda ...)" then "a" should have
