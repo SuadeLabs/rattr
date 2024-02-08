@@ -5,34 +5,7 @@ from typing import Union
 
 from typing_extensions import TypeAlias
 
-from rattr.versioning import AstNodeNotInPythonVersion, is_python_version
-
 Identifier: TypeAlias = str
-
-
-AstConstants = (
-    # Python 3.8+ all constants are under `ast.Constant(..., kind=...)`
-    ast.Constant,
-    # Before Python 3.8, each constant had it's own node type
-    ast.Num,
-    ast.Str,
-    ast.Bytes,
-    ast.NameConstant,
-    ast.Ellipsis,
-)
-"""AST nodes which represent constants."""
-
-AnyConstant: TypeAlias = Union[
-    # Python 3.8+ all constants are under `ast.Constant(..., kind=...)`
-    ast.Constant,
-    # Before Python 3.8, each constant had it's own node type
-    ast.Num,
-    ast.Str,
-    ast.Bytes,
-    ast.NameConstant,
-    ast.Ellipsis,
-]
-"""An AST constant node."""
 
 
 AstLiterals = (
@@ -100,17 +73,11 @@ AnyFunctionDef: TypeAlias = Union[
 """An AST function definition node (excluding lambdas)."""
 
 
-if is_python_version(">=3.8"):
-    AstNamedExpr = ast.NamedExpr
-else:
-    AstNamedExpr = AstNodeNotInPythonVersion
-
-
 AnyAssign = Union[
     ast.Assign,
     ast.AnnAssign,
     ast.AugAssign,
-    AstNamedExpr,
+    ast.NamedExpr,
 ]
 """An AST assignment node."""
 

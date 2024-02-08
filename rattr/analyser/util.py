@@ -35,7 +35,6 @@ from rattr.ast.types import (
     AnyDef,
     AnyFunctionDef,
     AstComprehensions,
-    AstConstants,
     AstLiterals,
     Nameable,
 )
@@ -138,7 +137,7 @@ def get_basename_fullname_pair(
         _error_class = error.RattrUnaryOpInNameable
     elif isinstance(node, ast.BinOp):
         _error_class = error.RattrBinOpInNameable
-    elif isinstance(node, AstConstants):
+    elif isinstance(node, ast.Constant):
         _error_class = error.RattrConstantInNameable
     elif isinstance(node, AstLiterals):
         _error_class = error.RattrLiteralInNameable

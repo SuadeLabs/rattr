@@ -8,7 +8,6 @@ from rattr import error
 from rattr.ast.types import (
     AstCompoundNameable,
     AstComprehensions,
-    AstConstants,
     AstLiterals,
     CompoundNameable,
 )
@@ -194,7 +193,7 @@ def __specific_name_error(node: ast.expr) -> type[TypeError]:
     if isinstance(node, ast.BinOp):
         return error.RattrBinOpInNameable
 
-    if isinstance(node, AstConstants):
+    if isinstance(node, ast.Constant):
         return error.RattrConstantInNameable
 
     if isinstance(node, AstLiterals):
