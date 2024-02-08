@@ -1,23 +1,28 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Dict, MutableMapping
+from typing import TYPE_CHECKING, MutableMapping, TypedDict
 
 import attrs
-from attrs import field
 from cattr.preconf.json import make_converter
 
-from rattr.analyser.context import Context
-from rattr.analyser.types import FunctionIr
+from rattr.models.context import Context
 from rattr.models.symbol import UserDefinedCallableSymbol
 
 if TYPE_CHECKING:
     from typing import Iterator
 
+    from rattr.models.symbol import Call, Name
+
 
 _ir_json_converter = make_converter()
 
-_FileIr = Dict[UserDefinedCallableSymbol, FunctionIr]
+
+class FunctionIr(TypedDict):
+    gets: set[Name]
+    sets: set[Name]
+    dels: set[Name]
+    calls: set[Call]
 
 
 @attrs.mutable
@@ -25,9 +30,9 @@ class FileIr(MutableMapping[UserDefinedCallableSymbol, FunctionIr]):
     """The Intermediate Representation (IR) for the functions/classes in a file."""
 
     context: Context
-    _file_ir: _FileIr = field(default={}, alias="file_ir")
+    _file_ir: dict[UserDefinedCallableSymbol, FunctionIr] = {}
 
-    def ir_as_dict(self) -> _FileIr:
+    def ir_as_dict(self) -> dict[UserDefinedCallableSymbol, FunctionIr]:
         """Return a copy of the underlying IR dictionary."""
         return copy.deepcopy(self._file_ir)
 

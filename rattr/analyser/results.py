@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import json
 
-from rattr.analyser.context import Symbol
 from rattr.analyser.ir_dag import IrDagNode
 from rattr.analyser.types import FileResults, ImportsIr
 from rattr.models.ir import FileIr
+from rattr.models.symbol import Symbol
 
 
 class ResultsEncoder(json.JSONEncoder):

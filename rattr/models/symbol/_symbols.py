@@ -27,7 +27,7 @@ from rattr.module_locator.util import find_module_name_and_spec
 if TYPE_CHECKING:
     from typing import Final, Literal
 
-    from rattr.ast.types import AnyFunctionDef
+    from rattr.ast.types import AnyFunctionDef, Identifier
     from rattr.module_locator.util import ModuleName
 
 
@@ -203,6 +203,29 @@ class Class(Symbol):
         """Return a copy of the class with the initialiser set to the given function."""
         return attrs.evolve(self, interface=CallInterface.from_fn_def(init))
 
+    def with_init_arguments(
+        self,
+        *,
+        posonlyargs: tuple[str] = (),
+        args: tuple[str] = (),
+        vararg: str | None = None,
+        kwonlyargs: tuple[str] = (),
+        kwarg: str | None = None,
+    ) -> Class:
+        return attrs.evolve(
+            self,
+            interface=CallInterface(
+                posonlyargs=posonlyargs,
+                args=args,
+                vararg=vararg,
+                kwonlyargs=kwonlyargs,
+                kwarg=kwarg,
+            ),
+        )
+
+    def with_init_interface(self, interface: CallInterface) -> Class:
+        return attrs.evolve(self, interface=interface)
+
     @classmethod
     def from_class_def(cls: type[Class], ast_class: ast.ClassDef) -> None:
         """Return a new `Class` parsed from the given class def."""
@@ -242,10 +265,12 @@ class Call(Symbol):
         name: str,
         call: ast.Call,
         target: Builtin | Import | Func | Class | None,
+        *,
+        self: Identifier | None = None,
     ) -> Call:
         return Call(
             name=name,
-            args=CallArguments.from_call(call),
+            args=CallArguments.from_call(call, self=self),
             target=target,
             token=call,
         )

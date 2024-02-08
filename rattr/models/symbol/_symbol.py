@@ -15,7 +15,7 @@ from rattr.models.symbol._util import PYTHON_BUILTINS_LOCATION, arg_name, kwarg_
 if TYPE_CHECKING:
     from typing import Literal
 
-    from rattr.ast.types import AnyFunctionDef
+    from rattr.ast.types import AnyFunctionDef, Identifier
 
 
 @attrs.frozen
@@ -144,7 +144,7 @@ class CallArguments:
         cls: type[CallArguments],
         call: ast.Call,
         *,
-        self: str | None = None,
+        self: Identifier | None = None,
     ) -> CallArguments:
         """Return a new `CallArguments` parsed from the given function call."""
         args: list[str] = [arg_name(arg) for arg in call.args]

@@ -2,12 +2,17 @@
 from __future__ import annotations
 
 import ast
+from typing import TYPE_CHECKING
 
 from rattr.analyser.base import CustomFunctionAnalyser
-from rattr.analyser.context import Context
 from rattr.analyser.types import FunctionIr
-from rattr.analyser.util import get_dynamic_name, get_fullname
+from rattr.analyser.util import get_dynamic_name
 from rattr.ast.types import AnyFunctionDef
+from rattr.ast.util import fullname_of
+from rattr.models.symbol import Name
+
+if TYPE_CHECKING:
+    from rattr.models.context import Context
 
 
 class GetattrAnalyser(CustomFunctionAnalyser):
@@ -116,7 +121,6 @@ class SortedAnalyser(CustomFunctionAnalyser):
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         # HACK Avoid circular import
-        from rattr.analyser.context.symbol import Name
         from rattr.analyser.function import FunctionAnalyser
         from rattr.analyser.ir_dag import partially_unbind
 
@@ -149,32 +153,25 @@ class SortedAnalyser(CustomFunctionAnalyser):
             #   results from visiting the sorting target
 
             iterator = key.value.args.args[0].arg
-            iterable = get_fullname(node.args[0], safe=True)
+            iterable = fullname_of(node.args[0], safe=True)
 
             lambda_ctx = Context(ctx)
-            lambda_ctx.add(Name(iterator), is_argument=True)
+            lambda_ctx.add(Name(iterator, token=node), is_argument=True)
 
             lambda_analyser = FunctionAnalyser(ast.FunctionDef(), lambda_ctx)
             lambda_analyser.visit(key.value.body)
 
             # Substitute
             lambda_analyser.func_ir = partially_unbind(
-                lambda_analyser.func_ir, {iterator: iterable}
+                lambda_analyser.func_ir,
+                {iterator: iterable},
             )
 
-            # Union
-            fn_analyser.func_ir["gets"] = fn_analyser.func_ir["gets"].union(
-                lambda_analyser.func_ir["gets"]
-            )
-            fn_analyser.func_ir["sets"] = fn_analyser.func_ir["sets"].union(
-                lambda_analyser.func_ir["sets"]
-            )
-            fn_analyser.func_ir["dels"] = fn_analyser.func_ir["dels"].union(
-                lambda_analyser.func_ir["dels"]
-            )
-            fn_analyser.func_ir["calls"] = fn_analyser.func_ir["calls"].union(
-                lambda_analyser.func_ir["calls"]
-            )
+            fn_analyser.func_ir["gets"] |= lambda_analyser.func_ir["gets"]
+            fn_analyser.func_ir["sets"] |= lambda_analyser.func_ir["sets"]
+            fn_analyser.func_ir["dels"] |= lambda_analyser.func_ir["dels"]
+            fn_analyser.func_ir["calls"] |= lambda_analyser.func_ir["calls"]
+
         else:
             fn_analyser.visit(key.value)
 

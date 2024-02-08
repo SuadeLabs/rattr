@@ -1,9 +1,14 @@
 """Rattr symbol table."""
 from __future__ import annotations
 
-from typing import KeysView, ValuesView
+from typing import TYPE_CHECKING
 
-from rattr.analyser.context.symbol import Import, Symbol
+from rattr.models.symbol import Import
+
+if TYPE_CHECKING:
+    from typing import KeysView, ValuesView
+
+    from rattr.models.symbol import Symbol
 
 
 class SymbolTable(dict):

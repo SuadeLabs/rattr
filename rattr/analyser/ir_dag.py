@@ -1,57 +1,61 @@
 """Represent the IR of functions as a DAG, for simplification."""
 from __future__ import annotations
 
-from copy import deepcopy
+import copy
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING
 
 from rattr import error
-from rattr.analyser.context import (
-    Builtin,
-    Call,
-    Class,
-    Func,
-    Import,
-    Name,
-    Symbol,
-)
 from rattr.analyser.types import FunctionIr, ImportsIr
 from rattr.analyser.util import (
     is_blacklisted_module,
     is_excluded_name,
     is_pip_module,
     is_stdlib_module,
-    module_name_from_file_path,
 )
 from rattr.config import Config
 from rattr.models.ir import FileIr
-from rattr.models.symbol.util import without_call_brackets
+from rattr.models.symbol import Builtin, Call, Class, Func, Import, Name
+from rattr.module_locator.util import derive_module_name_from_path
+
+if TYPE_CHECKING:
+    from rattr.ast.types import Identifier
 
 
-def __prefix(func: Func) -> str:
+def __prefix(func: Func | None) -> str:
     """HACK We no longer have `culprit` so manually construct prefix."""
     config = Config()
 
     if func is None:
         return ""
 
-    return "\033[1m{}:\033[0m".format(config.get_formatted_path(func.defined_in))
+    file_location = func.location.defined_in
+    formatted_file_location = config.get_formatted_path(file_location)
+
+    if formatted_file_location is None:
+        return ""
+
+    return "\033[1m{}:\033[0m".format(formatted_file_location)
 
 
 def __resolve_target_and_ir(
     callee: Call,
     file_ir: FileIr,
     imports_ir: ImportsIr,
-) -> Tuple[Func, FunctionIr]:
+) -> tuple[Func, FunctionIr]:
     """Helper function for `resolve_function` and `resolve_class`."""
     if callee.target in file_ir:
+        assert callee.target is not None, "unable to resolve callee target"
         return callee.target, file_ir[callee.target]
 
-    filename = callee.target.defined_in
-    module = module_name_from_file_path(filename)
+    if callee.target is None:
+        raise ImportError
+
+    filename = callee.target.location.defined_in
+    module = derive_module_name_from_path(filename)
 
     if module is None:
-        raise ModuleNotFoundError(f"unable to find module for '{filename}'")
+        raise ModuleNotFoundError(f"unable to find module for {str(filename)!r}")
 
     module_ir = imports_ir.get(module)
 
@@ -68,12 +72,15 @@ def resolve_function(
     callee: Call,
     file_ir: FileIr,
     imports_ir: ImportsIr,
-    caller: Optional[Func] = None,
-) -> Union[Tuple[None, None], Tuple[Func, FunctionIr]]:
+    caller: Func | None = None,
+) -> tuple[None, None] | tuple[Func, FunctionIr]:
+    if callee.target is None:
+        raise ImportError
+
     _msg = f"{__prefix(caller)} unable to resolve call to {callee.target.name!r}"
 
     if caller is not None:
-        _msg = f"{_msg} in '{caller.name}'"
+        _msg = f"{_msg} in {caller.name!r}"
 
     try:
         func, ir = __resolve_target_and_ir(callee, file_ir, imports_ir)
@@ -89,12 +96,12 @@ def resolve_function(
     return func, ir
 
 
-def resolve_class(
+def resolve_class_init(
     callee: Call,
     file_ir: FileIr,
     imports_ir: ImportsIr,
-    caller: Optional[Func] = None,
-) -> Union[Tuple[None, None], Tuple[Func, FunctionIr]]:
+    caller: Func | None = None,
+) -> tuple[None, None] | tuple[Func, FunctionIr]:
     _where = __prefix(caller)
 
     try:
@@ -107,51 +114,58 @@ def resolve_class(
 
 
 def resolve_import(
-    name: str,
+    name: Identifier,
     target: Import,
     imports_ir: ImportsIr,
-    caller: Optional[Func] = None,
-) -> Union[Tuple[None, None], Tuple[Func, FunctionIr]]:
+    caller: Func | None = None,
+) -> tuple[None, None] | tuple[Func, FunctionIr]:
     """Return the `Func` and IR for the given import."""
     _where = __prefix(caller)
     config = Config()
 
-    module = target.module_name
-    module_ir: FileIr = imports_ir.get(module, None)
+    if target.module_name is None:
+        raise ImportError
 
-    as_name, qualified_name = target.name, target.qualified_name
+    module_ir = imports_ir.get(target.module_name, None)
 
-    if is_blacklisted_module(module):
+    _follow_imports = config.arguments.follow_imports
+    _follow_pip_imports = config.arguments.follow_pip_imports
+    _follow_stdlib_imports = config.arguments.follow_stdlib_imports
+
+    if is_blacklisted_module(target.module_name):
         return None, None
 
-    if not config.arguments.follow_imports:
-        error.info(f"{_where} ignoring call to imported function '{target.name}'")
+    if not _follow_imports:
+        error.info(f"{_where} ignoring call to imported function {target.name!r}")
         return None, None
 
-    if not config.arguments.follow_pip_imports and is_pip_module(module):
+    if not _follow_pip_imports and is_pip_module(target.module_name):
         error.info(
-            f"{_where} ignoring call to function '{target.name}' imported "
-            f"from pip installed module '{module}'"
+            f"{_where} ignoring call to function {target.name!r} imported from pip "
+            f"installed module {target.module_name!r}"
         )
         return None, None
 
-    if not config.arguments.follow_stdlib_imports and is_stdlib_module(module):
+    if not _follow_stdlib_imports and is_stdlib_module(target.module_name):
         error.info(
-            f"{_where} ignoring call to function '{target.name}' imported "
-            f"from stdlib module '{module}'"
+            f"{_where} ignoring call to function {target.name!r} imported from stdlib "
+            f"module {target.module_name!r}"
         )
         return None, None
 
-    if module is None:
-        raise ValueError(f"Target {target.name} has no module name")
+    if target.module_name is None:
+        raise ValueError(f"Target {target.name!r} has no module name")
 
     if module_ir is None:
-        raise ImportError(f"Import '{module}' not found")
+        raise ImportError(f"Import {target.module_name!r} not found")
 
-    local_name = name.replace(as_name, qualified_name).replace(f"{module}.", "")
-    local_name = without_call_brackets(local_name)
+    local_name = (
+        name.replace(target.name, target.qualified_name)
+        .replace(f"{target.module_name}.", "")
+        .removesuffix("()")
+    )
+    new_target = module_ir.context.get(local_name)
 
-    new_target: Optional[Symbol] = module_ir.context.get(local_name)
     if isinstance(new_target, (Func, Class)):
         ir = module_ir.get(new_target)
 
@@ -159,7 +173,7 @@ def resolve_import(
         if ir is None:
             error.error(
                 f"{_where} unable to resolve imported callable {local_name!r}"
-                f" in {module!r}, it is likely ignored"
+                f" in {target.module_name!r}, it is likely ignored"
             )
             return None, None
 
@@ -169,19 +183,18 @@ def resolve_import(
         return resolve_import(new_target.name, new_target, imports_ir, caller)
 
     # NOTE
-    #   When reaching here the target may be a call to a method on an imported
-    #   instance
+    # When reaching here the target may be a call to a method on an imported instance
 
     if new_target is None and "." in local_name:
         error.info(
             f"{__prefix(caller)} unable to resolve call to method "
-            f"{local_name!r} in import {module!r}"
+            f"{local_name!r} in import {target.module_name!r}"
         )
         return None, None
 
     error.error(
         f"{__prefix(caller)} unable to resolve call to {local_name!r} in "
-        f"import {module!r}"
+        f"import {target.module_name!r}"
     )
     return None, None
 
@@ -190,9 +203,9 @@ def get_callee_target(
     callee: Call,
     file_ir: FileIr,
     imports_ir: ImportsIr,
-    caller: Optional[Func] = None,
-) -> Union[Tuple[None, None], Tuple[Func, FunctionIr]]:
-    """Return the `Symbol` and IR of the called function."""
+    caller: Func | None = None,
+) -> tuple[None, None] | tuple[Func, FunctionIr]:
+    """Return the func and IR of the called function."""
     # TODO Should this trigger a warning?
     if callee.target is None:
         return None, None
@@ -208,7 +221,7 @@ def get_callee_target(
         return None, None
 
     if isinstance(callee.target, Class):
-        return resolve_class(callee, file_ir, imports_ir, caller)
+        return resolve_class_init(callee, file_ir, imports_ir, caller)
 
     if isinstance(callee.target, Import):
         return resolve_import(callee.name, callee.target, imports_ir, caller)
@@ -230,33 +243,33 @@ def partially_unbind_name(symbol: Name, new_basename: str) -> Name:
     return Name(new_name, new_basename)
 
 
-def partially_unbind(func_ir: FunctionIr, swaps: Dict[str, str]) -> FunctionIr:
+def partially_unbind(func_ir: FunctionIr, swaps: dict[str, str]) -> FunctionIr:
     """Return the partially unbound results for the given function."""
     return {
         "sets": {
-            partially_unbind_name(n, swaps.get(n.basename, n.basename))
-            for n in func_ir["sets"]
+            partially_unbind_name(name, swaps.get(name.basename, name.basename))
+            for name in func_ir["sets"]
         },
         "gets": {
-            partially_unbind_name(n, swaps.get(n.basename, n.basename))
-            for n in func_ir["gets"]
+            partially_unbind_name(name, swaps.get(name.basename, name.basename))
+            for name in func_ir["gets"]
         },
         "dels": {
-            partially_unbind_name(n, swaps.get(n.basename, n.basename))
-            for n in func_ir["dels"]
+            partially_unbind_name(name, swaps.get(name.basename, name.basename))
+            for name in func_ir["dels"]
         },
         "calls": func_ir["calls"],
     }
 
 
-def construct_swap(func: Func, call: Call) -> Dict[str, str]:
+def construct_swap(func: Func, call: Call) -> dict[str, str]:
     """Return the map of local function names to bound names."""
-    swaps: Dict[str, str] = dict()
+    swaps: dict[str, str] = dict()
 
-    f_args = deepcopy(func.args)
+    f_args = copy.deepcopy(func.args)
 
-    c_args = deepcopy(call.args)
-    c_kwargs = deepcopy(call.kwargs)
+    c_args = copy.deepcopy(call.args)
+    c_kwargs = copy.deepcopy(call.kwargs)
 
     # Python call must be ([pos_arg | *'d], ..., [named_arg | **'d], ...)
     # Python function def must be (pos_arg, ..., named_arg, ..., *'d?, **'d?)
@@ -270,7 +283,7 @@ def construct_swap(func: Func, call: Call) -> Dict[str, str]:
         if target not in c_kwargs.keys():
             continue
 
-        error.fatal(f"{__prefix(func)} '{target}' given by position and name")
+        error.fatal(f"{__prefix(func)} {target!r} given by position and name")
 
         return swaps
 
@@ -298,9 +311,9 @@ class IrDagNode:
     imports_ir: ImportsIr
 
     def __post_init__(self) -> None:
-        self.children: List[IrDagNode] = list()
+        self.children: list[IrDagNode] = list()
 
-    def populate(self, seen: Optional[Set[Call]] = None) -> Set[Call]:
+    def populate(self, seen: set[Call] | None = None) -> set[Call]:
         """Populate this node, and it's children, recursively.
 
         In principle, BFS the calls to construct the DAG. Calls may have cycles
@@ -346,22 +359,20 @@ class IrDagNode:
         """
         # Leafs are already simplified
         if len(self.children) == 0:
-            return deepcopy(self.func_ir)
+            return copy.deepcopy(self.func_ir)
 
         # Simplified non-terminal nodes are the combination of themselves
         # and their children partially unbound
         child_irs = [(c.simplify(), c) for c in self.children]
 
-        simplified: FunctionIr = deepcopy(self.func_ir)
+        simplified: FunctionIr = copy.deepcopy(self.func_ir)
 
         for child_ir, child in child_irs:
             swaps = construct_swap(child.func, child.call)
             unbound_child = partially_unbind(child_ir, swaps)
 
-            simplified["sets"] = simplified["sets"].union(unbound_child["sets"])
-
-            simplified["gets"] = simplified["gets"].union(unbound_child["gets"])
-
-            simplified["dels"] = simplified["dels"].union(unbound_child["dels"])
+            simplified["sets"] |= unbound_child["sets"]
+            simplified["gets"] |= unbound_child["gets"]
+            simplified["dels"] |= unbound_child["dels"]
 
         return simplified

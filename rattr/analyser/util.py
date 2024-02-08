@@ -14,6 +14,7 @@ from pathlib import Path
 from string import ascii_lowercase
 from time import perf_counter
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -28,14 +29,6 @@ from typing import (
 from isort.api import place_module
 
 from rattr import error
-from rattr.analyser.context.symbol import (
-    Class,
-    Import,
-    Name,
-    Symbol,
-    parse_call,
-    parse_name,
-)
 from rattr.analyser.types import AstStrictlyNameable, FunctionIr
 from rattr.ast.types import (
     AnyAssign,
@@ -51,9 +44,18 @@ from rattr.extra import DictChanges  # noqa: F401
 from rattr.models.symbol import (
     PYTHON_ATTR_ACCESS_BUILTINS,
     PYTHON_BUILTINS,
+    Call,
     CallArguments,
     CallInterface,
+    Class,
+    Import,
+    Name,
 )
+
+if TYPE_CHECKING:
+    from rattr.ast.types import Identifier
+    from rattr.models.context import Context
+    from rattr.models.symbol import Symbol
 
 
 def get_basename_fullname_pair(
@@ -461,7 +463,10 @@ def is_args(args: Any) -> bool:
     return True
 
 
-def parse_rattr_results_from_annotation(fn_def: AnyFunctionDef, context) -> FunctionIr:
+def parse_rattr_results_from_annotation(
+    fn_def: AnyFunctionDef,
+    context: Context,
+) -> FunctionIr:
     """Return the IR for the given function, assuming it is annotated."""
     # Check arguments
     expected = {"sets": set(), "gets": set(), "calls": list(), "dels": set()}
@@ -508,14 +513,38 @@ def parse_rattr_results_from_annotation(fn_def: AnyFunctionDef, context) -> Func
     if not all(len(c) == 2 for c in named_args.get("calls")):
         __type_error("'rattr_results' expects two elements per call")
 
+    def parse_name(name: Identifier) -> Name:
+        return Name(
+            name=name,
+            basename=name.replace("*", "").split(".")[0],
+            token=fn_def,
+        )
+
+    def parse_call(
+        callee: Identifier,
+        args: list[Identifier],
+        kwargs: dict[Identifier, Identifier],
+        target: Symbol | None = None,
+    ) -> Call:
+        return Call(
+            name=callee,
+            args=CallArguments(args=args, kwargs=kwargs),
+            target=target,
+            token=fn_def,
+        )
+
     # Parse arguments as IR
     return {
         "sets": {parse_name(n) for n in named_args.get("sets")},
         "gets": {parse_name(n) for n in named_args.get("gets")},
         "dels": {parse_name(n) for n in named_args.get("dels")},
         "calls": {
-            parse_call(n, a, context.get_call_target(n, fn_def))
-            for n, a in named_args.get("calls")
+            parse_call(
+                callee,
+                *callee_args_and_kwargs,
+                context.get_call_target(callee, fn_def),
+            )
+            for callee, callee_args_and_kwargs in named_args.get("calls")
         },
     }
 
@@ -650,11 +679,11 @@ class read:
 
 
 def get_starred_imports(
-    symbols: List[Symbol],
+    symbols: list[Symbol],
     seen: Iterable[Import],
-) -> List[Import]:
+) -> list[Import]:
     """Return the starred imports in the given symbols."""
-    starred: List[Import] = list()
+    starred: list[Import] = list()
 
     for symbol in symbols:
         if not isinstance(symbol, Import):
@@ -693,7 +722,7 @@ def get_assignment_targets(node: AnyAssign) -> List[ast.expr]:
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def get_contained_walruses(node: AnyAssign) -> List[ast.NamedExpr]:
+def get_contained_walruses(node: AnyAssign) -> list[ast.NamedExpr]:
     """Return the walruses in the RHS of the given assignment.
 
     >>> get_nested_walruses(ast.parse("a = (b := c)"))
@@ -714,7 +743,10 @@ def get_contained_walruses(node: AnyAssign) -> List[ast.NamedExpr]:
 
 
 def assignment_is_one_to_one(node: AnyAssign) -> bool:
-    """Return `True` if the given assignment is one-to-one."""
+    """Return `True` if the given assignment is one-to-one.
+
+    NOTE Deprecated, see rattr.ast.util.assignment_is_one_to_one
+    """
     _iterable = (ast.Tuple, ast.List)
 
     targets = get_assignment_targets(node)
@@ -869,7 +901,7 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
     return ["self", *attrs]
 
 
-def class_in_rhs(node: AnyAssign, context: Any) -> bool:
+def class_in_rhs(node: AnyAssign, context: Context) -> bool:
     """Return `True` if the RHS of the given assignment is a class init."""
     _iterable = (ast.Tuple, ast.List)
 
@@ -1092,10 +1124,13 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
 
     """
     first, second = get_xattr_obj_name_pair(fn_name, node, warn=True)
-
     basename = first.split(".")[0].replace("*", "").replace("[]", "").replace("()", "")
 
-    return Name(pattern.format(first=first, second=second), basename)
+    return Name(
+        name=pattern.format(first=first, second=second),
+        basename=basename,
+        token=node,
+    )
 
 
 def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:

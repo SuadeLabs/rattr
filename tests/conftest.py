@@ -13,18 +13,24 @@ from unittest import mock
 import pytest
 
 from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
-from rattr.analyser.context import Context, RootContext
-from rattr.analyser.context.symbol import Builtin, Call, Name, Symbol
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
 from rattr.analyser.types import FunctionIr
-from rattr.analyser.util import has_affect
 from rattr.ast.types import AstFunctionDef
 from rattr.config import Arguments, Config, Output, State
+from rattr.models.context import Context, compile_root_context
 from rattr.models.ir import FileIr
+from rattr.models.symbol import (
+    Builtin,
+    Call,
+    CallArguments,
+    Name,
+    Symbol,
+    UserDefinedCallableSymbol,
+)
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from collections.abc import Callable, Iterator, Mapping
 
     from rattr.analyser.types import FileResults
 
@@ -34,7 +40,8 @@ def pytest_configure(config):
 
     config.addinivalue_line("markers", "pypy: mark test to run only under pypy")
     config.addinivalue_line(
-        "markers", "py_3_8_plus: mark test to run only under Python 3.8+"
+        "markers",
+        "py_3_8_plus: mark test to run only under Python 3.8+",
     )
     config.addinivalue_line("markers", "windows: mark test to run only under Windows")
     config.addinivalue_line(
@@ -184,9 +191,9 @@ def parse():
 @pytest.fixture
 def parse_with_context(parse: Callable[[str], ast.AST]):
     def _inner(source: str) -> tuple[ast.AST, Context]:
-        _ast = parse(source)
-        _ctx = RootContext(_ast)
-        return _ast, _ctx
+        ast_module = parse(source)
+        context = compile_root_context(ast_module)
+        return ast_module, context
 
     return _inner
 
@@ -204,8 +211,8 @@ def analyse_single_file(
     """
 
     def _inner(source: str) -> tuple[ast.AST, Context]:
-        _ast, _ctx = parse_with_context(source)
-        file_ir = FileAnalyser(_ast, _ctx).analyse()
+        ast_module, context = parse_with_context(source)
+        file_ir = FileAnalyser(ast_module, context).analyse()
         file_results = generate_results_from_ir(file_ir, {})
 
         return file_ir, file_results
@@ -216,7 +223,7 @@ def analyse_single_file(
 @pytest.fixture
 def root_context_with() -> Callable[[list[Symbol]], Context]:
     def _inner(extra: list[Symbol]) -> Context:
-        context = RootContext(ast.Module(body=[]))
+        context = compile_root_context(ast.Module(body=[]))
         context.add_all(extra)
         return context
 
@@ -225,40 +232,39 @@ def root_context_with() -> Callable[[list[Symbol]], Context]:
 
 @pytest.fixture
 def builtin() -> Callable[[str], Builtin]:
+    # TODO This is no longer useful, refactor to remove it
+
     def _inner(name: str) -> Builtin:
-        return Builtin(name, has_affect=has_affect(name))
+        return Builtin(name)
 
     return _inner
 
 
 @pytest.fixture
 def RootSymbolTable():
-    def _inner(*args):
-        """Create a root context with the addition of the **kwargs."""
-        symtab = RootContext(ast.Module(body=[])).symbol_table
-
-        for s in args:
-            symtab.add(s)
-
-        return symtab
+    def _inner(*args: Symbol):
+        """Create a context with the Python builtins and the given symbols."""
+        context = compile_root_context(ast.Module(body=[]))
+        context.add(args)
+        return context.symbol_table
 
     return _inner
 
 
 @pytest.fixture(scope="function", autouse=True)
-def _set_current_file(config) -> None:
+def _set_current_file(config) -> Iterator[None]:
     with config("current_file", "_in_test.py"):
         yield
 
 
 @pytest.fixture()
-def run_in_strict_mode(config) -> None:
+def run_in_strict_mode(config) -> Iterator[None]:
     with config("strict", True):
         yield
 
 
 @pytest.fixture()
-def run_in_permissive_mode(config) -> None:
+def run_in_permissive_mode(config) -> Iterator[None]:
     with config("strict", False):
         yield
 
@@ -593,10 +599,10 @@ def snippet():
 
 @pytest.fixture
 def file_ir_from_dict():
-    def _inner(ir):
+    def _inner(ir: Mapping[UserDefinedCallableSymbol, FunctionIr]):
         # Make quasi-context
         ctx = Context(None)
-        ctx.add_all(ir.keys())
+        ctx.add(ir.keys())
 
         # Create FileIR
         file_ir = FileIr(context=ctx)
@@ -619,32 +625,40 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
     def on_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
         return {
             "sets": {
-                Name("set_in_print_def"),
+                Name(name="set_in_print_def"),
             },
             "gets": {
-                Name("get_in_print_def"),
+                Name(name="get_in_print_def"),
             },
             "dels": {
-                Name("del_in_print_def"),
+                Name(name="del_in_print_def"),
             },
             "calls": {
-                Call("call_in_print_def", [], {}, None),
+                Call(
+                    name="call_in_print_def",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": {
-                Name("set_in_print"),
+                Name(name="set_in_print"),
             },
             "gets": {
-                Name("get_in_print"),
+                Name(name="get_in_print"),
             },
             "dels": {
-                Name("del_in_print"),
+                Name(name="del_in_print"),
             },
             "calls": {
-                Call("call_in_print", [], {}, None),
+                Call(
+                    name="call_in_print",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
@@ -666,32 +680,40 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
     def on_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
         return {
             "sets": {
-                Name("set_in_example_def"),
+                Name(name="set_in_example_def"),
             },
             "gets": {
-                Name("get_in_example_def"),
+                Name(name="get_in_example_def"),
             },
             "dels": {
-                Name("del_in_example_def"),
+                Name(name="del_in_example_def"),
             },
             "calls": {
-                Call("call_in_example_def", [], {}, None),
+                Call(
+                    name="call_in_example_def",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": {
-                Name("set_in_example"),
+                Name(name="set_in_example"),
             },
             "gets": {
-                Name("get_in_example"),
+                Name(name="get_in_example"),
             },
             "dels": {
-                Name("del_in_example"),
+                Name(name="del_in_example"),
             },
             "calls": {
-                Call("call_in_example", [], {}, None),
+                Call(
+                    name="call_in_example",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 

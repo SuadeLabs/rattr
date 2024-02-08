@@ -5,13 +5,16 @@ import ast
 from abc import ABCMeta, abstractmethod, abstractproperty
 from ast import NodeTransformer, NodeVisitor  # noqa: F401
 from itertools import product
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING
 
 from rattr import error
-from rattr.analyser.context import Context
-from rattr.analyser.context.symbol import Import
 from rattr.analyser.types import FunctionIr
 from rattr.ast.types import AstFunctionDef
+from rattr.models.context import Context
+from rattr.models.symbol import Import
+
+if TYPE_CHECKING:
+    from rattr.ast.types import Identifier
 
 
 class Assertor(NodeVisitor):
@@ -36,7 +39,7 @@ class Assertor(NodeVisitor):
 
         super().visit(node)
 
-    def failed(self, message: str, culprit: Optional[ast.AST] = None) -> None:
+    def failed(self, message: str, culprit: ast.AST | None = None) -> None:
         """Handle assertion failure."""
         if self.is_strict:
             handler = error.fatal
@@ -50,17 +53,22 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
     """Base class for a custom function visitor."""
 
     @abstractproperty
-    def name(self) -> str:
+    def name(self) -> Identifier:
         """Return the name of the function handled by this analyser."""
         return ""
 
     @abstractproperty
-    def qualified_name(self) -> str:
+    def qualified_name(self) -> Identifier:
         """Return the qualified name of the function."""
         return ""
 
     @abstractmethod
-    def on_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: Identifier,
+        node: AstFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         """Return the IR of the definition of the handled function."""
         return {
             "sets": set(),
@@ -70,7 +78,7 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
         }
 
     @abstractmethod
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
+    def on_call(self, name: Identifier, node: ast.Call, ctx: Context) -> FunctionIr:
         """Return the IR produced by a call to the handled function.
 
         The returned IR will be union'd with the IR of the caller function.
@@ -99,11 +107,11 @@ class CustomFunctionHandler:
 
     def __init__(
         self,
-        builtins: Optional[List[CustomFunctionAnalyser]] = None,
-        user_defined: Optional[List[CustomFunctionAnalyser]] = None,
+        builtins: list[CustomFunctionAnalyser] | None = None,
+        user_defined: list[CustomFunctionAnalyser] | None = None,
     ) -> None:
-        self._builtins: Dict[str, CustomFunctionAnalyser] = dict()
-        self._user_def: Dict[str, CustomFunctionAnalyser] = dict()
+        self._builtins: dict[str, CustomFunctionAnalyser] = dict()
+        self._user_def: dict[str, CustomFunctionAnalyser] = dict()
 
         for analyser in builtins or []:
             self._builtins[analyser.name] = analyser
@@ -111,7 +119,7 @@ class CustomFunctionHandler:
         for analyser in user_defined or []:
             self._user_def[analyser.name] = analyser
 
-    def __get_by_name(self, name: str) -> Optional[CustomFunctionAnalyser]:
+    def __get_by_name(self, name: Identifier) -> CustomFunctionAnalyser | None:
         analyser = None
 
         if name in self._user_def:
@@ -123,15 +131,13 @@ class CustomFunctionHandler:
         return analyser
 
     def __get_by_symbol(
-        self, name: str, ctx: Context
-    ) -> Optional[CustomFunctionAnalyser]:
-        symbols: List[Import] = list()
+        self,
+        name: Identifier,
+        ctx: Context,
+    ) -> CustomFunctionAnalyser | None:
+        symbols: list[Import] = list()
 
-        _imports: filter[Import] = filter(
-            lambda s: isinstance(s, Import), ctx.symbol_table.symbols()
-        )
-
-        for symbol in _imports:
+        for symbol in (s for s in ctx.symbol_table.symbols if isinstance(s, Import)):
             # From imported
             if name in (symbol.name, symbol.qualified_name):
                 symbols.append(symbol)
@@ -153,7 +159,7 @@ class CustomFunctionHandler:
 
         return None
 
-    def get(self, name: str, ctx: Context) -> Optional[CustomFunctionAnalyser]:
+    def get(self, name: Identifier, ctx: Context) -> CustomFunctionAnalyser | None:
         """Return the analyser for the function `name`, `None` otherwise."""
         analyser = self.__get_by_name(name)
 
@@ -162,11 +168,16 @@ class CustomFunctionHandler:
 
         return analyser
 
-    def has_analyser(self, name: str, ctx: Context) -> bool:
+    def has_analyser(self, name: Identifier, ctx: Context) -> bool:
         """Return `True` if there is a analyser for the function `name`."""
         return self.get(name, ctx) is not None
 
-    def handle_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
+    def handle_def(
+        self,
+        name: Identifier,
+        node: AstFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         """Dispatch to the to the appropriate analyser."""
         analyser = self.get(name, ctx)
 
@@ -175,7 +186,12 @@ class CustomFunctionHandler:
 
         return analyser.on_def(name, node, ctx)
 
-    def handle_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
+    def handle_call(
+        self,
+        name: Identifier,
+        node: ast.Call,
+        ctx: Context,
+    ) -> FunctionIr:
         """Dispatch to the to the appropriate analyser."""
         analyser = self.get(name, ctx)
 

@@ -39,9 +39,9 @@ from rattr.module_locator.util import (
 )
 
 if TYPE_CHECKING:
-    from _ast import _Identifier
     from typing import Final
 
+    from rattr.ast.types import Identifier
     from rattr.module_locator.util import ModuleName
 
 
@@ -76,23 +76,20 @@ def compile_root_context(module: ast.Module) -> Context:
     root.add([__module_level_builtin(name) for name in PYTHON_BUILTINS])
 
     # Populate the context with the top-level declarations
-    _root_context_builder = ContextBuilder(context=root)
+    _root_context_builder = RootContextBuilder(context=root)
     _root_context_builder.register_stmts(*module.body)
 
     return root
 
 
-class ContextBuilder:
+class RootContextBuilder:
     def __init__(self, context: Context) -> None:
         self.context: Context = context
         super().__init__()
 
     def register(self, node: ast.AST) -> None:
         if isinstance(node, ast.Module):
-            return TypeError(
-                "call visit(...) on each stmt in the module body, not on the module "
-                "directly"
-            )
+            return TypeError("use register_stmts(module.body) for modules")
 
         # NOTE
         # We do this and implement "visit_If", etc rather than inheriting from
@@ -309,14 +306,12 @@ class ContextBuilder:
                 # Handle `outer_lhs = (inner_lhs := lambda: ...)`
                 if has_lambda_in_rhs(node):
                     if len(diff.added) == 1 and node.value == walrus:
-                        outer_lhs = assignment_targets(node)[0]
                         inner_rhs = list(diff.added)[0]
-                        self.context.add(
-                            attrs.evolve(
-                                inner_rhs,
-                                name=fullname_of(outer_lhs),
-                            )
+                        outer_lhs = attrs.evolve(
+                            inner_rhs,
+                            name=fullname_of(assignment_targets(node)[0]),
                         )
+                        self.context.add(outer_lhs)
                     elif len(diff.added) > 1:
                         error.error("multiple deeply nested walrus assignments")
                         continue
@@ -395,7 +390,7 @@ def __import(
     return _import
 
 
-def __dummy_token(name: _Identifier) -> ast.Name:
+def __dummy_token(name: Identifier) -> ast.Name:
     return ast.Name(
         id=name,
         lineno=0,
@@ -404,11 +399,11 @@ def __dummy_token(name: _Identifier) -> ast.Name:
     )
 
 
-def __module_level_name(name: _Identifier) -> Name:
+def __module_level_name(name: Identifier) -> Name:
     return Name(name=name, token=__dummy_token(name))
 
 
-def __module_level_builtin(name: _Identifier) -> Builtin:
+def __module_level_builtin(name: Identifier) -> Builtin:
     return Builtin(name=name, token=__dummy_token(name))
 
 

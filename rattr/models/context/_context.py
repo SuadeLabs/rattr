@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, MutableMapping
 
@@ -7,10 +8,10 @@ import attrs
 from attrs import field
 
 from rattr import error
+from rattr.ast.types import Identifier
 from rattr.ast.util import unravel_names
 from rattr.config.state import enter_file
 from rattr.config.util import get_current_file
-from rattr.models.context._root_context import compile_root_context
 from rattr.models.context._symbol_table import SymbolTable
 from rattr.models.context._util import (
     is_call_to_call_result,
@@ -21,7 +22,7 @@ from rattr.models.context._util import (
     is_call_to_subscript_item,
 )
 from rattr.models.symbol._symbol import CallInterface, Symbol
-from rattr.models.symbol._symbols import Import, Name
+from rattr.models.symbol._symbols import Class, Func, Import, Name
 from rattr.models.symbol.util import (
     with_call_brackets,
     without_call_brackets,
@@ -30,17 +31,27 @@ from rattr.module_locator.util import derive_possible_module_names
 
 if TYPE_CHECKING:
     import ast
-    from typing import Container, Iterable, Iterator
+    from typing import Container, Iterable, Iterator, Protocol, TypeVar
 
     from rattr.models.symbol._types import CallableSymbol
-    from rattr.versioning.typing import TypeAlias
+
+    class ContainerWithContext(Protocol):
+        context: Context
+
+    SymbolType = TypeVar("SymbolType", bound=Symbol)
 
 
-_Identifier: TypeAlias = str
+@contextmanager
+def new_context(container: ContainerWithContext) -> Iterator[None]:
+    """Set the container context to a new child in the context block, pop on exit."""
+    parent = container.context
+    container.context = Context(parent)
+    yield
+    container.context = parent
 
 
 @attrs.mutable
-class Context(MutableMapping[_Identifier, Symbol]):
+class Context(MutableMapping[Identifier, Symbol]):
     parent: Context | None
     symbol_table: SymbolTable = field(factory=SymbolTable, kw_only=True)
     _file: Path = field(factory=get_current_file, kw_only=True)
@@ -74,11 +85,11 @@ class Context(MutableMapping[_Identifier, Symbol]):
         return self.declared_symbols | self.parent.all_symbols
 
     @property
-    def declared_names(self) -> set[_Identifier]:
+    def declared_names(self) -> set[Identifier]:
         return set(self.symbol_table.names)
 
     @property
-    def all_names(self) -> set[_Identifier]:
+    def all_names(self) -> set[Identifier]:
         if self.parent is None:
             return self.declared_names
 
@@ -106,13 +117,13 @@ class Context(MutableMapping[_Identifier, Symbol]):
         for symbol in (s for s in symbols if is_argument or s not in self):
             self[symbol.name] = symbol
 
-    def remove(self, id_or_ids: _Identifier | Iterable[_Identifier]) -> None:
+    def remove(self, id_or_ids: Identifier | Iterable[Identifier]) -> None:
         """Remove the given id(s) from the context.
 
         If the symbol is declared in this context it will be removed, likewise if it is
         declared in a ancestor it will also be removed.
         """
-        if isinstance(id_or_ids, _Identifier):
+        if isinstance(id_or_ids, Identifier):
             ids = [id_or_ids]
         else:
             ids = id_or_ids
@@ -120,13 +131,13 @@ class Context(MutableMapping[_Identifier, Symbol]):
         for id in ids:
             self.pop(id)
 
-    def delete(self, id_or_ids: _Identifier | Iterable[_Identifier]) -> None:
+    def delete(self, id_or_ids: Identifier | Iterable[Identifier]) -> None:
         """Alias to remove."""
         self.remove(id_or_ids)
 
     def get_call_target(
         self,
-        callee: _Identifier,
+        callee: Identifier,
         culprit: ast.Call,
         *,
         warn: bool = True,
@@ -193,7 +204,7 @@ class Context(MutableMapping[_Identifier, Symbol]):
         return target
 
     # TODO Note to self: I don't like this method name, change it!
-    def declares(self, id: _Identifier) -> bool:
+    def declares(self, id: Identifier) -> bool:
         """Return `True` if the id was defined in this context, not a parent."""
         return id in self.symbol_table
 
@@ -244,6 +255,8 @@ class Context(MutableMapping[_Identifier, Symbol]):
 
         This is an in-place operation which returns self.
         """
+        from rattr.models.context._root_context import compile_root_context
+
         seen: set[Path] = set()
         queue = self.get_starred_imports(seen_by_origin=seen)
 
@@ -282,11 +295,27 @@ class Context(MutableMapping[_Identifier, Symbol]):
 
         return self
 
+    def get_class_or_error(self, name: Identifier) -> Class:
+        cls = self.get(name)
+
+        if cls is None or not isinstance(cls, Class):
+            raise KeyError(f"class {name!r} is not defined in the current context")
+
+        return cls
+
+    def get_func_or_error(self, name: Identifier) -> Func:
+        func = self.get(name)
+
+        if func is None or not isinstance(func, Func):
+            raise KeyError(f"function {name!r} is not defined in the current context")
+
+        return func
+
     # ================================================================================ #
     # Private helper methods
     # ================================================================================ #
 
-    def _get_target_in_imported_module(self, name: _Identifier) -> Symbol | None:
+    def _get_target_in_imported_module(self, name: Identifier) -> Symbol | None:
         modules = [self.get(m) for m in derive_possible_module_names(name)]
         module = next((m for m in modules if m is not None), None)
 
@@ -306,7 +335,7 @@ class Context(MutableMapping[_Identifier, Symbol]):
     # Mutable mapping abstract methods and mixin-overrides
     # ================================================================================ #
 
-    def __getitem__(self, __key: _Identifier) -> Symbol:
+    def __getitem__(self, __key: Identifier) -> Symbol:
         if __key in self.symbol_table:
             return self.symbol_table.__getitem__(__key)
 
@@ -315,13 +344,13 @@ class Context(MutableMapping[_Identifier, Symbol]):
 
         return self.parent.__getitem__(__key)
 
-    def __setitem__(self, __key: _Identifier, __value: Symbol) -> None:
+    def __setitem__(self, __key: Identifier, __value: Symbol) -> None:
         if __key != __value.id:
             raise ValueError("symbol key and id do not match")
 
         return self.symbol_table.add(__value)
 
-    def __delitem__(self, __key: _Identifier) -> None:
+    def __delitem__(self, __key: Identifier) -> None:
         if __key in self.symbol_table:
             return self.symbol_table.__delitem__(__key)
 
@@ -330,7 +359,7 @@ class Context(MutableMapping[_Identifier, Symbol]):
 
         return self.parent.__delitem__(__key)
 
-    def __iter__(self) -> Iterator[_Identifier]:
+    def __iter__(self) -> Iterator[Identifier]:
         # Get the chain of ancestors from here to root
         contexts: list[Context] = [ctx := self]
 

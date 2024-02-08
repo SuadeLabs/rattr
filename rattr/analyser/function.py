@@ -7,15 +7,6 @@ from typing import List, Optional, Tuple
 
 from rattr import error
 from rattr.analyser.base import NodeVisitor
-from rattr.analyser.context import (
-    Call,
-    Class,
-    Context,
-    Func,
-    Name,
-    Symbol,
-    new_context,
-)
 from rattr.analyser.types import (
     AstStrictlyNameable,
     CompoundNameable,
@@ -26,12 +17,7 @@ from rattr.analyser.util import (
     assignment_is_one_to_one,
     class_in_rhs,
     get_assignment_targets,
-    get_basename_fullname_pair,
-    get_fullname,
     get_function_body,
-    get_function_call_args,
-    get_function_def_args,
-    get_namedtuple_attrs_from_call,
     is_call_to,
     lambda_in_rhs,
     namedtuple_in_rhs,
@@ -42,8 +28,21 @@ from rattr.ast.types import (
     AnyFunctionDef,
     AstFunctionDefOrLambda,
 )
+from rattr.ast.util import (
+    fullname_of,
+    namedtuple_init_signature_from_declaration,
+    names_of,
+)
 from rattr.config import Config
-from rattr.models.symbol import PYTHON_ATTR_ACCESS_BUILTINS
+from rattr.models.context import Context, new_context
+from rattr.models.symbol import (
+    PYTHON_ATTR_ACCESS_BUILTINS,
+    Call,
+    CallInterface,
+    Class,
+    Func,
+    Name,
+)
 from rattr.models.symbol.util import without_call_brackets
 from rattr.plugins import plugins
 
@@ -65,13 +64,13 @@ class FunctionAnalyser(NodeVisitor):
             "calls": set(),
         }
 
-        # NOTE Managed by `new_context` contextmanager -- do not manually set
         self.context: Context = context
+        """Managed by `new_context`."""
 
     def analyse(self) -> FunctionIr:
         """Entry point, return the results of analysis."""
         with new_context(self):
-            self.context.push_arguments_to_context(self._ast.args)
+            self.context.add_arguments_to_context(self._ast.args)
 
             for stmt in get_function_body(self._ast):
                 self.visit(stmt)
@@ -79,14 +78,16 @@ class FunctionAnalyser(NodeVisitor):
         return self.func_ir
 
     def get_and_verify_name(
-        self, node: Nameable, ctx: ast.expr_context
+        self,
+        node: Nameable,
+        ctx: ast.expr_context,
     ) -> Tuple[str, str]:
         """Return the name, also verify validity."""
         config = Config()
 
-        base, full = get_basename_fullname_pair(node, safe=True)
+        base, full = names_of(node, safe=True)
 
-        is_undeclared = base not in self.context
+        is_undeclared = base not in self.context.symbol_table.names
         is_assignment = isinstance(ctx, ast.Store)
         is_local = base.startswith(config.LOCAL_VALUE_PREFIX)
 
@@ -95,15 +96,8 @@ class FunctionAnalyser(NodeVisitor):
 
         return base, full
 
-    def update_results(self, symbol: Symbol, ctx: ast.expr_context) -> None:
-        """Add the given name to the result.
-
-        To be called on access -- i.e. ast.Name, etc.
-
-        """
-        if not isinstance(symbol, Symbol):
-            raise TypeError()
-
+    def update_results(self, symbol: Name, ctx: ast.expr_context) -> None:
+        """Add the given name to the result."""
         if isinstance(ctx, ast.Store):
             self.func_ir["sets"].add(symbol)
 
@@ -120,8 +114,7 @@ class FunctionAnalyser(NodeVisitor):
     def visit_Name(self, node: ast.Name) -> None:
         """Visit ast.Name(id: str, ctx: ast.expr_context)."""
         basename, fullname = self.get_and_verify_name(node, node.ctx)
-
-        self.update_results(Name(fullname, basename), node.ctx)
+        self.update_results(Name(fullname, basename, token=node), node.ctx)
 
     def visit_compound_nameable(self, node: CompoundNameable) -> None:
         """Helper method for special nameable nodes.
@@ -143,7 +136,7 @@ class FunctionAnalyser(NodeVisitor):
         if not isinstance(node.value, AstStrictlyNameable):
             self.generic_visit(node.value)
 
-        self.update_results(Name(fullname, basename), node.ctx)
+        self.update_results(Name(fullname, basename, token=node), node.ctx)
 
     def visit_Starred(self, node: ast.Starred) -> None:
         self.visit_compound_nameable(node)
@@ -156,8 +149,6 @@ class FunctionAnalyser(NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> None:
         """Visit ast.Call(func, args, keywords)."""
-        config = Config()
-
         _, fullname = self.get_and_verify_name(node, ast.Load())
 
         # Handle special builtins such as getattr, setattr, etc
@@ -170,20 +161,16 @@ class FunctionAnalyser(NodeVisitor):
 
         target = self.context.get_call_target(fullname, node)
 
-        if not isinstance(target, Class):
-            args = get_function_call_args(node)
-        else:
+        if isinstance(target, Class):
             error.warning(f"'{target.name}' initialised but not stored", node)
-            args = get_function_call_args(node, config.LOCAL_VALUE_PREFIX + target.name)
 
-        # NOTE
-        #   If this is a call to a method on an attribute, then it necessarily
-        #   "gets" the attribute
+        # NOTE On a call to `cls.member.method()` then it must get `class.member`
+        # TODO Refactor
         parts = without_call_brackets(fullname).split(".")[:-1]
         for attr in list(accumulate(parts, lambda a, b: f"{a}.{b}"))[1:]:
-            self.func_ir["gets"].add(Name(attr, parts[0]))
+            self.func_ir["gets"].add(Name(attr, parts[0], token=node))
 
-        self.func_ir["calls"].add(Call(fullname, *args, target))
+        self.func_ir["calls"].add(Call.from_call(fullname, call=node, target=target))
 
         for arg in (*node.args, *node.keywords):
             self.visit(arg)
@@ -197,9 +184,9 @@ class FunctionAnalyser(NodeVisitor):
         if isinstance(node.func, ast.Name):
             name = without_call_brackets(node.func.id)
         else:
-            name = without_call_brackets(get_fullname(node, safe=True))
+            name = without_call_brackets(fullname_of(node, safe=True))
 
-        analyser = plugins.custom_function_handler.get(name, self.context.get_root())
+        analyser = plugins.custom_function_handler.get(name, self.context.root)
 
         if analyser is None:
             return False
@@ -226,8 +213,8 @@ class FunctionAnalyser(NodeVisitor):
 
         error.error("unable to unbind lambdas defined in functions", node)
 
-        name = get_fullname(target)
-        func = Func(name, *get_function_def_args(node.value))
+        name = fullname_of(target)
+        func = Func(name=name, token=node, interface=CallInterface.from_fn_def(node))
 
         self.context.add(func)
 
@@ -238,9 +225,13 @@ class FunctionAnalyser(NodeVisitor):
         if not assignment_is_one_to_one(node):
             error.fatal("namedtuple assignment must be one-to-one", culprit=node)
 
-        name = get_fullname(target)
-        cls = Class(name, args=get_namedtuple_attrs_from_call(node))
+        name = fullname_of(target)
+        try:
+            arguments = namedtuple_init_signature_from_declaration(node)
+        except ValueError as exc:
+            return error.error(str(exc), culprit=node)
 
+        cls = Class(name=name, token=node, interface=CallInterface(args=arguments))
         self.context.add(cls)
 
     def visit_ClassAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
@@ -251,16 +242,16 @@ class FunctionAnalyser(NodeVisitor):
             error.fatal("class assignment must be one-to-one", node)
 
         # Create call to class initialiser
-        lhs_basename, lhs_name = get_basename_fullname_pair(target)
-        class_name = get_fullname(node.value)
+        lhs_basename, lhs_name = names_of(target)
 
-        init_args = get_function_call_args(node.value, lhs_name)
+        class_name = fullname_of(node.value)
         init_body = self.context.get_call_target(class_name, node)
 
-        self.func_ir["calls"].add(Call(class_name, *init_args, init_body))
+        call = Call.from_call(class_name, call=node.value, target=init_body)
+        self.func_ir["calls"].add(call)
 
         # Create set to LHS
-        self.func_ir["sets"].add(Name(lhs_name, lhs_basename))
+        self.func_ir["sets"].add(Name(lhs_name, lhs_basename, token=node))
 
         # Register assignments
         for target in targets:
@@ -309,7 +300,7 @@ class FunctionAnalyser(NodeVisitor):
         self.visit_AnyAssign(node)
 
     def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
-        self.func_ir["sets"].add(Name(*get_basename_fullname_pair(node.target)))
+        self.func_ir["sets"].add(Name(*names_of(node.target), token=node))
 
         if lambda_in_rhs(node):
             self.visit(node.value)
@@ -319,7 +310,7 @@ class FunctionAnalyser(NodeVisitor):
     def visit_Delete(self, node: ast.Delete) -> None:
         """Visit ast.Delete(targets)."""
         for target in node.targets:
-            self.context.del_identifiers_from_context(target)
+            self.context.remove_identifiers_from_context(target)
 
         self.generic_visit(node)
 
@@ -355,7 +346,7 @@ class FunctionAnalyser(NodeVisitor):
     # Context creators: function, class definitions, etc
     # ----------------------------------------------------------------------- #
 
-    def visit_AnyFunctionDef(self, node: AnyFunctionDef) -> None:
+    def visit_AnyFunctionDef(self, node: AnyFunctionDef | ast.Lambda) -> None:
         """Helper method for visiting nested function definitions.
 
         Visit ast.FunctionDef(name, args, body, decorator_list, returns)\\
@@ -367,21 +358,17 @@ class FunctionAnalyser(NodeVisitor):
             only reached when the lambda is an anonymous function.
 
         """
-        args = get_function_def_args(node)
-
         if not isinstance(node, ast.Lambda):
             error.error("unable to unbind nested functions", node)
         else:
             error.error("unable to unbind anonymous lambdas", node)
 
-        if isinstance(node, ast.FunctionDef):
-            self.context.add(Func(node.name, *args))
-        if isinstance(node, ast.AsyncFunctionDef):
-            self.context.add(Func(node.name, *args, is_async=True))
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            self.context.add(Func.from_fn_def(node))
 
         # TODO Allow nested -- FunctionAnalyser on name "outer.inner"
         with new_context(self):
-            self.context.push_arguments_to_context(node.args)
+            self.context.add_arguments_to_context(node.args)
 
             for stmt in get_function_body(node):
                 self.visit(stmt)
@@ -475,19 +462,24 @@ class FunctionAnalyser(NodeVisitor):
                 return False
 
             target = self.context.get_call_target(
-                get_fullname(node, True), node, warn=False
+                fullname_of(node, True),
+                node,
+                warn=False,
             )
 
             if not isinstance(target, Class):
                 return False
 
             # Create call to class initialiser
-            class_name = get_fullname(node)
-
-            init_args = get_function_call_args(node, self="@ReturnValue")
+            class_name = fullname_of(node)
             init_body = self.context.get_call_target(class_name, node)
-
-            self.func_ir["calls"].add(Call(class_name, *init_args, init_body))
+            call = Call.from_call(
+                class_name,
+                call=node,
+                target=init_body,
+                self="@ReturnValue",
+            )
+            self.func_ir["calls"].add(call)
 
             # Visit call arguments
             for arg in (*node.args, *node.keywords):

@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import ast
+from typing import TYPE_CHECKING
 
 from rattr.analyser.base import CustomFunctionAnalyser
-from rattr.analyser.context import Context
 from rattr.analyser.types import FunctionIr
 from rattr.ast.types import AnyFunctionDef
+
+if TYPE_CHECKING:
+    from rattr.models.context import Context
 
 
 class DefaultDictAnalyser(CustomFunctionAnalyser):
