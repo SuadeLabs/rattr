@@ -1,9 +1,11 @@
 """Tests shared across multiple analysers."""
 from __future__ import annotations
 
-from rattr.analyser.context import RootContext
-from rattr.analyser.context.symbol import Call, Func, Name
+import attrs
+
 from rattr.analyser.file import FileAnalyser
+from rattr.models.context import compile_root_context
+from rattr.models.symbol import Call, CallInterface, Func, Name
 
 
 class TestAnnotations:
@@ -19,10 +21,13 @@ class TestAnnotations:
                 return arg.another_attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        a_func_async = attrs.evolve(a_func, is_async=True)
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -31,7 +36,6 @@ class TestAnnotations:
                 "sets": set(),
             },
         }
-
         assert results.ir_as_dict() == expected
 
         # AsyncFunctionDef
@@ -45,10 +49,10 @@ class TestAnnotations:
                 return arg.another_attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], is_async=True): {
+            a_func_async: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -57,8 +61,6 @@ class TestAnnotations:
                 "sets": set(),
             },
         }
-
-        print(results.ir_as_dict())
         assert results.ir_as_dict() == expected
 
         # ClassDef
@@ -74,10 +76,10 @@ class TestAnnotations:
                     self.a = a
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None, is_async=True): {
+            a_func_async: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -86,7 +88,6 @@ class TestAnnotations:
                 "sets": set(),
             },
         }
-
         assert results.ir_as_dict() == expected
 
     def test_rattr_results(self, parse):
@@ -102,10 +103,16 @@ class TestAnnotations:
                 return arg.another_attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        a_func_async = attrs.evolve(a_func, is_async=True)
+
+        another_func = Func(name="another_func", interface=CallInterface(args=("arg",)))
+        another_func_async = attrs.evolve(a_func, is_async=True)
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -113,7 +120,7 @@ class TestAnnotations:
                 },
                 "sets": set(),
             },
-            Func("another_func", ["arg"], None, None): {
+            another_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -123,7 +130,6 @@ class TestAnnotations:
                 "sets": set(),
             },
         }
-
         assert results.ir_as_dict() == expected
 
         # AsyncFunctionDef
@@ -138,10 +144,10 @@ class TestAnnotations:
                 return arg.another_attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None, is_async=True): {
+            a_func_async: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -149,7 +155,7 @@ class TestAnnotations:
                 },
                 "sets": set(),
             },
-            Func("another_func", ["arg"], None, None, is_async=True): {
+            another_func_async: {
                 "calls": set(),
                 "dels": set(),
                 "gets": set(),
@@ -180,10 +186,13 @@ class TestAnnotations:
                 return arg.another_attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        another_func = Func(name="another_func", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -191,7 +200,7 @@ class TestAnnotations:
                 },
                 "sets": set(),
             },
-            Func("another_func", ["arg"], None, None): {
+            another_func: {
                 "calls": {Call("fn_a()", ["a", "a.attr"], {"key": "b.key"})},
                 "dels": set(),
                 "gets": {

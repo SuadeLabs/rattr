@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 from rattr.analyser.base import Assertor, CustomFunctionHandler
-from rattr.analyser.context.symbol import Call, Import, Name
+from rattr.models.symbol import Call, CallArguments, Import, Name
 
 
 class TestAssertor:
@@ -63,8 +63,8 @@ class TestCustomFunctionHandler:
         assert handler.get("some_non_sense", ctx) is None
 
         ctx.symbol_table.symbols.return_value = [
-            Import("exy", "module.example"),
-            Import("mod", "module"),
+            Import(name="exy", qualified_name="module.example"),
+            Import(name="mod", qualified_name="module"),
         ]
 
         assert handler.get("exy", ctx).name == "example"
@@ -104,7 +104,11 @@ class TestCustomFunctionHandler:
                 Name("del_in_print_def"),
             },
             "calls": {
-                Call("call_in_print_def", [], {}, None),
+                Call(
+                    name="call_in_print_def",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
@@ -119,7 +123,11 @@ class TestCustomFunctionHandler:
                 Name("del_in_example_def"),
             },
             "calls": {
-                Call("call_in_example_def", [], {}, None),
+                Call(
+                    name="call_in_example_def",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
@@ -144,7 +152,11 @@ class TestCustomFunctionHandler:
                 Name("del_in_print"),
             },
             "calls": {
-                Call("call_in_print", [], {}, None),
+                Call(
+                    name="call_in_print",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
@@ -159,6 +171,10 @@ class TestCustomFunctionHandler:
                 Name("del_in_example"),
             },
             "calls": {
-                Call("call_in_example", [], {}, None),
+                Call(
+                    name="call_in_example",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }

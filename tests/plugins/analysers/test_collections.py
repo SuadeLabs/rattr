@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from rattr.analyser.context import Builtin, Call, Func, Name, RootContext
 from rattr.analyser.file import FileAnalyser
+from rattr.models.context import compile_root_context
+from rattr.models.symbol import Builtin, Call, CallInterface, Func, Name
 from rattr.plugins import plugins
 from rattr.plugins.analysers.collections import DefaultDictAnalyser
 
@@ -20,10 +21,12 @@ class TestCustomCollectionsAnalysers:
                 d = defaultdict()
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": set(),
                 "sets": {
                     Name("d"),
@@ -32,7 +35,6 @@ class TestCustomCollectionsAnalysers:
                 "calls": set(),
             }
         }
-
         assert results == expected
 
     def test_defaultdict_named_factory(self, parse):
@@ -45,10 +47,11 @@ class TestCustomCollectionsAnalysers:
                 return hello.results
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("a_func", ["arg"], None, None)
-        factory = Func("factory", [], None, None)
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        factory = Func(name="factory", interface=CallInterface(args=()))
+
         expected = {
             a_func: {
                 "gets": set(),
@@ -67,10 +70,11 @@ class TestCustomCollectionsAnalysers:
                 "calls": set(),
             },
         }
-
         assert results == expected
 
     def test_defaultdict_lambda_factory(self, parse):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # Lambda to literal
         _ast = parse(
             """
@@ -78,10 +82,10 @@ class TestCustomCollectionsAnalysers:
                 d = defaultdict(lambda: 0)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": set(),
                 "sets": {
                     Name("d"),
@@ -90,7 +94,6 @@ class TestCustomCollectionsAnalysers:
                 "calls": set(),
             }
         }
-
         assert results == expected
 
         # Lambda to attr
@@ -100,10 +103,10 @@ class TestCustomCollectionsAnalysers:
                 d = defaultdict(lambda: arg.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": {Name("arg.attr", "arg")},
                 "sets": {
                     Name("d"),
@@ -112,7 +115,6 @@ class TestCustomCollectionsAnalysers:
                 "calls": set(),
             }
         }
-
         assert results == expected
 
     def test_defaultdict_nested_factory(self, parse):
@@ -122,11 +124,13 @@ class TestCustomCollectionsAnalysers:
                 d = defaultdict(defaultdict(list))
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        list_builtin = Builtin("list", has_affect=False)
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        list_builtin = Builtin("list")
+
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": set(),
                 "sets": {
                     Name("d"),
@@ -135,5 +139,4 @@ class TestCustomCollectionsAnalysers:
                 "calls": {Call("list()", [], {}, target=list_builtin)},
             }
         }
-
         assert results == expected

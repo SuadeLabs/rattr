@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import pytest
 
-from rattr.analyser.context import (
+from rattr.analyser.file import FileAnalyser
+from rattr.models.context import compile_root_context
+from rattr.models.symbol import (
     Builtin,
     Call,
+    CallArguments,
+    CallInterface,
     Class,
     Func,
     Name,
-    RootContext,
 )
-from rattr.analyser.file import FileAnalyser
 
 
 class TestFunctionAnalyser:
@@ -22,17 +24,18 @@ class TestFunctionAnalyser:
                 return arg.gets_me
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {Name("arg.gets_me", "arg")},
                 "sets": {Name("arg.sets_me", "arg")},
             }
         }
-
         assert results == expected
 
     def test_multiple_functions(self, parse):
@@ -47,16 +50,19 @@ class TestFunctionAnalyser:
                 arg.attr_two = "see!"
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        another_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {Name("arg.gets_me", "arg")},
                 "sets": {Name("arg.sets_me", "arg")},
             },
-            Func("another_func", ["arg"], None, None): {
+            another_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": set(),
@@ -78,10 +84,12 @@ class TestFunctionAnalyser:
                 return arg.attr == "target value"
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -104,10 +112,12 @@ class TestFunctionAnalyser:
                 return arg.bar
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -132,14 +142,19 @@ class TestFunctionAnalyser:
                 return inner(arg)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        inner_symbol = Func("inner", ["arg"], None, None)
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        inner_symbol = Func(name="inner", interface=CallInterface(args=("arg",)))
+        inner_symbol_call = Call(
+            name="inner",
+            args=CallArguments(args=("args",), kwargs={}),
+            target=inner_symbol,
+        )
+
         expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": {
-                    Call("inner()", ["arg"], {}, inner_symbol),
-                },
+            a_func: {
+                "calls": {inner_symbol_call},
                 "dels": set(),
                 "gets": {
                     Name("arg"),
@@ -156,7 +171,7 @@ class TestFunctionAnalyser:
     #         def list_comp(arg):
     #             return [a.prop for a in arg.iter]
     #     """)
-    #     results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+    #     results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
     #     expected = {
     #         Func("list_comp", ["arg"], None, None): {
@@ -172,6 +187,8 @@ class TestFunctionAnalyser:
     #     assert results == expected
 
     def test_getattr(self, parse):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # Simple
         _ast = parse(
             """
@@ -179,15 +196,13 @@ class TestFunctionAnalyser:
                 return getattr(arg, "attr")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("arg.attr", "arg"),
-                },
+                "gets": {Name("arg.attr", "arg")},
                 "sets": set(),
             },
         }
@@ -201,15 +216,13 @@ class TestFunctionAnalyser:
                 return getattr(getattr(arg, "inner"), "outer")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("arg.inner.outer", "arg"),
-                },
+                "gets": {Name("arg.inner.outer", "arg")},
                 "sets": set(),
             },
         }
@@ -223,10 +236,10 @@ class TestFunctionAnalyser:
                 return getattr(getattr(arg.b[0], "inner"), "outer")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -239,6 +252,8 @@ class TestFunctionAnalyser:
         assert results == expected
 
     def test_hasattr(self, parse):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # Simple
         _ast = parse(
             """
@@ -246,15 +261,13 @@ class TestFunctionAnalyser:
                 return hasattr(arg, "attr")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("arg.attr", "arg"),
-                },
+                "gets": {Name("arg.attr", "arg")},
                 "sets": set(),
             },
         }
@@ -268,15 +281,13 @@ class TestFunctionAnalyser:
                 return hasattr(hasattr(arg, "inner"), "outer")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("arg.inner.outer", "arg"),
-                },
+                "gets": {Name("arg.inner.outer", "arg")},
                 "sets": set(),
             },
         }
@@ -290,15 +301,13 @@ class TestFunctionAnalyser:
                 return hasattr(hasattr(arg.b[0], "inner"), "outer")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("arg.b[].inner.outer", "arg"),
-                },
+                "gets": {Name("arg.b[].inner.outer", "arg")},
                 "sets": set(),
             },
         }
@@ -306,6 +315,8 @@ class TestFunctionAnalyser:
         assert results == expected
 
     def test_setattr(self, parse):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # Simple
         _ast = parse(
             """
@@ -313,10 +324,10 @@ class TestFunctionAnalyser:
                 setattr(arg, "attr", "value")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": set(),
@@ -335,22 +346,22 @@ class TestFunctionAnalyser:
                 return setattr(arg.b[0], "attr", "value")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "calls": set(),
                 "dels": set(),
                 "gets": set(),
-                "sets": {
-                    Name("arg.b[].attr", "arg"),
-                },
+                "sets": {Name("arg.b[].attr", "arg")},
             },
         }
 
         assert results == expected
 
     def test_delattr(self, parse):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # Simple
         _ast = parse(
             """
@@ -358,15 +369,13 @@ class TestFunctionAnalyser:
                 delattr(arg, "attr")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": set(),
                 "sets": set(),
-                "dels": {
-                    Name("arg.attr", "arg"),
-                },
+                "dels": {Name("arg.attr", "arg")},
                 "calls": set(),
             },
         }
@@ -380,15 +389,13 @@ class TestFunctionAnalyser:
                 return delattr(arg.b[0], "attr")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": set(),
                 "sets": set(),
-                "dels": {
-                    Name("arg.b[].attr", "arg"),
-                },
+                "dels": {Name("arg.b[].attr", "arg")},
                 "calls": set(),
             },
         }
@@ -396,7 +403,8 @@ class TestFunctionAnalyser:
         assert results == expected
 
     def test_format(self, parse, constant):
-        as_func = Builtin("format", has_affect=False)
+        as_func = Builtin(name="format")
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         # Simple
         _ast = parse(
@@ -405,13 +413,17 @@ class TestFunctionAnalyser:
                 return format(arg, "b")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        call_format = Call(
+            name="format()",
+            args=CallArguments(args=("arg", constant("Str"))),
+            target=as_func,
+        )
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": {
-                    Call("format()", ["arg", constant("Str")], {}, target=as_func)
-                },
+            a_func: {
+                "calls": {call_format},
                 "dels": set(),
                 "gets": {Name("arg")},
                 "sets": set(),
@@ -427,13 +439,17 @@ class TestFunctionAnalyser:
                 return format(getattr(arg, "attr"), "b")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        call_format = Call(
+            name="format()",
+            args=CallArguments(args=("arg.attr", constant("Str"))),
+            target=as_func,
+        )
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": {
-                    Call("format()", ["arg.attr", constant("Str")], {}, target=as_func)
-                },
+            a_func: {
+                "calls": {call_format},
                 "dels": set(),
                 "gets": {
                     Name("arg.attr", "arg"),
@@ -457,17 +473,26 @@ class TestFunctionAnalyser:
                 return map(lambda x: x*x, [1, 2, 3])
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        global_lamb = Func("global_lamb", ["x"], None, None)
-        func_one = Func("func_one", ["arg"], None, None)
-        func_two = Func("func_two", ["arg"], None, None)
-        _map = Builtin("map", has_affect=False)
+        func_one = Func(name="func_one", interface=CallInterface(args=("arg",)))
+        func_two = Func(name="func_two", interface=CallInterface(args=("arg",)))
+        global_lamb = Func(name="global_lamb", interface=CallInterface(args=("x",)))
+        global_lamb_call = Call(
+            name="global_lamb()",
+            args=CallArguments(args=("arg",)),
+            target=global_lamb,
+        )
+        map_symbol = Builtin("map")
+        map_symbol_call = Call(
+            name="map()",
+            args=CallArguments(args=("@Lambda", "@List")),
+            target=map_symbol,
+        )
+
         expected = {
             global_lamb: {
-                "gets": {
-                    Name("x.attr", "x"),
-                },
+                "gets": {Name("x.attr", "x")},
                 "sets": set(),
                 "dels": set(),
                 "calls": set(),
@@ -476,17 +501,13 @@ class TestFunctionAnalyser:
                 "gets": {Name("arg")},
                 "sets": set(),
                 "dels": set(),
-                "calls": {Call("global_lamb()", ["arg"], {}, target=global_lamb)},
+                "calls": {global_lamb_call},
             },
             func_two: {
-                "gets": {
-                    Name("x"),
-                },
+                "gets": {Name("x")},
                 "sets": set(),
                 "dels": set(),
-                "calls": {
-                    Call("map()", ["@Lambda", "@List"], {}, target=_map),
-                },
+                "calls": {map_symbol_call},
             },
         }
 
@@ -503,15 +524,19 @@ class TestFunctionAnalyser:
                 thing = ClassName(blarg)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        cls = Class("ClassName", ["self", "arg"], None, None)
-        a_func = Func("a_func", ["blarg"], None, None)
+        cls = Class(name="ClassName", interface=CallInterface(args=("self", "arg")))
+        cls_call = Call(
+            "ClassName()",
+            args=CallArguments(args=("thing", "blarg")),
+            target=cls,
+        )
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+
         expected = {
             cls: {
-                "sets": {
-                    Name("self.attr", "self"),
-                },
+                "sets": {Name("self.attr", "self")},
                 "gets": {Name("arg")},
                 "dels": set(),
                 "calls": set(),
@@ -520,13 +545,15 @@ class TestFunctionAnalyser:
                 "sets": {Name("thing")},
                 "gets": {Name("blarg")},
                 "dels": set(),
-                "calls": {Call("ClassName()", ["thing", "blarg"], {}, target=cls)},
+                "calls": {cls_call},
             },
         }
 
         assert results == expected
 
     def test_return_value(self, parse, constant):
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+
         # No return value
         _ast = parse(
             """
@@ -534,9 +561,8 @@ class TestFunctionAnalyser:
                 return
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
         expected = {
             a_func: {
                 "sets": set(),
@@ -555,9 +581,8 @@ class TestFunctionAnalyser:
                 return 4
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
         expected = {
             a_func: {
                 "sets": set(),
@@ -576,15 +601,12 @@ class TestFunctionAnalyser:
                 return blarg.attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
         expected = {
             a_func: {
                 "sets": set(),
-                "gets": {
-                    Name("blarg.attr", "blarg"),
-                },
+                "gets": {Name("blarg.attr", "blarg")},
                 "dels": set(),
                 "calls": set(),
             },
@@ -599,9 +621,14 @@ class TestFunctionAnalyser:
                 return blarg.attr, 1, a_call(blarg.another_attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
+        a_call = Call(
+            name="a_call",
+            args=CallArguments(args=("blarg.another_attr",)),
+            target=None,
+        )
+
         expected = {
             a_func: {
                 "sets": set(),
@@ -610,7 +637,7 @@ class TestFunctionAnalyser:
                     Name("blarg.another_attr", "blarg"),
                 },
                 "dels": set(),
-                "calls": {Call("a_call()", ["blarg.another_attr"], {}, target=None)},
+                "calls": {a_call},
             },
         }
 
@@ -627,22 +654,26 @@ class TestFunctionAnalyser:
                 return MyEnum("one")
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
-        MyEnum = Class("MyEnum", ["self", "_id"], None, None)
+        my_enum_symbol = Class(
+            name="MyEnum",
+            interface=CallInterface(args=("self", "_id")),
+        )
+        my_enum_call = Call(
+            name="MyEnum",
+            args=CallArguments(args=("@ReturnValue", constant("Str"))),
+            target=my_enum_symbol,
+        )
+
         expected = {
             a_func: {
                 "sets": set(),
                 "gets": set(),
                 "dels": set(),
-                "calls": {
-                    Call(
-                        "MyEnum()", ["@ReturnValue", constant("Str")], {}, target=MyEnum
-                    ),
-                },
+                "calls": {my_enum_call},
             },
-            MyEnum: {
+            my_enum_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("MyEnum.first", "MyEnum"),
@@ -666,24 +697,26 @@ class TestFunctionAnalyser:
                 return 1, MyEnum("one"), blarg.attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
-        MyEnum = Class("MyEnum", ["self", "_id"], None, None)
+        my_enum_symbol = Class(
+            name="MyEnum",
+            interface=CallInterface(args=("self", "_id")),
+        )
+        my_enum_call = Call(
+            name="MyEnum",
+            args=CallArguments(args=("@ReturnValue", constant("Str"))),
+            target=my_enum_symbol,
+        )
+
         expected = {
             a_func: {
                 "sets": set(),
-                "gets": {
-                    Name("blarg.attr", "blarg"),
-                },
+                "gets": {Name("blarg.attr", "blarg")},
                 "dels": set(),
-                "calls": {
-                    Call(
-                        "MyEnum()", ["@ReturnValue", constant("Str")], {}, target=MyEnum
-                    ),
-                },
+                "calls": {my_enum_call},
             },
-            MyEnum: {
+            my_enum_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("MyEnum.first", "MyEnum"),
@@ -698,6 +731,8 @@ class TestFunctionAnalyser:
 
     @pytest.mark.py_3_8_plus()
     def test_walrus(self, parse):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # General walrus use
         _ast = parse(
             """
@@ -708,9 +743,8 @@ class TestFunctionAnalyser:
                     return (b := arg.another_attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
         expected = {
             a_func: {
                 "sets": {
@@ -736,9 +770,8 @@ class TestFunctionAnalyser:
                 thing = (a, b := arg.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
         expected = {
             a_func: {
                 "sets": {
@@ -763,9 +796,8 @@ class TestFunctionAnalyser:
                 x, y = (a, b := c)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
         expected = {
             a_func: {
                 "sets": {
@@ -786,6 +818,8 @@ class TestFunctionAnalyser:
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_lambda(self, parse, capfd):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # Walrus'd Lambda
         _ast = parse(
             """
@@ -793,12 +827,11 @@ class TestFunctionAnalyser:
                 other = (name := lambda *a, **k: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         _, stderr = capfd.readouterr()
         assert "unable to unbind lambdas defined in functions" in stderr
 
-        a_func = Func("fn", ["arg"], None, None)
         expected = {
             a_func: {
                 "sets": {
@@ -822,9 +855,8 @@ class TestFunctionAnalyser:
                 other = (alpha, beta := lambda *a, **k: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
         expected = {
             a_func: {
                 "sets": {
@@ -849,9 +881,8 @@ class TestFunctionAnalyser:
                 other = [alpha, beta := lambda *a, **k: a.attr]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
         expected = {
             a_func: {
                 "sets": {

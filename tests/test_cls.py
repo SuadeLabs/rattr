@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from rattr.analyser.context import Call, Class, Func, Name, RootContext
 from rattr.analyser.file import FileAnalyser
+from rattr.models.context import compile_root_context
+from rattr.models.symbol import Call, CallArguments, CallInterface, Class, Func, Name
 
 
 class TestClassAnalyser:
@@ -17,16 +18,16 @@ class TestClassAnalyser:
                 Four, Five = 4, 5
             """
         )
-        file_analyser = FileAnalyser(_ast, RootContext(_ast))
+        file_analyser = FileAnalyser(_ast, compile_root_context(_ast))
         file_analyser.analyse()
 
         assert file_analyser.context.symbol_table == RootSymbolTable(
-            Class("Numbers", None, None, None),
-            Name("Numbers.One", "Numbers"),
-            Name("Numbers.Two", "Numbers"),
-            Name("Numbers.Three", "Numbers"),
-            Name("Numbers.Four", "Numbers"),
-            Name("Numbers.Five", "Numbers"),
+            Class(name="Numbers", interface=CallInterface()),
+            Name(name="Numbers.One", basename="Numbers"),
+            Name(name="Numbers.Two", basename="Numbers"),
+            Name(name="Numbers.Three", basename="Numbers"),
+            Name(name="Numbers.Four", basename="Numbers"),
+            Name(name="Numbers.Five", basename="Numbers"),
         )
 
     def test_class_initialiser(self, parse):
@@ -38,10 +39,15 @@ class TestClassAnalyser:
                     some_arg.good_number = 5    # 5 is a good number
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        some_class_symbol = Class(
+            name="SomeClass",
+            interface=CallInterface(args=("self", "some_arg")),
+        )
 
         expected = {
-            Class("SomeClass", ["self", "some_arg"], None, None): {
+            some_class_symbol: {
                 "sets": {
                     Name("self.whatever", "self"),
                     Name("some_arg.good_number", "some_arg"),
@@ -69,16 +75,31 @@ class TestClassAnalyser:
                     some_arg.good_number = 5    # 5 is a good number
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        func = Func("func", ["arg"], None, None)
-        cls = Class("SomeClass", ["self", "some_arg"], None, None)
+        func = Func(name="func", interface=CallInterface(args=("arg",)))
+        cls = Class(
+            name="SomeClass",
+            interface=CallInterface(args=("self", "some_arg")),
+        )
+        cls_init_call = Call(
+            name="SomeClass",
+            args=CallArguments(
+                args=(
+                    "@ReturnValue",
+                    "arg",
+                ),
+                kwargs={},
+            ),
+            target=cls,
+        )
+
         expected = {
             func: {
                 "gets": {Name("arg")},
                 "sets": set(),
                 "dels": set(),
-                "calls": {Call("SomeClass()", ["@ReturnValue", "arg"], {}, target=cls)},
+                "calls": {cls_init_call},
             },
             cls: {
                 "gets": {
@@ -107,10 +128,22 @@ class TestClassAnalyser:
                     self.a_thing = func(some_arg)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        func = Func("func", ["fn_arg"], None, None)
-        cls = Class("SomeClass", ["self", "some_arg"], None, None)
+        func = Func(name="func", interface=CallInterface(args=("fn_arg",)))
+        cls = Class(
+            name="SomeClass",
+            interface=CallInterface(args=("self", "some_arg")),
+        )
+        func_call = Call(
+            name="func",
+            args=CallArguments(
+                args=("some_arg",),
+                kwargs={},
+            ),
+            target=func,
+        )
+
         expected = {
             func: {
                 "sets": set(),
@@ -126,7 +159,7 @@ class TestClassAnalyser:
                     Name("some_arg"),
                 },
                 "dels": set(),
-                "calls": {Call("func()", ["some_arg"], {}, target=func)},
+                "calls": {func_call},
             },
         }
 
@@ -142,9 +175,10 @@ class TestClassAnalyser:
                     a.attr = b.attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        method = Func("SomeClass.method", ["a", "b"], None, None)
+        method = Func(name="SomeClass.method", interface=CallInterface(args=("a", "b")))
+
         expected = {
             method: {
                 "sets": {
@@ -170,10 +204,11 @@ class TestClassAnalyser:
                     a.attr = b.attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        cls = Class("SomeClass", ["self", "arg"], None, None)
-        method = Func("SomeClass.method", ["a", "b"], None, None)
+        cls = Class(name="SomeClass", interface=CallInterface(args=("self", "arg")))
+        method = Func(name="SomeClass.method", interface=CallInterface(args=("a", "b")))
+
         expected = {
             cls: {
                 "sets": {Name("self.attr", "self")},
@@ -182,9 +217,7 @@ class TestClassAnalyser:
                 "calls": set(),
             },
             method: {
-                "sets": {
-                    Name("a.attr", "a"),
-                },
+                "sets": {Name("a.attr", "a")},
                 "gets": {Name("b.attr", "b")},
                 "dels": set(),
                 "calls": set(),
@@ -211,9 +244,10 @@ class TestClassAnalyser:
                     return FibIter.N
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        method = Func("FibIter.next", [], None, None)
+        method = Func(name="FibIter.next", interface=CallInterface(args=()))
+
         expected = {
             method: {
                 "sets": {
@@ -234,6 +268,8 @@ class TestClassAnalyser:
         assert results == expected
 
     def test_enum(self, parse):
+        enum = Class(name="MyEnum", interface=CallInterface(args=("self", "_id")))
+
         # Explicit import
         _ast = parse(
             """
@@ -243,16 +279,13 @@ class TestClassAnalyser:
                 LHS = "RHS"
             """
         )
-        _ctx = RootContext(_ast).expand_starred_imports()
+        _ctx = compile_root_context(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
 
-        enum = Class("MyEnum", ["self", "_id"], None, None)
         expected = {
             enum: {
                 "sets": set(),
-                "gets": {
-                    Name("MyEnum.LHS", "MyEnum"),
-                },
+                "gets": {Name("MyEnum.LHS", "MyEnum")},
                 "calls": set(),
                 "dels": set(),
             }
@@ -269,16 +302,13 @@ class TestClassAnalyser:
                 LHS = "RHS"
             """
         )
-        _ctx = RootContext(_ast).expand_starred_imports()
+        _ctx = compile_root_context(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
 
-        enum = Class("MyEnum", ["self", "_id"], None, None)
         expected = {
             enum: {
                 "sets": set(),
-                "gets": {
-                    Name("MyEnum.LHS", "MyEnum"),
-                },
+                "gets": {Name("MyEnum.LHS", "MyEnum")},
                 "calls": set(),
                 "dels": set(),
             }
@@ -295,16 +325,13 @@ class TestClassAnalyser:
                 LHS = "RHS"
             """
         )
-        _ctx = RootContext(_ast).expand_starred_imports()
+        _ctx = compile_root_context(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
 
-        enum = Class("MyEnum", ["self", "_id"], None, None)
         expected = {
             enum: {
                 "sets": set(),
-                "gets": {
-                    Name("MyEnum.LHS", "MyEnum"),
-                },
+                "gets": {Name("MyEnum.LHS", "MyEnum")},
                 "calls": set(),
                 "dels": set(),
             }
@@ -330,12 +357,18 @@ class TestClassAnalyser:
                 return 4
             """
         )
-        _ctx = RootContext(_ast).expand_starred_imports()
+        _ctx = compile_root_context(_ast).expand_starred_imports()
         results = FileAnalyser(_ast, _ctx).analyse()
 
-        enum = Class("MyEnum", ["self", "_id"], None, None)
-        get_one = Func("get_one", [], None, None)
-        get_none = Func("get_none", [], None, None)
+        enum = Class(name="MyEnum", interface=CallInterface(args=("self", "_id")))
+        enum_call = Call(
+            name="MyEnum()",
+            args=CallArguments(args=("@ReturnValue", constant("Str"))),
+            target=enum,
+        )
+        get_one = Func(name="get_one", interface=CallInterface())
+        get_none = Func(name="get_none", interface=CallInterface())
+
         expected = {
             enum: {
                 "sets": set(),
@@ -350,9 +383,7 @@ class TestClassAnalyser:
             get_one: {
                 "sets": set(),
                 "gets": set(),
-                "calls": {
-                    Call("MyEnum()", ["@ReturnValue", constant("Str")], {}, target=enum)
-                },
+                "calls": {enum_call},
                 "dels": set(),
             },
             get_none: {
@@ -367,6 +398,10 @@ class TestClassAnalyser:
 
     @pytest.mark.py_3_8_plus()
     def test_walrus(self, parse, RootSymbolTable):
+        wally = Class(name="IAmTheWalrus", interface=CallInterface(args=("self",)))
+        cls_attr_a = Name(name="IAmTheWalrus.cls_attr_a", basename="IAmTheWalrus")
+        cls_attr_b = Name(name="IAmTheWalrus.cls_attr_b", basename="IAmTheWalrus")
+
         # "Normal"
         _ast = parse(
             """
@@ -377,12 +412,8 @@ class TestClassAnalyser:
                     inst_attr_a = (inst_attr_b := 0)  # Just as yuck
             """
         )
-        file_analyser = FileAnalyser(_ast, RootContext(_ast))
+        file_analyser = FileAnalyser(_ast, compile_root_context(_ast))
         results = file_analyser.analyse()
-
-        wally = Class("IAmTheWalrus", ["self"], None, None)
-        cls_attr_a = Name("IAmTheWalrus.cls_attr_a", "IAmTheWalrus")
-        cls_attr_b = Name("IAmTheWalrus.cls_attr_b", "IAmTheWalrus")
 
         assert file_analyser.context.symbol_table == RootSymbolTable(
             wally, cls_attr_a, cls_attr_b
@@ -399,7 +430,6 @@ class TestClassAnalyser:
                 "calls": set(),
             }
         }
-
         assert results == expected
 
         # Tuple'd
@@ -412,12 +442,8 @@ class TestClassAnalyser:
                     inst_attr_a = (a, inst_attr_b := 0)
             """
         )
-        file_analyser = FileAnalyser(_ast, RootContext(_ast))
+        file_analyser = FileAnalyser(_ast, compile_root_context(_ast))
         results = file_analyser.analyse()
-
-        wally = Class("IAmTheWalrus", ["self"], None, None)
-        cls_attr_a = Name("IAmTheWalrus.cls_attr_a", "IAmTheWalrus")
-        cls_attr_b = Name("IAmTheWalrus.cls_attr_b", "IAmTheWalrus")
 
         assert file_analyser.context.symbol_table == RootSymbolTable(
             wally, cls_attr_a, cls_attr_b
@@ -436,7 +462,6 @@ class TestClassAnalyser:
                 "calls": set(),
             }
         }
-
         assert results == expected
 
     @pytest.mark.py_3_8_plus()
@@ -453,9 +478,10 @@ class TestClassAnalyser:
                         return alias
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        static = Func("IAmTheWalrus.more_contrived", [], None, None, False, None)
+        static = Func(name="IAmTheWalrus.more_contrived", interface=CallInterface())
+
         expected = {
             static: {
                 "sets": {

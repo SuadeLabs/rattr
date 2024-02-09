@@ -6,14 +6,22 @@ from unittest import mock
 
 import pytest
 
-from rattr.analyser.context import Call, Func, Import, Name
-from rattr.analyser.context.symbol import Class
 from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
+from rattr.models.symbol import (
+    Call,
+    CallArguments,
+    CallInterface,
+    Class,
+    Func,
+    Import,
+    Name,
+)
 
 
 class TestResults:
     def test_generate_results_from_ir_no_calls(self):
         # No calls
+        fn = Func(name="fn", interface=CallInterface(args=("arg",)))
         fn_ir = {
             "sets": {
                 Name("arg.attr", "arg"),
@@ -24,7 +32,7 @@ class TestResults:
             "dels": set(),
             "calls": set(),
         }
-        file_ir = {Func("fn", ["arg"], None, None): fn_ir}
+        file_ir = {fn: fn_ir}
 
         expected = {
             "fn": {
@@ -39,8 +47,8 @@ class TestResults:
 
     def test_generate_results_from_ir_simple(self):
         # Calls
-        fn_a = Func("fn_a", ["arg"], None, None)
-        fn_b = Func("fn_b", ["arg_b"], None, None)
+        fn_a = Func(name="fn_a", interface=CallInterface(args=("arg",)))
+        fn_b = Func(name="fn_b", interface=CallInterface(args=("arg_b",)))
         fn_a_ir = {
             "sets": {
                 Name("arg.attr", "arg"),
@@ -50,7 +58,7 @@ class TestResults:
             },
             "dels": set(),
             "calls": {
-                Call("fn_b()", ["arg"], {}, target=fn_b),
+                Call(name="fn_b", args=CallArguments(args=("arg",)), target=fn_b),
             },
         }
         fn_b_ir = {
@@ -87,6 +95,7 @@ class TestResults:
 
     def test_generate_results_from_ir_direct_recursion(self):
         # Direct recursion
+        fn = Func(name="fn", interface=CallInterface(args=("arg",)))
         fn_ir = {
             "sets": {
                 Name("arg.attr", "arg"),
@@ -95,9 +104,9 @@ class TestResults:
                 Name("arg.another_attr", "arg"),
             },
             "dels": set(),
-            "calls": {Call("fn()", ["arg"], {})},
+            "calls": {Call(name="fn()", args=CallArguments(args=("arg",)))},
         }
-        file_ir = {Func("fn", ["arg"], None, None): fn_ir}
+        file_ir = {fn: fn_ir}
 
         expected = {
             "fn": {
@@ -112,19 +121,23 @@ class TestResults:
 
     def test_generate_results_from_ir_indirect_recursion(self):
         # Indirect recursion
-        fn_a = Func("fn_a", ["arg_a"], None, None)
-        fn_b = Func("fn_b", ["arg_b"], None, None)
+        fn_a = Func(name="fn_a", interface=CallInterface(args=("arg_a",)))
+        fn_b = Func(name="fn_b", interface=CallInterface(args=("arg_b",)))
         fn_a_ir = {
             "sets": {Name("arg_a.get_from_a", "arg_a")},
             "gets": set(),
             "dels": set(),
-            "calls": {Call("fn_b()", ["arg_a"], {}, target=fn_b)},
+            "calls": {
+                Call(name="fn_b", args=CallArguments(args=("arg_a",)), target=fn_b),
+            },
         }
         fn_b_ir = {
             "sets": {Name("arg_b.get_from_b", "arg_b")},
             "gets": set(),
             "dels": set(),
-            "calls": {Call("fn_a()", ["arg_b"], {}, target=fn_a)},
+            "calls": {
+                Call(name="fn_a", args=CallArguments(args=("arg_b",)), target=fn_a),
+            },
         }
         file_ir = {
             fn_a: fn_a_ir,
@@ -149,19 +162,23 @@ class TestResults:
         assert generate_results_from_ir(file_ir, dict()) == expected
 
     def test_generate_results_from_ir_child_has_direct_recursion(self):
-        fn_a = Func("fn_a", ["x"], None, None)
-        fn_b = Func("fn_b", ["arg"], None, None)
+        fn_a = Func(name="fn_a", interface=CallInterface(args=("x",)))
+        fn_b = Func(name="fn_b", interface=CallInterface(args=("arg",)))
         fn_a_ir = {
             "sets": set(),
             "gets": {Name("x.attr", "x")},
             "dels": set(),
-            "calls": {Call("fn_b()", ["x"], {}, target=fn_b)},
+            "calls": {
+                Call(name="fn_b", args=CallArguments(args=("x",)), target=fn_b),
+            },
         }
         fn_b_ir = {
             "sets": set(),
             "gets": {Name("arg.field", "arg")},
             "dels": set(),
-            "calls": {Call("fn_b()", ["arg"], {}, target=fn_b)},
+            "calls": {
+                Call(name="fn_b", args=CallArguments(args=("arg",)), target=fn_b),
+            },
         }
         file_ir = {
             fn_a: fn_a_ir,
@@ -186,26 +203,44 @@ class TestResults:
         assert generate_results_from_ir(file_ir, dict()) == expected
 
     def test_generate_results_from_ir_child_has_indirect_recursion(self):
-        fn_a = Func("fn_a", ["a"], None, None)
-        fn_b = Func("fn_b", ["b"], None, None)
-        fn_c = Func("fn_c", ["c"], None, None)
+        fn_a = Func(name="fn_a", interface=CallInterface(args=("a",)))
+        fn_b = Func(name="fn_b", interface=CallInterface(args=("b",)))
+        fn_c = Func(name="fn_c", interface=CallInterface(args=("c",)))
         fn_a_ir = {
             "sets": set(),
             "gets": {Name("a.in_a", "a")},
             "dels": set(),
-            "calls": {Call("fn_b()", ["a"], {}, target=fn_b)},
+            "calls": {
+                Call(
+                    name="fn_b",
+                    args=CallArguments(args=("a",), kwargs={}),
+                    target=fn_b,
+                ),
+            },
         }
         fn_b_ir = {
             "sets": set(),
             "gets": {Name("b.in_b", "b")},
             "dels": set(),
-            "calls": {Call("fn_c()", ["b"], {}, target=fn_c)},
+            "calls": {
+                Call(
+                    name="fn_c",
+                    args=CallArguments(args=("b",), kwargs={}),
+                    target=fn_c,
+                ),
+            },
         }
         fn_c_ir = {
             "sets": set(),
             "gets": {Name("c.in_c", "c")},
             "dels": set(),
-            "calls": {Call("fn_b()", [], {"b": "c"}, target=fn_b)},
+            "calls": {
+                Call(
+                    name="fn_b",
+                    args=CallArguments(args=(), kwargs={"b": "c"}),
+                    target=fn_b,
+                ),
+            },
         }
         file_ir = {
             fn_a: fn_a_ir,
@@ -238,15 +273,15 @@ class TestResults:
 
     def test_generate_results_from_ir_repeated_calls(self):
         # Repeated calls that should be ignored
-        fn_a = Func("fn_a", ["a"], None, None)
-        fn_b = Func("fn_b", ["b"], None, None)
+        fn_a = Func(name="fn_a", interface=CallInterface(args=("a",)))
+        fn_b = Func(name="fn_b", interface=CallInterface(args=("b",)))
         fn_a_ir = {
             "sets": set(),
             "gets": {Name("a.in_a", "a")},
             "dels": set(),
             "calls": {
-                Call("fn_b()", ["a.attr"], {}, target=fn_b),
-                Call("fn_b()", ["a.attr"], {}, target=fn_b),
+                Call(name="fn_b", args=CallArguments(args=("a.attr",)), target=fn_b),
+                Call(name="fn_b", args=CallArguments(args=("a.attr",)), target=fn_b),
             },
         }
         fn_b_ir = {
@@ -278,15 +313,21 @@ class TestResults:
         assert generate_results_from_ir(file_ir, dict()) == expected
 
         # Repeated calls that should not be ignored
-        fn_a = Func("fn_a", ["a"], None, None)
-        fn_b = Func("fn_b", ["b"], None, None)
         fn_a_ir = {
             "sets": set(),
             "gets": {Name("a.in_a", "a")},
             "dels": set(),
             "calls": {
-                Call("fn_b()", ["a.attr_one"], {}, target=fn_b),
-                Call("fn_b()", ["a.attr_two"], {}, target=fn_b),
+                Call(
+                    name="fn_b",
+                    args=CallArguments(args=("a.attr_one",)),
+                    target=fn_b,
+                ),
+                Call(
+                    name="fn_b",
+                    args=CallArguments(args=("a.attr_two",)),
+                    target=fn_b,
+                ),
             },
         }
         fn_b_ir = {
@@ -319,10 +360,11 @@ class TestResults:
 
     def test_imports_ir(self, file_ir_from_dict):
         # Simple
+        act = Func(name="act", interface=CallInterface(args=("arg",)))
         imports_ir = {
             "module": file_ir_from_dict(
                 {
-                    Func("act", ["arg"], None, None): {
+                    act: {
                         "sets": set(),
                         "gets": {
                             Name("arg.attr", "arg"),
@@ -334,16 +376,16 @@ class TestResults:
             )
         }
 
-        _i = Import("act", "module.act")
+        _i = Import(name="act", qualified_name="module.act")
         _i.module_name = "module"
         _i.module_spec = mock.Mock()
 
-        fn = Func("fn", ["ms"], None, None)
+        fn = Func(name="fn", interface=CallInterface(args=("ms",)))
         fn_ir = {
             "sets": set(),
             "gets": set(),
             "dels": set(),
-            "calls": {Call("act()", ["ms"], {}, target=_i)},
+            "calls": {Call(name="act", args=CallArguments(args=("ms",)), target=_i)},
         }
         file_ir = {
             fn: fn_ir,
@@ -361,24 +403,32 @@ class TestResults:
         assert generate_results_from_ir(file_ir, imports_ir) == expected
 
         # Chained
-        _i_second = Import("second", "chained.second")
+        _i_second = Import(name="second", qualified_name="chained.second")
         _i_second.module_name = "chained"
         _i_second.module_spec = mock.Mock()
 
+        first = Func(name="first", interface=CallInterface(args=("arrg",)))
+        second = Func(name="second", interface=CallInterface(args=("blarg",)))
         imports_ir = {
             "module": file_ir_from_dict(
                 {
-                    Func("first", ["arrg"], None, None): {
+                    first: {
                         "sets": set(),
                         "gets": set(),
                         "dels": set(),
-                        "calls": {Call("second", ["arrg"], {}, target=_i_second)},
+                        "calls": {
+                            Call(
+                                name="second",
+                                args=CallArguments(args=("arrg",)),
+                                target=_i_second,
+                            ),
+                        },
                     }
                 }
             ),
             "chained": file_ir_from_dict(
                 {
-                    Func("second", ["blarg"], None, None): {
+                    second: {
                         "sets": set(),
                         "gets": {
                             Name("blarg._attr", "blarg"),
@@ -390,16 +440,22 @@ class TestResults:
             ),
         }
 
-        _i_module = Import("first", "module.first")
+        _i_module = Import(name="first", qualified_name="module.first")
         _i_module.module_name = "module"
         _i_module.module_spec = mock.Mock()
 
-        fn = Func("fn", ["flarg"], None, None)
+        fn = Func(name="fn", interface=CallInterface(args=("flarg",)))
         fn_ir = {
             "sets": set(),
             "gets": set(),
             "dels": set(),
-            "calls": {Call("first()", ["flarg"], {}, target=_i_module)},
+            "calls": {
+                Call(
+                    name="first",
+                    args=CallArguments(args=("flarg",)),
+                    target=_i_module,
+                ),
+            },
         }
         file_ir = {
             fn: fn_ir,
@@ -430,7 +486,10 @@ class TestResults:
             "dels": set(),
             "calls": set(),
         }
-        cls_inst_sm = Func("SomeClass.static", ["flarg"], None, None)
+        cls_inst_sm = Func(
+            name="SomeClass.static",
+            interface=CallInterface(args=("flarg",)),
+        )
         cls_inst_sm_ir = {
             "sets": {
                 Name("flarg.attr_in_static", "flarg"),
@@ -439,7 +498,10 @@ class TestResults:
             "dels": set(),
             "calls": set(),
         }
-        fn = Func("i_call_them", ["marg"], None, None)
+        fn = Func(
+            name="i_call_them",
+            interface=CallInterface(args=("marg",)),
+        )
         fn_ir = {
             "sets": {
                 Name("instance"),
@@ -447,8 +509,16 @@ class TestResults:
             "gets": set(),
             "dels": set(),
             "calls": {
-                Call("SomeClass()", ["instance", "marg"], {}, target=cls_inst),
-                Call("SomeClass.static()", ["marg"], {}, target=cls_inst_sm),
+                Call(
+                    name="SomeClass()",
+                    args=CallArguments(args=("instance", "marg")),
+                    target=cls_inst,
+                ),
+                Call(
+                    name="SomeClass.static()",
+                    args=CallArguments(args=("marg",)),
+                    target=cls_inst_sm,
+                ),
             },
         }
         file_ir = {

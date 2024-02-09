@@ -6,23 +6,25 @@ from unittest import mock
 import pytest
 
 import tests.helpers as helpers
-from rattr.analyser.context import (
+from rattr.analyser.file import FileAnalyser
+from rattr.analyser.results import generate_results_from_ir
+from rattr.models.context import compile_root_context
+from rattr.models.symbol import (
     Builtin,
     Call,
+    CallArguments,
+    CallInterface,
     Class,
     Func,
     Name,
-    RootContext,
 )
-from rattr.analyser.file import FileAnalyser
-from rattr.analyser.results import generate_results_from_ir
 
 if TYPE_CHECKING:
     from typing import Callable, Iterator
 
-    from rattr.analyser.context import Context
-    from rattr.analyser.context.symbol import Symbol
     from rattr.analyser.types import FileIR, FileResults
+    from rattr.models.context import Context
+    from rattr.models.symbol import Symbol
 
 
 class TestRegression:
@@ -36,10 +38,13 @@ class TestRegression:
                 *a.b[0]().c = "a value"
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        getter_symbol = Func(name="getter", interface=CallInterface(args=("a",)))
+        setter_symbol = Func(name="setter", interface=CallInterface(args=("a",)))
 
         expected = {
-            Func("getter", ["a"], None, None): {
+            getter_symbol: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -47,7 +52,7 @@ class TestRegression:
                 },
                 "sets": set(),
             },
-            Func("setter", ["a"], None, None): {
+            setter_symbol: {
                 "calls": set(),
                 "dels": set(),
                 "gets": set(),
@@ -69,10 +74,13 @@ class TestRegression:
                 a.attr_a, a.attr_b = x, y
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        getter_symbol = Func(name="getter", interface=CallInterface(args=("a",)))
+        setter_symbol = Func(name="setter", interface=CallInterface(args=("a",)))
 
         expected = {
-            Func("getter", ["a"], None, None): {
+            getter_symbol: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -84,7 +92,7 @@ class TestRegression:
                     Name("y"),
                 },
             },
-            Func("setter", ["a"], None, None): {
+            setter_symbol: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -111,14 +119,28 @@ class TestRegression:
                 return (-b).c
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        max_symbol = Builtin("max", has_affect=False)
+        max_symbol = Builtin(name="max")
+        getter_symbol = Func(name="test_1", interface=CallInterface(args=("a",)))
+        setter_symbol = Func(name="test_2", interface=CallInterface(args=("a",)))
+
         expected = {
-            Func("test_1", ["a"], None, None): {
+            getter_symbol: {
                 "calls": {
-                    Call("@BinOp.method()", [], {}, None),
-                    Call("max()", ["@BinOp.method()", constant("Num")], {}, max_symbol),
+                    Call(
+                        name="@BinOp.method()",
+                        args=CallArguments(args=(), kwargs={}),
+                        target=None,
+                    ),
+                    Call(
+                        name="max()",
+                        args=CallArguments(
+                            args=("@BinOp.method()", constant("Num")),
+                            kwargs={},
+                        ),
+                        target=max_symbol,
+                    ),
                 },
                 "dels": set(),
                 "gets": set(),
@@ -126,7 +148,7 @@ class TestRegression:
                     Name("a"),
                 },
             },
-            Func("test_2", ["a"], None, None): {
+            setter_symbol: {
                 "calls": set(),
                 "dels": set(),
                 "gets": {
@@ -149,10 +171,11 @@ class TestRegression:
                 return act(getattr(arg, "attr"))
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        fn_act = Func("act", ["on"], None, None)
-        fn_a = Func("a_func", ["arg"], None, None)
+        fn_act = Func(name="act", interface=CallInterface(args=("on",)))
+        fn_a = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         expected = {
             fn_act: {
                 "calls": set(),
@@ -163,7 +186,13 @@ class TestRegression:
                 "sets": set(),
             },
             fn_a: {
-                "calls": {Call("act()", ["arg.attr"], {}, target=fn_act)},
+                "calls": {
+                    Call(
+                        name="act()",
+                        args=CallArguments(args=("arg.attr",), kwargs={}),
+                        target=fn_act,
+                    ),
+                },
                 "dels": set(),
                 "gets": {
                     Name("arg.attr", "arg"),
@@ -188,15 +217,24 @@ class TestRegression:
                 return f(target)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        bad_map = Func("bad_map", ["f", "target"], None, None)
+        bad_map = Func(name="bad_map", interface=CallInterface(args=("f", "target")))
+
         expected = {
             bad_map: {
                 "sets": set(),
-                "gets": {Name("target")},
+                "gets": {
+                    Name("target"),
+                },
                 "dels": set(),
-                "calls": {Call("f()", ["target"], {}, target=Name("f"))},
+                "calls": {
+                    Call(
+                        name="f()",
+                        args=CallArguments(args=("target",), kwargs={}),
+                        target=Name("f"),
+                    ),
+                },
             }
         }
 
@@ -217,14 +255,17 @@ class TestRegression:
                 return wrapper()()
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        wrapper = Func("wrapper", [], None, None)
-        actor = Func("actor", [], None, None)
+        wrapper = Func(name="wrapper", interface=CallInterface(args=()))
+        actor = Func(name="actor", interface=CallInterface(args=()))
+
         expected = {
             wrapper: {
                 "sets": set(),
-                "gets": {Name("inner")},
+                "gets": {
+                    Name("inner"),
+                },
                 "dels": set(),
                 "calls": set(),
             },
@@ -232,7 +273,13 @@ class TestRegression:
                 "sets": set(),
                 "gets": set(),
                 "dels": set(),
-                "calls": {Call("wrapper()()", [], {}, target=wrapper)},
+                "calls": {
+                    Call(
+                        name="wrapper()()",
+                        args=CallArguments(args=(), kwargs={}),
+                        target=wrapper,
+                    ),
+                },
             },
         }
 
@@ -260,11 +307,12 @@ class TestRegression:
                 return accumulator
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        fn_a = Func("fn_a", ["arg"], None, None)
-        fn_b = Func("fn_b", ["arg"], None, None)
-        bad = Func("bad", ["argument"], None, None)
+        fn_a = Func(name="fn_a", interface=CallInterface(args=("arg",)))
+        fn_b = Func(name="fn_b", interface=CallInterface(args=("arg",)))
+        bad = Func(name="bad", interface=CallInterface(args=("argument",)))
+
         expected = {
             fn_a: {
                 "gets": {Name("arg.a", "arg")},
@@ -290,7 +338,13 @@ class TestRegression:
                     Name("f"),
                 },
                 "dels": set(),
-                "calls": {Call("f()", ["argument"], {}, target=Name("f"))},
+                "calls": {
+                    Call(
+                        name="f()",
+                        args=CallArguments(args=("argument",), kwargs={}),
+                        target=Name("f"),
+                    ),
+                },
             },
         }
 
@@ -311,10 +365,12 @@ class TestRegression:
                 ]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        fn_symbol = Func(name="fn", interface=CallInterface(args=()))
 
         expected = {
-            Func("fn", [], None, None): {
+            fn_symbol: {
                 "gets": {
                     Name("thing_one"),
                     Name("thing_two"),
@@ -342,10 +398,10 @@ class TestRegression:
                 ]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("fn", [], None, None): {
+            fn_symbol: {
                 "gets": {
                     Name("thing"),
                     Name("e.whatever", "e"),
@@ -376,10 +432,12 @@ class TestRegression:
                 return (arg.first + arg.second)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("fn", ["arg"], None, None): {
+            fn_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("arg.first", "arg"),
@@ -400,10 +458,10 @@ class TestRegression:
                 return (arg.first + arg.second).some_property
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("fn", ["arg"], None, None): {
+            fn_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("arg.first", "arg"),
@@ -426,10 +484,10 @@ class TestRegression:
                 return call(*[arg.first + arg.second])
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("fn", ["arg"], None, None): {
+            fn_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("arg.first", "arg"),
@@ -438,7 +496,11 @@ class TestRegression:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("call()", ["*@List"], {}, None),
+                    Call(
+                        name="call()",
+                        args=CallArguments(args=("*@List",), kwargs={}),
+                        target=None,
+                    ),
                 },
             }
         }
@@ -454,10 +516,10 @@ class TestRegression:
                 return (arg.first + arg.second)["index"]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("fn", ["arg"], None, None): {
+            fn_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("arg.first", "arg"),
@@ -479,10 +541,12 @@ class TestRegression:
                 return arg.attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("fn", ["arg"], None, None): {
+            fn_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("arg.attr", "arg"),
@@ -501,15 +565,19 @@ class TestRegression:
                 return arg.method()
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("fn", ["arg"], None, None): {
+            fn_symbol: {
                 "sets": set(),
                 "gets": set(),
                 "dels": set(),
                 "calls": {
-                    Call("arg.method()", [], {}, Name("arg")),
+                    Call(
+                        name="arg.method()",
+                        args=CallArguments(args=(), kwargs=[]),
+                        target=Name("arg"),
+                    ),
                 },
             }
         }
@@ -523,17 +591,21 @@ class TestRegression:
                 return arg.attr.method()
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("fn", ["arg"], None, None): {
+            fn_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("arg.attr", "arg"),
                 },
                 "dels": set(),
                 "calls": {
-                    Call("arg.attr.method()", [], {}, Name("arg")),
+                    Call(
+                        name="arg.attr.method()",
+                        args=CallArguments(args=(), kwargs={}),
+                        target=Name("arg"),
+                    ),
                 },
             }
         }
@@ -547,10 +619,10 @@ class TestRegression:
                 return arg.a.b.c.d.method()
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("fn", ["arg"], None, None): {
+            fn_symbol: {
                 "sets": set(),
                 "gets": {
                     Name("arg.a", "arg"),
@@ -560,7 +632,11 @@ class TestRegression:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("arg.a.b.c.d.method()", [], {}, Name("arg")),
+                    Call(
+                        name="arg.a.b.c.d.method()",
+                        args=CallArguments(args=(), kwargs={}),
+                        target=Name("arg"),
+                    ),
                 },
             }
         }
@@ -592,16 +668,23 @@ class TestNamedTupleFromCall:
 
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        point = Class("point", args=["self", "x", "y"])
+        point = Class(
+            name="point",
+            interface=CallInterface(args=("self", "x", "y")),
+        )
         point_call = Call(
             name="point()",
-            args=["@ReturnValue", constant("Str"), constant("Str")],
-            kwargs={},
+            args=CallArguments(
+                args=("@ReturnValue", constant("Str"), constant("Str")),
+                kwargs={},
+            ),
             target=point,
         )
+        by_pos = Func(name="by_pos", interface=CallInterface(args=()))
+
         expected = {
             point: {
                 "gets": set(),
@@ -609,7 +692,7 @@ class TestNamedTupleFromCall:
                 "dels": set(),
                 "calls": set(),
             },
-            Func("by_pos", []): {
+            by_pos: {
                 "gets": set(),
                 "sets": set(),
                 "dels": set(),
@@ -634,16 +717,23 @@ class TestNamedTupleFromCall:
 
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        point = Class("point", args=["self", "x", "y"])
+        point = Class(
+            name="point",
+            interface=CallInterface(args=("self", "x", "y")),
+        )
         point_call = Call(
             name="point()",
-            args=["@ReturnValue"],
-            kwargs={"x": constant("Str"), "y": constant("Str")},
+            args=CallArguments(
+                args=("@ReturnValue",),
+                kwargs={"x": constant("Str"), "y": constant("Str")},
+            ),
             target=point,
         )
+        by_keyword = Func(name="by_keyword", interface=CallInterface(args=()))
+
         expected = {
             point: {
                 "gets": set(),
@@ -651,7 +741,7 @@ class TestNamedTupleFromCall:
                 "dels": set(),
                 "calls": set(),
             },
-            Func("by_keyword", []): {
+            by_keyword: {
                 "gets": set(),
                 "sets": set(),
                 "dels": set(),
@@ -676,16 +766,23 @@ class TestNamedTupleFromCall:
 
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        point = Class("point", args=["self", "x", "y"])
+        point = Class(
+            name="point",
+            interface=CallInterface(args=("self", "x", "y")),
+        )
         point_call = Call(
             name="point()",
-            args=["@ReturnValue", constant("Str")],
-            kwargs={"y": constant("Str")},
+            args=CallArguments(
+                args=("@ReturnValue", constant("Str")),
+                kwargs={"y": constant("Str")},
+            ),
             target=point,
         )
+        by_mixture = Func(name="by_mixture", interface=CallInterface(args=()))
+
         expected = {
             point: {
                 "gets": set(),
@@ -693,7 +790,7 @@ class TestNamedTupleFromCall:
                 "dels": set(),
                 "calls": set(),
             },
-            Func("by_mixture", []): {
+            by_mixture: {
                 "gets": set(),
                 "sets": set(),
                 "dels": set(),
@@ -717,18 +814,25 @@ class TestNamedTupleFromCall:
 
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        point = Class("point", args=["self", "x", "y"])
+        point = Class(
+            name="point",
+            interface=CallInterface(args=("self", "x", "y")),
+        )
         point_call = Call(
             name="point()",
-            args=["@ReturnValue", constant("Str")],
-            kwargs={"y": constant("Str")},
+            args=CallArguments(
+                args=("@ReturnValue", constant("Str")),
+                kwargs={"y": constant("Str")},
+            ),
             target=point,
         )
+        fn = Func(name="fn", interface=CallInterface(args=()))
+
         expected = {
-            Func("fn", []): {
+            fn: {
                 "gets": set(),
                 "sets": set(),
                 "dels": set(),
@@ -755,18 +859,22 @@ class TestNamedTupleFromCall:
 
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        point = Class("point", args=["self", "x", "y"])
+        point = Class(
+            name="point",
+            interface=CallInterface(args=("self", "x", "y")),
+        )
         point_call = Call(
             name="point()",
-            args=["@ReturnValue", constant("Str")],
-            kwargs={"y": constant("Str")},
+            args=CallArguments(
+                args=("@ReturnValue", constant("Str")),
+                kwargs={"y": constant("Str")},
+            ),
             target=point,
         )
-
-        my_function = Func("my_function", [])
+        my_function = Func(name="my_function", interface=CallInterface(args=()))
 
         expected = {
             point: {
@@ -811,16 +919,23 @@ class TestNamedTupleFromInheritance:
         )
 
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        point = Class(name="Point", args=["self", "x", "y"])
+        point = Class(
+            name="Point",
+            interface=CallInterface(args=("self", "x", "y")),
+        )
         point_call = Call(
             "Point()",
-            args=["@ReturnValue", constant("Str"), constant("str")],
-            kwargs={},
+            args=CallArguments(
+                args=("@ReturnValue", constant("Str"), constant("str")),
+                kwargs={},
+            ),
             target=point,
         )
+        by_pos = Func(name="by_pos", interface=CallInterface(args=()))
+
         expected = {
             point: {
                 "gets": set(),
@@ -828,7 +943,7 @@ class TestNamedTupleFromInheritance:
                 "dels": set(),
                 "calls": set(),
             },
-            Func("by_pos", []): {
+            by_pos: {
                 "gets": set(),
                 "sets": set(),
                 "dels": set(),
@@ -855,16 +970,23 @@ class TestNamedTupleFromInheritance:
 
         # Before the fix this failed at the simplification in "generate_results_from_ir"
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        point = Class(name="Point", args=["self", "x", "y"])
+        point = Class(
+            name="Point",
+            interface=CallInterface(args=("self", "x", "y")),
+        )
         point_call = Call(
             name="Point()",
-            args=["@ReturnValue"],
-            kwargs={"x": constant("Str"), "y": constant("Str")},
+            args=CallArguments(
+                args=("@ReturnValue",),
+                kwargs={"x": constant("Str"), "y": constant("Str")},
+            ),
             target=point,
         )
+        by_keyword = Func(name="by_keyword", interface=CallInterface(args=()))
+
         expected = {
             point: {
                 "gets": set(),
@@ -872,7 +994,7 @@ class TestNamedTupleFromInheritance:
                 "dels": set(),
                 "calls": set(),
             },
-            Func("by_keyword", []): {
+            by_keyword: {
                 "gets": set(),
                 "sets": set(),
                 "dels": set(),
@@ -899,16 +1021,23 @@ class TestNamedTupleFromInheritance:
 
         # Before the fix this failed at the simplification in "generate_results_from_ir"
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        point = Class(name="Point", args=["self", "x", "y"])
+        point = Class(
+            name="Point",
+            interface=CallInterface(args=("self", "x", "y")),
+        )
         point_call = Call(
             name="Point()",
-            args=["@ReturnValue", constant("Str")],
-            kwargs={"y": constant("Str")},
+            args=CallArguments(
+                args=("@ReturnValue", constant("Str")),
+                kwargs={"y": constant("Str")},
+            ),
             target=point,
         )
+        by_mixture = Func(name="by_mixture", interface=CallInterface(args=()))
+
         expected = {
             point: {
                 "gets": set(),
@@ -916,7 +1045,7 @@ class TestNamedTupleFromInheritance:
                 "dels": set(),
                 "calls": set(),
             },
-            Func("by_mixture", []): {
+            by_mixture: {
                 "gets": set(),
                 "sets": set(),
                 "dels": set(),
@@ -947,13 +1076,18 @@ class TestRattrConstantInNameableOnCheckForNamedTuple:
         )
 
         with mock.patch("sys.exit") as _exit:
-            file_ir = FileAnalyser(_ast, RootContext(_ast)).analyse()
+            file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
-        my_function = Func("my_function", ["foobar", "info"])
-
+        my_function = Func(
+            name="my_function",
+            interface=CallInterface(args=("foobar", "info")),
+        )
         string_join = f"{constant('@Str')}.join()"
-        string_join_call = Call(string_join, ["info.parts"], {})
+        string_join_call = Call(
+            string_join,
+            args=CallArguments(args=("info.parts",), kwargs={}),
+        )
 
         expected_file_ir = {
             my_function: {

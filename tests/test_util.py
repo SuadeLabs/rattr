@@ -7,7 +7,6 @@ from unittest import mock
 import pytest
 
 from rattr import error
-from rattr.analyser.context import Call, Class, Context, Name, RootContext
 from rattr.analyser.util import (
     DictChanges,
     assignment_is_one_to_one,
@@ -51,6 +50,8 @@ from rattr.analyser.util import (
     unravel_names,
     walrus_in_rhs,
 )
+from rattr.models.context import Context, compile_root_context
+from rattr.models.symbol import Call, CallArguments, CallInterface, Class, Name
 
 
 class TestUtil:
@@ -715,14 +716,14 @@ class TestUtil:
                 pass
             """
         )
-        _ctx = RootContext(_ast)
+        _ctx = compile_root_context(_ast)
 
         # Can set values
         fn_def = _ast.body[0]
         expected = {
             "sets": {Name("a")},
             "gets": {Name("b")},
-            "calls": {Call("c()", [], {})},
+            "calls": {Call("c", args=CallArguments())},
             "dels": {Name("d")},
         }
         assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
@@ -775,7 +776,7 @@ class TestUtil:
                 pass
             """
         )
-        _ctx = RootContext(_ast)
+        _ctx = compile_root_context(_ast)
 
         # Complex names
         fn_def = _ast.body[0]
@@ -794,9 +795,9 @@ class TestUtil:
             "gets": set(),
             "dels": set(),
             "calls": {
-                Call("fn_a()", [], {}),
-                Call("fn_b()", ["a", "b"], {}),
-                Call("fn_c()", ["a"], {"c": "@Str"}),
+                Call(name="fn_a", args=CallArguments()),
+                Call(name="fn_b", args=CallArguments(args=("a", "b"))),
+                Call(name="fn_c", args=CallArguments(arg=("a",), kwargs={"c": "@Str"})),
             },
         }
         assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
@@ -812,7 +813,7 @@ class TestUtil:
                 return "it is a lie, i do nothing!"
             """
         )
-        _ctx = RootContext(_ast)
+        _ctx = compile_root_context(_ast)
 
         target = _ctx.get("fn_a")
         fn_def = _ast.body[1]
@@ -822,7 +823,11 @@ class TestUtil:
             "gets": set(),
             "dels": set(),
             "calls": {
-                Call("fn_a()", ["alpha", "beta"], {}, target=target),
+                Call(
+                    name="fn_a",
+                    args=CallArguments(args=("alpha", "beta")),
+                    target=target,
+                ),
             },
         }
 
@@ -874,10 +879,9 @@ class TestUtil:
         assert not is_stdlib_module("foobar")
 
         # Test against ratter/firstparty modules
-        assert not is_stdlib_module("ratter")
-        assert not is_stdlib_module("ratter.analyser.context")
-        assert not is_stdlib_module("ratter.analyser.context.context")
-        assert not is_stdlib_module("ratter.analyser.context.context.Context")
+        assert not is_stdlib_module("rattr")
+        assert not is_stdlib_module("rattr.models.context")
+        assert not is_stdlib_module("rattr.models.context._context")
 
         assert not is_stdlib_module("anything.dotted.anything")
 
@@ -1041,13 +1045,9 @@ class TestUtil:
 
     def test_class_in_rhs(self):
         _ctx = Context(None)
-        _ctx.add_all(
-            (
-                Name("x"),
-                Name("LooksLikeAClass"),
-                Class("MyClass", [], None, None),
-            )
-        )
+        _ctx.add(Name("x"))
+        _ctx.add(Name("LooksLikeAClass"))
+        _ctx.add(Class("MyClass", interface=CallInterface()))
 
         # No class in RHS
         assign = ast.parse("a = x").body[0]

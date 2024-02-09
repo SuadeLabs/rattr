@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from rattr.analyser.context import Call, Func, Name, RootContext
 from rattr.analyser.file import FileAnalyser
+from rattr.models.context import compile_root_context
+from rattr.models.symbol import Call, CallArguments, CallInterface, Func, Name
 from rattr.plugins import plugins
 from rattr.plugins.analysers.builtins import SortedAnalyser
 
@@ -20,10 +21,12 @@ class TestCustomFunctionAnalysers:
                 sorted(arg)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": {
                     Name("arg"),
                 },
@@ -32,10 +35,11 @@ class TestCustomFunctionAnalysers:
                 "calls": set(),
             }
         }
-
         assert results == expected
 
     def test_sorted_with_constant_key(self, parse):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # Literal
         _ast = parse(
             """
@@ -43,10 +47,10 @@ class TestCustomFunctionAnalysers:
                 sorted(arg, key=1)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": {
                     Name("arg"),
                 },
@@ -65,10 +69,10 @@ class TestCustomFunctionAnalysers:
                 sorted(arg, key=arg.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": {
                     Name("arg"),
                     Name("arg.attr", "arg"),
@@ -92,10 +96,16 @@ class TestCustomFunctionAnalysers:
                 return a.b
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        a_func = Func("a_func", ["arg"], None, None)
-        key_func = Func("key_func", ["a"], None, None)
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        key_func = Func(name="key_func", interface=CallInterface(args=("a",)))
+        key_func_call = Call(
+            name="key_func",
+            args=CallArguments(args=("a",), kwargs={}),
+            target=key_func,
+        )
+
         expected = {
             a_func: {
                 "gets": {
@@ -103,7 +113,7 @@ class TestCustomFunctionAnalysers:
                 },
                 "sets": set(),
                 "dels": set(),
-                "calls": {Call("key_func()", ["a"], {}, target=key_func)},
+                "calls": {key_func_call},
             },
             key_func: {
                 "gets": {
@@ -114,10 +124,11 @@ class TestCustomFunctionAnalysers:
                 "calls": set(),
             },
         }
-
         assert results == expected
 
     def test_sorted_key_is_attribute_or_element(self, parse):
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
         # Attribute
         _ast = parse(
             """
@@ -125,10 +136,10 @@ class TestCustomFunctionAnalysers:
                 sorted(arg, key=lambda a: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": {
                     Name("arg"),
                     Name("arg.attr", "arg"),
@@ -148,10 +159,10 @@ class TestCustomFunctionAnalysers:
                 sorted(arg, key=lambda a: a[0])
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": {
                     Name("arg"),
                     Name("arg[]", "arg"),
@@ -171,10 +182,10 @@ class TestCustomFunctionAnalysers:
                 sorted(arg, key=lambda a: a[0].attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         expected = {
-            Func("a_func", ["arg"], None, None): {
+            a_func: {
                 "gets": {
                     Name("arg"),
                     Name("arg[].attr", "arg"),

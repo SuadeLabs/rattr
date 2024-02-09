@@ -5,9 +5,9 @@ from unittest import mock
 
 import pytest
 
-from rattr.analyser.context import RootContext
-from rattr.analyser.context.symbol import Func, Name
 from rattr.analyser.file import FileAnalyser
+from rattr.models.context import compile_root_context
+from rattr.models.symbol import CallInterface, Func, Name
 
 
 class TestModuleLevelStatements:
@@ -19,7 +19,7 @@ class TestModuleLevelStatements:
             two = 2
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         assert results.ir_as_dict() == {}
 
@@ -31,7 +31,7 @@ class TestModuleLevelStatements:
             two: int = 2
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         assert results.ir_as_dict() == {}
 
@@ -43,7 +43,7 @@ class TestModuleLevelStatements:
             two += 2
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         assert results.ir_as_dict() == {}
 
@@ -55,7 +55,7 @@ class TestModuleLevelStatements:
             x = (y := 2)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         assert results.ir_as_dict() == {}
 
@@ -67,7 +67,7 @@ class TestModuleLevelStatements:
             z = 3, 4
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         assert results.ir_as_dict() == {}
 
@@ -79,7 +79,7 @@ class TestModuleLevelStatements:
             """
         )
         with mock.patch("sys.exit") as _exit:
-            FileAnalyser(_ast, RootContext(_ast)).analyse()
+            FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         # Named
         _ast = parse(
@@ -87,15 +87,15 @@ class TestModuleLevelStatements:
             name = lambda *a, **k: a.attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        name = Func(name="name", interface=CallInterface(vararg="a", kwarg="k"))
 
         expected = {
-            Func("name", [], "a", "k"): {
+            name: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
         }
@@ -111,7 +111,7 @@ class TestModuleLevelStatements:
             other, another = (alpha, beta := 1)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         assert results.ir_as_dict() == {}
 
@@ -124,7 +124,7 @@ class TestModuleLevelStatements:
             other, another = [alpha, beta := 1]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         assert results.ir_as_dict() == {}
 
@@ -136,23 +136,22 @@ class TestModuleLevelStatements:
             other = (name := lambda *a, **k: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        name = Func(name="name", interface=CallInterface(vararg="a", kwarg="k"))
+        other = Func(name="other", interface=CallInterface(vararg="a", kwarg="k"))
 
         expected = {
-            Func("name", [], "a", "k"): {
+            name: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
-            Func("other", [], "a", "k"): {
+            other: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
         }
@@ -167,15 +166,15 @@ class TestModuleLevelStatements:
             other = (alpha, beta := lambda *a, **k: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        beta = Func(name="beta", interface=CallInterface(vararg="a", kwarg="k"))
 
         expected = {
-            Func("beta", [], "a", "k"): {
+            beta: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
         }
@@ -190,15 +189,15 @@ class TestModuleLevelStatements:
             other = [alpha, beta := lambda *a, **k: a.attr]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        beta = Func(name="beta", interface=CallInterface(vararg="a", kwarg="k"))
 
         expected = {
-            Func("beta", [], "a", "k"): {
+            beta: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
         }
