@@ -115,7 +115,7 @@ class Context(MutableMapping[Identifier, Symbol]):
         else:
             symbols = symbol_or_symbols
 
-        for symbol in (s for s in symbols if is_argument or s not in self):
+        for symbol in (s for s in symbols if s.name not in self or is_argument):
             self[symbol.name] = symbol
 
     def remove(self, id_or_ids: Identifier | Iterable[Identifier]) -> None:
@@ -130,7 +130,7 @@ class Context(MutableMapping[Identifier, Symbol]):
             ids = id_or_ids
 
         for id in ids:
-            self.pop(id)
+            self.symbol_table.pop(id)
 
     def delete(self, id_or_ids: Identifier | Iterable[Identifier]) -> None:
         """Alias to remove."""
