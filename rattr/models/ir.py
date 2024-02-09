@@ -4,6 +4,7 @@ import copy
 from typing import TYPE_CHECKING, MutableMapping, TypedDict
 
 import attrs
+from attrs import field
 from cattr.preconf.json import make_converter
 
 from rattr.models.context import Context
@@ -30,7 +31,10 @@ class FileIr(MutableMapping[UserDefinedCallableSymbol, FunctionIr]):
     """The Intermediate Representation (IR) for the functions/classes in a file."""
 
     context: Context
-    _file_ir: dict[UserDefinedCallableSymbol, FunctionIr] = {}
+    _file_ir: dict[UserDefinedCallableSymbol, FunctionIr] = field(
+        init=False,
+        factory=dict,
+    )
 
     def ir_as_dict(self) -> dict[UserDefinedCallableSymbol, FunctionIr]:
         """Return a copy of the underlying IR dictionary."""

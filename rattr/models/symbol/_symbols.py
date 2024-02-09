@@ -253,7 +253,7 @@ class Call(Symbol):
     token: ast.AST | None = field(default=None, kw_only=True)
     location: Location = field(kw_only=True)
 
-    interface: CallInterface | None = field(default=None, kw_only=True)
+    interface: CallInterface | None = field(init=False, default=None, kw_only=True)
 
     @location.default
     def _location_default(self) -> Location:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, MutableMapping
 
 import attrs
+from attrs import field
 
 from rattr.models.symbol import Symbol
 
@@ -17,7 +18,7 @@ _Identifier: TypeAlias = str
 
 @attrs.mutable
 class SymbolTable(MutableMapping[_Identifier, Symbol]):
-    _symbols: dict[_Identifier, Symbol] = {}
+    _symbols: dict[_Identifier, Symbol] = field(init=False, factory=dict)
 
     @property
     def names(self) -> KeysView[_Identifier]:

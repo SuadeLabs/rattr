@@ -137,7 +137,7 @@ class AnyCallInterface(CallInterface):
 @attrs.frozen
 class CallArguments:
     args: tuple[str] = field(default=(), converter=tuple)
-    kwargs: frozendict[str, str] = field(default=frozendict(), converter=frozendict)
+    kwargs: frozendict[str, str] = field(factory=frozendict, converter=frozendict)
 
     @classmethod
     def from_call(
@@ -159,6 +159,7 @@ class CallArguments:
 @attrs.frozen
 class Location:
     token: ast.AST | None = field(default=None)
+
     _derived_location: Path = field(factory=get_current_file, kw_only=True)
 
     @property

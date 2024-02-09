@@ -54,7 +54,8 @@ def new_context(container: ContainerWithContext) -> Iterator[None]:
 class Context(MutableMapping[Identifier, Symbol]):
     parent: Context | None
     symbol_table: SymbolTable = field(factory=SymbolTable, kw_only=True)
-    _file: Path = field(factory=get_current_file, kw_only=True)
+
+    _file: Path = field(init=False, factory=get_current_file, kw_only=True)
 
     @property
     def file(self) -> Path:
