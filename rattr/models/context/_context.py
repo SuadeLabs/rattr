@@ -146,7 +146,7 @@ class Context(MutableMapping[Identifier, Symbol]):
         """Return the target of the given call as resolved within this context.
 
         Args:
-            callee (str): The callee name.
+            callee (Identifier): The callee name.
             culprit (ast.Call): The AST call node, used as the error culprit.
             warn (bool, optional): If `True` give warnings. Defaults to True.
 
@@ -157,7 +157,7 @@ class Context(MutableMapping[Identifier, Symbol]):
         _error = f"unable to resolve call to {canonical!r}, {{reason}}"
 
         name = without_call_brackets(callee).replace("*", "")
-        (lhs_name, *_) = name.split(".")[0]
+        (lhs_name, *_) = name.split(".")
 
         if is_call_to_literal(name):
             error.error(_error.format(reason="target lhs is a literal"), culprit)
@@ -170,8 +170,9 @@ class Context(MutableMapping[Identifier, Symbol]):
         target = self.get(name)
         lhs_target = self.get(lhs_name)
 
-        if is_call_to_method(target, lhs_target):
-            error.error(_error.format(reason="target is a method"), culprit)
+        if is_call_to_method(target, name, lhs_target, lhs_name):
+            if not is_call_to_method_on_py_type(name):
+                error.error(_error.format(reason="target is a method"), culprit)
             return None
 
         # Check for calls to members of imported modules, i.e. the second case below:
@@ -184,23 +185,25 @@ class Context(MutableMapping[Identifier, Symbol]):
 
         # Give warnings for unresolvable targets
         if warn and target is None:
-            if not is_call_to_method_on_py_type(name):
-                error.error(_error.format(reason="target is a method"), culprit)
-
             if is_call_to_call_result(name):
                 error.error(_error.format(reason="target is a call on a call"), culprit)
+            else:
+                error.error(_error.format(reason="target is undefined"), culprit)
+            return None
 
         # Give warnings for targets likely to be resolved incorrectly
         # TODO On method support, upgrade info to warning
         if warn and not _target_is_callable:
             if "." not in name and self.declares(target.name):
                 error.error(
-                    _error.format(reason="likely a procedural parameter"), culprit
+                    _error.format(reason="target is likely a procedural parameter"),
+                    culprit=culprit,
                 )
             elif "." in target.name:
                 error.info(_error.format(reason="target is a method"), culprit)
             else:
                 error.error(_error.format(reason="target is not callable"), culprit)
+            return None
 
         return target
 

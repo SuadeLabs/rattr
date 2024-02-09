@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from rattr.ast.types import AstLiterals
+from rattr.ast.types import AstLiterals, Identifier
 from rattr.config import Config
 from rattr.models.symbol._symbols import (
     PYTHON_BUILTINS,
@@ -13,28 +13,30 @@ from rattr.models.symbol._symbols import (
 
 if TYPE_CHECKING:
     from rattr.models.symbol._symbol import Symbol
-    from rattr.versioning.typing import TypeAlias
-
-    _Identifier: TypeAlias = str
 
 
-def is_call_to_literal(name: _Identifier) -> bool:
+def is_call_to_literal(name: Identifier) -> bool:
     """Return `True` if this appears to be a call to a literal."""
     return name.startswith("@")
 
 
-def is_call_to_subscript_item(name: _Identifier) -> bool:
+def is_call_to_subscript_item(name: Identifier) -> bool:
     """Return `True` if this appears to be a call to a literal."""
     return "[]" in name
 
 
-def is_call_to_method(target: Symbol | None, lhs_target: Symbol | None) -> bool:
+def is_call_to_method(
+    target: Symbol | None,
+    name: Identifier,
+    lhs_target: Symbol | None,
+    lhs_name: Identifier,
+) -> bool:
     """Return `True` if this appears to be a call to a method."""
-    return target is None and not isinstance(lhs_target, Import)
+    return name != lhs_name and target is None and not isinstance(lhs_target, Import)
 
 
 def is_call_to_member_of_module_import(
-    name: _Identifier,
+    name: Identifier,
     target: Symbol | None,
 ) -> bool:
     """Return `True` if this appears to be a call to a module member.
