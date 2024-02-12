@@ -10,7 +10,7 @@ def gen_import_from_stmt(module: Identifier, target: Identifier) -> str:
     if not module.isidentifier():
         raise ValueError(f"{module!r} is not a valid identifier")
 
-    if not target.isidentifier():
+    if target != "*" and not target.isidentifier():
         raise ValueError(f"{target!r} is not a valid identifier")
 
     return f"from {module} import {target}"

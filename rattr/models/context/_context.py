@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, MutableMapping
@@ -27,10 +28,9 @@ from rattr.models.symbol.util import (
     with_call_brackets,
     without_call_brackets,
 )
-from rattr.module_locator.util import derive_possible_module_names
+from rattr.module_locator.util import derive_module_names_left
 
 if TYPE_CHECKING:
-    import ast
     from typing import Container, Iterable, Iterator, Protocol, TypeVar
 
     from rattr.models.symbol._types import CallableSymbol
@@ -320,7 +320,7 @@ class Context(MutableMapping[Identifier, Symbol]):
     # ================================================================================ #
 
     def _get_target_in_imported_module(self, name: Identifier) -> Symbol | None:
-        modules = [self.get(m) for m in derive_possible_module_names(name)]
+        modules = [self.get(m) for m in derive_module_names_left(name)]
         module = next((m for m in modules if m is not None), None)
 
         if not isinstance(module, Import):
@@ -349,8 +349,13 @@ class Context(MutableMapping[Identifier, Symbol]):
         return self.parent.__getitem__(__key)
 
     def __setitem__(self, __key: Identifier, __value: Symbol) -> None:
-        if __key != __value.id:
-            raise ValueError("symbol key and id do not match")
+        _error = f"symbol key and id do not match: {__key!r} != {__value.id!r}"
+
+        if __key == "*" and not __value.id.endswith(".*"):
+            raise ValueError(_error)
+
+        if __key != "*" and __key != __value.id:
+            raise ValueError(_error)
 
         return self.symbol_table.add(__value)
 

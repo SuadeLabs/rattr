@@ -129,7 +129,7 @@ class RootContextBuilder:
             error.info("do not import multiple modules on one line", culprit=node)
 
         self.context.add(
-            __import(
+            make_import_symbol(
                 name=alias.asname or alias.name,
                 qualified_name=alias.name,
                 module_name=alias.name,
@@ -163,7 +163,7 @@ class RootContextBuilder:
         # There is little good about starred imports (and no benefit over
         # `import numpy as np`, for example), and many issues such as clobbering, etc.
         if is_starred_import(node) and not self.context.is_init_file:
-            __error_starred_import_outside_init(node, node.names[0].asname)
+            error_starred_import_outside_init(node, node.module or node.names[0].name)
 
         if node.module is None:
             raise ValueError("node has no module")
@@ -195,7 +195,7 @@ class RootContextBuilder:
             assert module_name == confirmed_module_name  # should always pass
 
         self.context.add(
-            __import(
+            make_import_symbol(
                 name="*",
                 qualified_name=module_name,
                 module_name=module_name,
@@ -220,7 +220,7 @@ class RootContextBuilder:
             assert module_name == confirmed_module_name  # should always pass
 
         self.context.add(
-            __import(
+            make_import_symbol(
                 name=target.asname or target.name,
                 qualified_name=f"{module_name}.{target.name}",
                 module_name=module_name,
@@ -231,7 +231,7 @@ class RootContextBuilder:
 
     def visit_starred_import(self, node: ast.ImportFrom) -> None:
         self.context.add(
-            __import(
+            make_import_symbol(
                 name="*",
                 qualified_name=node.module,
                 module_name=node.module,
@@ -241,7 +241,7 @@ class RootContextBuilder:
 
     def visit_named_import(self, node: ast.ImportFrom) -> None:
         self.context.add(
-            __import(
+            make_import_symbol(
                 name=target.asname or target.name,
                 qualified_name=f"{node.module}.{target.name}",
                 module_name=node.module,
@@ -304,7 +304,7 @@ class RootContextBuilder:
                     self.visit_NamedExpr(walrus)
 
                 # Handle `outer_lhs = (inner_lhs := lambda: ...)`
-                if has_lambda_in_rhs(node):
+                if has_lambda_in_rhs(walrus):
                     if len(diff.added) == 1 and node.value == walrus:
                         inner_rhs = list(diff.added)[0]
                         outer_lhs = attrs.evolve(
@@ -364,8 +364,18 @@ class RootContextBuilder:
     def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
         self.register_stmts(*node.body)
 
+    def visit_Expr(self, node: ast.Expr) -> None:
+        if isinstance(node.value, ast.Constant):
+            return None
 
-def __import(
+        if isinstance(node.value, ast.Lambda):
+            return error.error("top-level lambdas must be named", culprit=node)
+
+        name = node.__class__.__name__
+        return error.error(f"unexpected top-level 'ast.{name}'", culprit=node)
+
+
+def make_import_symbol(
     *,
     name: str,
     qualified_name: str,
@@ -407,7 +417,7 @@ def __module_level_builtin(name: Identifier) -> Builtin:
     return Builtin(name=name, token=__dummy_token(name))
 
 
-def __error_starred_import_outside_init(
+def error_starred_import_outside_init(
     node: ast.ImportFrom,
     module: ModuleName,
 ) -> None:

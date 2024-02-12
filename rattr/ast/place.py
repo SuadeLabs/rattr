@@ -10,7 +10,7 @@ from isort import sections
 from isort.api import place_module
 
 from rattr.config import Config
-from rattr.module_locator.util import derive_possible_module_names
+from rattr.module_locator.util import derive_module_names_left
 
 if TYPE_CHECKING:
     from typing import Final
@@ -50,7 +50,7 @@ def is_in_pip(name: _Identifier) -> bool:
     False
     """
 
-    origins = [_safe_origin(module) for module in derive_possible_module_names(name)]
+    origins = [_safe_origin(module) for module in derive_module_names_left(name)]
 
     return any(
         re_pip_location.fullmatch(origin)
@@ -72,7 +72,7 @@ def is_in_import_blacklist(name: _Identifier) -> bool:
     if is_in_stdlib(name):
         return False
 
-    origins = [_safe_origin(module) for module in derive_possible_module_names(name)]
+    origins = [_safe_origin(module) for module in derive_module_names_left(name)]
 
     # It is possible that we can't determine the spec (due to some PYTHON_PATH
     # tampering or some other shenanigans) and in that case we still want to assume that

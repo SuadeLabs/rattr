@@ -59,11 +59,35 @@ def find_module_name_and_spec(
     if target.startswith("."):
         return None, None
 
-    for modulename in iter_possible_module_names(target.split(".")):
+    for modulename in iter_module_names_right(target.split(".")):
         if (spec := find_module_spec_fast(modulename)) is not None:
             return modulename, spec
 
     return None, None
+
+
+def iter_module_names_right(module_parts: Iterable[str]) -> Iterator[ModuleName]:
+    """Return the possible module qualified names for the given parts.
+
+    >>> list(iter_possible_modules([]))
+    []
+
+    >>> list(iter_possible_modules(["module"]))
+    ["module"]
+
+    >>> list(iter_possible_modules(["module", "sub_module"]))
+    ['module.sub_module', 'module']
+
+    >>> list(iter_possible_modules(["module", "sub_module", "file"]))
+    ['module.sub_module.file', 'module.sub_module', 'module']
+    """
+    yield ".".join(module_parts)
+    for end_offset in range(1, len(module_parts)):
+        yield ".".join(module_parts[:-end_offset])
+
+
+def derive_module_names_right(modulename: ModuleName) -> list[ModuleName]:
+    return list(iter_module_names_right(modulename.split(".")))
 
 
 def derive_module_name_from_path(filepath: Path | str | None) -> str | None:
@@ -85,14 +109,14 @@ def derive_module_name_from_path(filepath: Path | str | None) -> str | None:
         .strip(".")  # strip remaining "." in relative files
     )
 
-    for module in iter_possible_module_names(longest_possible_modulename.split(".")):
+    for module in iter_module_names_left(longest_possible_modulename.split(".")):
         if module_exists(module):
             return module
 
     return None
 
 
-def iter_possible_module_names(module_parts: Iterable[str]) -> Iterator[ModuleName]:
+def iter_module_names_left(module_parts: Iterable[str]) -> Iterator[ModuleName]:
     """Return the possible module qualified names for the given parts.
 
     >>> list(iter_possible_modules([]))
@@ -111,8 +135,8 @@ def iter_possible_module_names(module_parts: Iterable[str]) -> Iterator[ModuleNa
         yield ".".join(module_parts[start_offset:])
 
 
-def derive_possible_module_names(modulename: ModuleName) -> list[ModuleName]:
-    return list(iter_possible_module_names(modulename.split(".")))
+def derive_module_names_left(modulename: ModuleName) -> list[ModuleName]:
+    return list(iter_module_names_left(modulename.split(".")))
 
 
 def derive_absolute_module_name(
