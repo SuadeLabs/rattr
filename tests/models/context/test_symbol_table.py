@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import copy
+from typing import TYPE_CHECKING
 
 import pytest
 
 from rattr.models.context import SymbolTable
 from rattr.models.symbol import CallInterface, Func, Name
 
+if TYPE_CHECKING:
+    from tests.shared import MakeSymbolTableFn
+
 
 @pytest.fixture
-def symbol_table() -> SymbolTable:
-    return SymbolTable(
-        symbols={
+def symbol_table(make_symbol_table: MakeSymbolTableFn) -> SymbolTable:
+    return make_symbol_table(
+        {
             "var": Name("var"),
             "x": Name("x"),
             "y": Name("y"),

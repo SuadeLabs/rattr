@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 from itertools import product
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import pytest
 
@@ -19,6 +19,9 @@ from rattr.models.context._util import (
     is_direct_call_to_method_on_literal,
 )
 from rattr.models.symbol._symbol import Symbol
+
+if TYPE_CHECKING:
+    from rattr.models.symbol import Import
 
 symbol_fixtures: Final = (
     "simple_name",
@@ -77,11 +80,15 @@ class TestIsCallToSubscriptItem:
 
 
 class TestIsCallToMethod:
-    def test_null_call(self):
-        assert is_call_to_method(None, None)
+    def test_null_call_positive(self):
+        assert is_call_to_method(None, "nothing", None, "nothing.method()")
+
+    def test_null_call_negative(self):
+        assert not is_call_to_method(None, "nothing", None, "nothing")
 
     @pytest.mark.parametrize(
-        "symbol_fixture", [s for s in symbol_fixtures if s != "simple_import"]
+        "symbol_fixture",
+        [s for s in symbol_fixtures if s != "simple_import"],
     )
     def test_null_call_with_valid_lhs(
         self,
@@ -93,10 +100,16 @@ class TestIsCallToMethod:
         # &    lsh_symbol = context.get("my_variable") i.e. from fixture
         # Excludes the case of an import, as that is not a method call!
         lhs_symbol: Symbol = request.getfixturevalue(symbol_fixture)
-        assert is_call_to_method(None, lhs_symbol)
 
-    def test_null_call_with_import_lhs(self, simple_import):
-        assert not is_call_to_method(None, simple_import)
+        assert is_call_to_method(
+            None,
+            f"{lhs_symbol.name}.method()",
+            lhs_symbol,
+            lhs_symbol.name,
+        )
+
+    def test_null_call_with_import_lhs(self, simple_import: Import):
+        assert not is_call_to_method(None, "jimmy", simple_import, simple_import.name)
 
     @pytest.mark.parametrize(
         "symbol_fixture,lhs_symbol_fixture",
@@ -110,7 +123,7 @@ class TestIsCallToMethod:
     ):
         symbol: Symbol = request.getfixturevalue(symbol_fixture)
         lhs_symbol: Symbol = request.getfixturevalue(lhs_symbol_fixture)
-        assert not is_call_to_method(symbol, lhs_symbol)
+        assert not is_call_to_method(symbol, symbol.name, lhs_symbol, lhs_symbol.name)
 
 
 class TestIsCallToMemberOfModuleImport:

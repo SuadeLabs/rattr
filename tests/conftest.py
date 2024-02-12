@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import sys
+from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from importlib.util import find_spec
 from os.path import dirname, join
@@ -16,9 +17,9 @@ from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
 from rattr.analyser.types import FunctionIr
-from rattr.ast.types import AstFunctionDef
+from rattr.ast.types import AstFunctionDef, Identifier
 from rattr.config import Arguments, Config, Output, State
-from rattr.models.context import Context, compile_root_context
+from rattr.models.context import Context, SymbolTable, compile_root_context
 from rattr.models.ir import FileIr
 from rattr.models.symbol import (
     Builtin,
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
 
     from rattr.analyser.types import FileResults
+    from tests.shared import ArgumentsFn, MakeSymbolTableFn, ParseFn
 
 
 def pytest_configure(config):
@@ -150,8 +152,8 @@ def _nth_line_is_empty(lines: list[str], *, n: int) -> bool:
 
 
 @pytest.fixture
-def parse():
-    def _inner(source: str) -> ast.AST:
+def parse() -> ParseFn:
+    def _inner(source: str) -> ast.Module:
         """Return the parsed AST for the given code, use relative indentation.
 
         Assumed usage is:
@@ -243,7 +245,10 @@ def builtin() -> Callable[[str], Builtin]:
 @pytest.fixture
 def RootSymbolTable():
     def _inner(*args: Symbol):
-        """Create a context with the Python builtins and the given symbols."""
+        """Create a context with the Python builtins and the given symbols.
+
+        NOTE Deprecated, use make_symbol_table
+        """
         context = compile_root_context(ast.Module(body=[]))
         context.add(args)
         return context.symbol_table
@@ -270,7 +275,31 @@ def run_in_permissive_mode(config) -> Iterator[None]:
 
 
 @pytest.fixture
-def arguments():
+def make_symbol_table() -> MakeSymbolTableFn:
+    def _make_symbol_table(
+        symbols: Mapping[Identifier, Symbol] | Iterable[Symbol],
+        *,
+        include_root_symbols: bool = False,
+    ) -> SymbolTable:
+        if include_root_symbols:
+            symbol_table = compile_root_context(ast.Module(body=[])).symbol_table
+        else:
+            symbol_table = SymbolTable()
+
+        if isinstance(symbols, Mapping):
+            symbol_table._symbols = symbols
+        elif isinstance(symbols, Iterable):
+            symbol_table.add(symbols)
+        else:
+            raise TypeError
+
+        return symbol_table
+
+    return _make_symbol_table
+
+
+@pytest.fixture
+def arguments() -> ArgumentsFn:
     @contextmanager
     def _inner(**kwargs):
         arguments = Config().arguments
