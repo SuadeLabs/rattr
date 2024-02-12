@@ -18,9 +18,9 @@ import pytest
 
 from rattr.analyser.file import parse_and_analyse_file
 from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
-from rattr.analyser.types import FileResults, FunctionResults
 from rattr.cli import parse_arguments
 from rattr.config import Config
+from rattr.models.results import FileResults, FunctionResults
 
 if TYPE_CHECKING:
     from typing import Any, Dict, List, Set

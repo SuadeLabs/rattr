@@ -32,10 +32,3 @@ ClassIr: TypeAlias = dict[UserDefinedCallableSymbol, FunctionIr]
 
 _ModuleName: TypeAlias = str
 ImportsIr: TypeAlias = dict[_ModuleName, FileIr]
-
-
-FunctionResults: TypeAlias = dict[ResultsCategory, set[Identifier]]
-
-
-_FunctionName: TypeAlias = str
-FileResults: TypeAlias = dict[_FunctionName, FunctionResults]

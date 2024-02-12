@@ -4,8 +4,9 @@ from __future__ import annotations
 import json
 
 from rattr.analyser.ir_dag import IrDagNode
-from rattr.analyser.types import FileResults, ImportsIr
+from rattr.analyser.types import ImportsIr
 from rattr.models.ir import FileIr
+from rattr.models.results import FileResults
 from rattr.models.symbol import Symbol
 
 
@@ -55,7 +56,7 @@ def generate_results_from_ir(file_ir: FileIr, imports_ir: ImportsIr) -> FileResu
         the final result).
 
     """
-    simplified: FileResults = dict()
+    simplified = FileResults()
 
     for foc, foc_ir in file_ir.items():
         ir_dag = IrDagNode(None, foc, foc_ir, file_ir, imports_ir)

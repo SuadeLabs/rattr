@@ -8,10 +8,11 @@ from math import log10
 from rattr import error
 from rattr.analyser.file import RattrStats, parse_and_analyse_file
 from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
-from rattr.analyser.types import FileResults, ImportsIr
+from rattr.analyser.types import ImportsIr
 from rattr.cli import parse_arguments
 from rattr.config import Config, Output, State
 from rattr.models.ir import FileIr
+from rattr.models.results import FileResults
 
 
 def _init_rattr_config() -> Config:
