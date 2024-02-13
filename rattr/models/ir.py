@@ -32,8 +32,8 @@ class FileIr(MutableMapping[UserDefinedCallableSymbol, FunctionIr]):
 
     context: Context
     _file_ir: dict[UserDefinedCallableSymbol, FunctionIr] = field(
-        init=False,
         factory=dict,
+        alias="file_ir",
     )
 
     def ir_as_dict(self) -> dict[UserDefinedCallableSymbol, FunctionIr]:
