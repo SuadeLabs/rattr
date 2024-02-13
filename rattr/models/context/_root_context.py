@@ -289,7 +289,7 @@ class RootContextBuilder:
             try:
                 arguments = namedtuple_init_signature_from_declaration(node)
             except ValueError as exc:
-                return error.error(str(exc), culprit=node)
+                return error.error(str(exc.args[0]), culprit=node)
 
             interface = CallInterface(args=arguments)
 

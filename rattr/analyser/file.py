@@ -214,7 +214,7 @@ class FileAnalyser(NodeVisitor):
         try:
             fn = self.context.get_func_or_error(node.name)
         except KeyError as exc:
-            return error.error(str(exc), culprit=node)
+            return error.error(str(exc.args[0]), culprit=node)
 
         if has_annotation("rattr_results", node):
             self.file_ir[fn] = parse_rattr_results_from_annotation(node, self.context)
@@ -259,7 +259,7 @@ class FileAnalyser(NodeVisitor):
         try:
             fn = self.context.get_func_or_error(name)
         except KeyError as exc:
-            return error.error(str(exc), culprit=node)
+            return error.error(str(exc.args[0]), culprit=node)
 
         self.file_ir[fn] = FunctionAnalyser(node.value, self.context).analyse()
 
@@ -272,7 +272,7 @@ class FileAnalyser(NodeVisitor):
         try:
             cls = self.context.get_class_or_error(name)
         except KeyError as exc:
-            return error.error(str(exc), culprit=node)
+            return error.error(str(exc.args[0]), culprit=node)
 
         self.file_ir[cls] = {
             "gets": set(),
