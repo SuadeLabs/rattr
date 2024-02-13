@@ -78,6 +78,9 @@ def test_find_module_name_and_spec_non_existant(target: str):
     ],
 )
 def test_find_module_name_and_spec_real_world(target: str, module_name: str):
+    # NOTE
+    # Use `find_spec` not `find_module_spec_fast` here as we are testing the correctness
+    # of the latter's impl.
     assert find_module_name_and_spec(target) == (
         module_name,
         importlib.util.find_spec(module_name),

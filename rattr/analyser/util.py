@@ -7,7 +7,6 @@ import hashlib
 import json
 import re
 import sys
-from importlib.util import find_spec
 from itertools import accumulate, chain, filterfalse
 from os.path import isfile
 from pathlib import Path
@@ -50,6 +49,7 @@ from rattr.models.symbol import (
     Import,
     Name,
 )
+from rattr.module_locator.util import find_module_spec_fast
 
 if TYPE_CHECKING:
     from rattr.ast.types import Identifier
@@ -569,10 +569,7 @@ def is_pip_module(module: str) -> bool:
     """
     pip_install_locations = (".+/site-packages.*",)
 
-    try:
-        spec = find_spec(module)
-    except (AttributeError, ModuleNotFoundError, ValueError):
-        spec = None
+    spec = find_module_spec_fast(module)
 
     if spec is None or spec.origin is None:
         return False
@@ -974,12 +971,8 @@ def module_name_from_file_path(file: Path | str | None) -> Optional[str]:
     ordered = list(reversed(well_formed))
 
     for p in [*ordered, None]:
-        try:
-            spec = find_spec(p)
-            if spec is not None:
-                break
-        except (AttributeError, ModuleNotFoundError, ValueError):
-            continue
+        if find_module_spec_fast(p) is None:
+            break
 
     return p
 

@@ -181,6 +181,9 @@ class TestImport:
         ],
     )
     def test_qualified_name(self, name, qualified_name, module_name):
+        # NOTE
+        # Use `find_spec` not `find_module_spec_fast` here as we are indirectly testing
+        # the correctness of the latter's impl.
         import_ = Import(name, qualified_name)
 
         assert import_.name == name

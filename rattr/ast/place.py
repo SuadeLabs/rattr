@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import re
-from importlib.util import find_spec
 from itertools import product
 from typing import TYPE_CHECKING
 
@@ -10,7 +9,7 @@ from isort import sections
 from isort.api import place_module
 
 from rattr.config import Config
-from rattr.module_locator.util import derive_module_names_left
+from rattr.module_locator.util import derive_module_names_left, find_module_spec_fast
 
 if TYPE_CHECKING:
     from typing import Final
@@ -87,10 +86,7 @@ def is_in_import_blacklist(name: _Identifier) -> bool:
 
 
 def _safe_origin(module: _Identifier) -> str | None:
-    try:
-        spec = find_spec(module)
-    except (AttributeError, ModuleNotFoundError, ValueError):
-        spec = None
+    spec = find_module_spec_fast(module)
 
     if spec is None or spec.origin is None:
         return None
