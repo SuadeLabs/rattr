@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+import attrs
+from attrs import field
 
 from rattr import error
 from rattr.analyser.types import FunctionIr, ImportsIr
@@ -22,50 +24,115 @@ if TYPE_CHECKING:
     from rattr.ast.types import Identifier
 
 
-def __prefix(func: Func | None) -> str:
-    """HACK We no longer have `culprit` so manually construct prefix."""
-    config = Config()
+@attrs.mutable
+class IrDagNode:
+    """Represent a function call for simplification."""
 
-    if func is None:
-        return ""
+    # TODO
+    # Refactor populate and simplify to be functions, not methods, and non-recursive via
+    # a deque.
 
-    file_location = func.location.defined_in
-    formatted_file_location = config.get_formatted_path(file_location)
+    call: Call
+    func: Func
+    func_ir: FunctionIr
+    file_ir: FileIr
+    imports_ir: ImportsIr
 
-    if formatted_file_location is None:
-        return ""
+    children: list[IrDagNode] = field(factory=list)
 
-    return "\033[1m{}:\033[0m".format(formatted_file_location)
+    def populate(self, seen: set[Call] | None = None) -> set[Call]:
+        """Populate this node, and it's children, recursively.
+
+        In principle, BFS the calls to construct the DAG. Calls may have cycles
+        (i.e. direct or indirect recursion), however these can be ignored if
+        the same function is called with the same arguments -- thus eliminating
+        cycles; producing a DAG.
+
+        """
+        if seen is None:
+            seen = set()
+
+        # Find children
+        for callee in self.func_ir["calls"]:
+            if callee in seen:
+                continue
+
+            _foc, _foc_ir = get_callee_target(
+                callee, self.file_ir, self.imports_ir, self.func
+            )
+
+            # NOTE Could not find func/init (undef'd, <str>.join(), etc)
+            if _foc is None or _foc_ir is None:
+                continue
+
+            self.children.append(
+                IrDagNode(callee, _foc, _foc_ir, self.file_ir, self.imports_ir)
+            )
+
+            seen.add(callee)
+
+        # Populate children
+        for child in self.children:
+            seen = child.populate(seen)
+
+        return seen
+
+    def simplify(self) -> FunctionIr:
+        """Return the IR modified to include dependent calls.
+
+        NOTE
+            Assumes that the root IrDagNode has been populated via `populate`!
+
+        """
+        # Leafs are already simplified
+        if len(self.children) == 0:
+            return copy.deepcopy(self.func_ir)
+
+        # Simplified non-terminal nodes are the combination of themselves
+        # and their children partially unbound
+        child_irs = [(c.simplify(), c) for c in self.children]
+
+        simplified: FunctionIr = copy.deepcopy(self.func_ir)
+
+        for child_ir, child in child_irs:
+            swaps = construct_swap(child.func, child.call)
+            unbound_child = partially_unbind(child_ir, swaps)
+
+            simplified["sets"] |= unbound_child["sets"]
+            simplified["gets"] |= unbound_child["gets"]
+            simplified["dels"] |= unbound_child["dels"]
+
+        return simplified
 
 
-def __resolve_target_and_ir(
+def get_callee_target(
     callee: Call,
     file_ir: FileIr,
     imports_ir: ImportsIr,
-) -> tuple[Func, FunctionIr]:
-    """Helper function for `resolve_function` and `resolve_class`."""
-    if callee.target in file_ir:
-        assert callee.target is not None, "unable to resolve callee target"
-        return callee.target, file_ir[callee.target]
-
+    caller: Func | None = None,
+) -> tuple[None, None] | tuple[Func, FunctionIr]:
+    """Return the func and IR of the called function."""
+    # TODO Should this trigger a warning?
     if callee.target is None:
-        raise ImportError
+        return None, None
 
-    filename = callee.target.location.defined_in
-    module = derive_module_name_from_path(filename)
+    if isinstance(callee.target, Builtin):
+        return None, None
 
-    if module is None:
-        raise ModuleNotFoundError(f"unable to find module for {str(filename)!r}")
+    if isinstance(callee.target, Func):
+        return resolve_function(callee, file_ir, imports_ir, caller)
 
-    module_ir = imports_ir.get(module)
+    # NOTE Procedural parameter, etc, can't be resolved
+    if isinstance(callee.target, Name):
+        return None, None
 
-    if module_ir is None:
-        raise ImportError
+    if isinstance(callee.target, Class):
+        return resolve_class_init(callee, file_ir, imports_ir, caller)
 
-    if callee.target not in module_ir:
-        raise ImportError
+    if isinstance(callee.target, Import):
+        return resolve_import(callee.name, callee.target, imports_ir, caller)
 
-    return callee.target, module_ir[callee.target]
+    raise TypeError("'callee' must be a CalleeTarget")
 
 
 def resolve_function(
@@ -199,36 +266,6 @@ def resolve_import(
     return None, None
 
 
-def get_callee_target(
-    callee: Call,
-    file_ir: FileIr,
-    imports_ir: ImportsIr,
-    caller: Func | None = None,
-) -> tuple[None, None] | tuple[Func, FunctionIr]:
-    """Return the func and IR of the called function."""
-    # TODO Should this trigger a warning?
-    if callee.target is None:
-        return None, None
-
-    if isinstance(callee.target, Builtin):
-        return None, None
-
-    if isinstance(callee.target, Func):
-        return resolve_function(callee, file_ir, imports_ir, caller)
-
-    # NOTE Procedural parameter, etc, can't be resolved
-    if isinstance(callee.target, Name):
-        return None, None
-
-    if isinstance(callee.target, Class):
-        return resolve_class_init(callee, file_ir, imports_ir, caller)
-
-    if isinstance(callee.target, Import):
-        return resolve_import(callee.name, callee.target, imports_ir, caller)
-
-    raise TypeError("'callee' must be a CalleeTarget")
-
-
 def partially_unbind_name(symbol: Name, new_basename: str) -> Name:
     """Return a new symbol bound to the new base name."""
     if symbol.basename == new_basename:
@@ -300,79 +337,47 @@ def construct_swap(func: Func, call: Call) -> dict[str, str]:
     return swaps
 
 
-@dataclass
-class IrDagNode:
-    """Represent a function call for simplification."""
+def __prefix(func: Func | None) -> str:
+    """HACK We no longer have `culprit` so manually construct prefix."""
+    config = Config()
 
-    call: Call
-    func: Func
-    func_ir: FunctionIr
-    file_ir: FileIr
-    imports_ir: ImportsIr
+    if func is None:
+        return ""
 
-    def __post_init__(self) -> None:
-        self.children: list[IrDagNode] = list()
+    file_location = func.location.defined_in
+    formatted_file_location = config.get_formatted_path(file_location)
 
-    def populate(self, seen: set[Call] | None = None) -> set[Call]:
-        """Populate this node, and it's children, recursively.
+    if formatted_file_location is None:
+        return ""
 
-        In principle, BFS the calls to construct the DAG. Calls may have cycles
-        (i.e. direct or indirect recursion), however these can be ignored if
-        the same function is called with the same arguments -- thus eliminating
-        cycles; producing a DAG.
+    return "\033[1m{}:\033[0m".format(formatted_file_location)
 
-        """
-        if seen is None:
-            seen = set()
 
-        # Find children
-        for callee in self.func_ir["calls"]:
-            if callee in seen:
-                continue
+def __resolve_target_and_ir(
+    callee: Call,
+    file_ir: FileIr,
+    imports_ir: ImportsIr,
+) -> tuple[Func, FunctionIr]:
+    """Helper function for `resolve_function` and `resolve_class`."""
+    if callee.target in file_ir:
+        assert callee.target is not None, "unable to resolve callee target"
+        return callee.target, file_ir[callee.target]
 
-            _foc, _foc_ir = get_callee_target(
-                callee, self.file_ir, self.imports_ir, self.func
-            )
+    if callee.target is None:
+        raise ImportError
 
-            # NOTE Could not find func/init (undef'd, <str>.join(), etc)
-            if _foc is None or _foc_ir is None:
-                continue
+    filename = callee.target.location.defined_in
+    module = derive_module_name_from_path(filename)
 
-            self.children.append(
-                IrDagNode(callee, _foc, _foc_ir, self.file_ir, self.imports_ir)
-            )
+    if module is None:
+        raise ModuleNotFoundError(f"unable to find module for {str(filename)!r}")
 
-            seen.add(callee)
+    module_ir = imports_ir.get(module)
 
-        # Populate children
-        for child in self.children:
-            seen = child.populate(seen)
+    if module_ir is None:
+        raise ImportError
 
-        return seen
+    if callee.target not in module_ir:
+        raise ImportError
 
-    def simplify(self) -> FunctionIr:
-        """Return the IR modified to include dependent calls.
-
-        NOTE
-            Assumes that the root IrDagNode has been populated via `populate`!
-
-        """
-        # Leafs are already simplified
-        if len(self.children) == 0:
-            return copy.deepcopy(self.func_ir)
-
-        # Simplified non-terminal nodes are the combination of themselves
-        # and their children partially unbound
-        child_irs = [(c.simplify(), c) for c in self.children]
-
-        simplified: FunctionIr = copy.deepcopy(self.func_ir)
-
-        for child_ir, child in child_irs:
-            swaps = construct_swap(child.func, child.call)
-            unbound_child = partially_unbind(child_ir, swaps)
-
-            simplified["sets"] |= unbound_child["sets"]
-            simplified["gets"] |= unbound_child["gets"]
-            simplified["dels"] |= unbound_child["dels"]
-
-        return simplified
+    return callee.target, module_ir[callee.target]
