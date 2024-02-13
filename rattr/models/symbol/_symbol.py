@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 class Symbol(abc.ABC):
     name: str = field()
 
-    token: ast.AST | None = field(default=None, kw_only=True)
-    location: Location | None = field(default=None, kw_only=True)
+    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    location: Location | None = field(default=None, kw_only=True, hash=False, eq=False)
 
     interface: CallInterface | None = field(default=None, kw_only=True)
 

@@ -55,7 +55,13 @@ class Context(MutableMapping[Identifier, Symbol]):
     parent: Context | None
     symbol_table: SymbolTable = field(factory=SymbolTable, kw_only=True)
 
-    _file: Path = field(init=False, factory=get_current_file, kw_only=True)
+    _file: Path = field(
+        init=False,
+        factory=get_current_file,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
 
     @property
     def file(self) -> Path:

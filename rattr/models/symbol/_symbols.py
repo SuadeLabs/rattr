@@ -65,8 +65,8 @@ class Name(Symbol):
     name: str = field()
     basename: str = field()
 
-    token: ast.AST | None = field(default=None, kw_only=True)
-    location: Location = field(kw_only=True)
+    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: CallInterface | None = field(default=None, kw_only=True)
 
@@ -83,8 +83,8 @@ class Name(Symbol):
 class Builtin(Symbol):
     name: str = field()
 
-    token: ast.AST | None = field(default=None, kw_only=True)
-    location: Location = field(kw_only=True)
+    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: AnyCallInterface = field(factory=AnyCallInterface, kw_only=True)
 
@@ -105,8 +105,8 @@ class Import(Symbol):
     name: str = field()
     qualified_name: str = field()
 
-    token: ast.AST | None = field(default=None, kw_only=True)
-    location: Location = field(kw_only=True)
+    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: AnyCallInterface = field(factory=AnyCallInterface, kw_only=True)
 
@@ -164,8 +164,8 @@ class Import(Symbol):
 class Func(Symbol):
     name: str = field(converter=without_call_brackets)
 
-    token: ast.AST | None = field(default=None, kw_only=True)
-    location: Location = field(kw_only=True)
+    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: CallInterface = field(kw_only=True)
 
@@ -190,8 +190,8 @@ class Func(Symbol):
 class Class(Symbol):
     name: str = field(converter=without_call_brackets)
 
-    token: ast.AST | None = field(default=None, kw_only=True)
-    location: Location = field(kw_only=True)
+    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: CallInterface = field(factory=AnyCallInterface, kw_only=True)
 
@@ -250,8 +250,8 @@ class Call(Symbol):
     args: CallArguments = field(factory=CallArguments)
     target: Builtin | Import | Func | Class | None = field(default=None)
 
-    token: ast.AST | None = field(default=None, kw_only=True)
-    location: Location = field(kw_only=True)
+    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: CallInterface | None = field(init=False, default=None, kw_only=True)
 
