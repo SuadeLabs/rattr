@@ -905,7 +905,7 @@ def class_in_rhs(node: AnyAssign, context: Context) -> bool:
         full = get_fullname(expr, safe=True)
 
         try:
-            target = context.get_call_target(full, expr, False)
+            target = context.get_call_target(full, expr, warn=False)
         except ValueError:
             return False
 
