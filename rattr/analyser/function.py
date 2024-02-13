@@ -87,12 +87,12 @@ class FunctionAnalyser(NodeVisitor):
 
         base, full = names_of(node, safe=True)
 
-        is_undeclared = base not in self.context.symbol_table.names
+        is_undeclared = base not in self.context
         is_assignment = isinstance(ctx, ast.Store)
         is_local = base.startswith(config.LOCAL_VALUE_PREFIX)
 
         if is_undeclared and not is_assignment and not is_local:
-            error.warning(f"'{base}' potentially undefined", node)
+            error.warning(f"{base!r} potentially undefined", node)
 
         return base, full
 
