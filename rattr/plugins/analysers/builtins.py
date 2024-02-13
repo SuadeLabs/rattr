@@ -2,17 +2,14 @@
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING
 
 from rattr.analyser.base import CustomFunctionAnalyser
 from rattr.analyser.types import FunctionIr
 from rattr.analyser.util import get_dynamic_name
 from rattr.ast.types import AnyFunctionDef
 from rattr.ast.util import fullname_of
+from rattr.models.context import Context
 from rattr.models.symbol import Name
-
-if TYPE_CHECKING:
-    from rattr.models.context import Context
 
 
 class GetattrAnalyser(CustomFunctionAnalyser):
