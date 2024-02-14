@@ -4,9 +4,11 @@ from __future__ import annotations
 import ast
 import builtins
 import hashlib
+import io
 import json
 import re
 import sys
+from contextlib import redirect_stderr
 from itertools import accumulate, chain, filterfalse
 from os.path import isfile
 from pathlib import Path
@@ -28,17 +30,19 @@ from typing import (
 from isort.api import place_module
 
 from rattr import error
-from rattr.analyser.types import AstStrictlyNameable, FunctionIr
+from rattr.analyser.exc import RattrResultsError
 from rattr.ast.types import (
     AnyAssign,
     AnyDef,
     AnyFunctionDef,
     AstComprehensions,
     AstLiterals,
+    AstStrictlyNameable,
     Nameable,
 )
 from rattr.config import Config
 from rattr.extra import DictChanges  # noqa: F401
+from rattr.models.ir import FunctionIr
 from rattr.models.symbol import (
     PYTHON_ATTR_ACCESS_BUILTINS,
     PYTHON_BUILTINS,
@@ -52,9 +56,15 @@ from rattr.models.symbol import (
 from rattr.module_locator.util import find_module_spec_fast
 
 if TYPE_CHECKING:
+    from typing import Final
+
+    from rattr.analyser.types import RattrResults
     from rattr.ast.types import Identifier
     from rattr.models.context import Context
     from rattr.models.symbol import Symbol
+
+
+re_rattr_name: Final = re.compile(r"^[A-Za-z_][\w\(\)\[\]\.]*$")
 
 
 def get_basename_fullname_pair(
@@ -408,143 +418,178 @@ def parse_annotation(
     return pos_args, named_args
 
 
-def is_name(name: Any) -> bool:
-    """Return `True` if the given name is a valid Python `_identifier`.
-
-    See: `parse_rattr_results_from_annotation(...)`
-    """
-    if not isinstance(name, str):
+def is_name(target: str | object) -> bool:
+    """Return `True` if the given name is a valid Python identifier."""
+    if not isinstance(target, str):
         return False
 
-    if name.startswith("*"):
-        name = name[1:]
-
-    if name.startswith("@"):
-        name = name[1:]
-
-    return bool(re.match("^[A-Za-z_][A-Za-z\\d\\(\\)\\[\\]\\._]*$", name))
+    name = target.removeprefix("*").removeprefix("@")
+    return re_rattr_name.fullmatch(name) is not None
 
 
-def is_set_of_names(set_of_names: Any) -> bool:
-    """Return `True` if the given names are all valid Python `_identifier`s.
+def is_set_of_names(target: set[str] | object) -> bool:
+    return isinstance(target, set) and all(is_name(name) for name in target)
 
-    See: `is_name(...`)
-    See: `parse_rattr_results_from_annotation(...)`
-    """
-    if not isinstance(set_of_names, set):
+
+def is_list_of_names(target: list[str] | object) -> bool:
+    return isinstance(target, list) and all(is_name(name) for name in target)
+
+
+def is_list_of_call_specs(
+    call_specs: list[tuple[Identifier, tuple[list[Identifier], dict[Identifier, str]]]]
+    | object,
+) -> bool:
+    if not isinstance(call_specs, list):
         return False
 
-    return all(is_name(name) for name in set_of_names)
+    for spec in call_specs:
+        if not isinstance(spec, tuple):
+            return False
 
+        if len(spec) != 2:
+            return False
 
-def is_args(args: Any) -> bool:
-    """Return `True` if the given names are all valid Python `_identifier`s.
+        target_name, target_args = spec
 
-    See: `is_name(...`)
-    See: `parse_rattr_results_from_annotation(...)`
-    """
-    if not isinstance(args, tuple):
-        return False
+        if not is_name(target_name):
+            return False
 
-    if len(args) != 2:
-        return False
+        if not isinstance(target_args, tuple):
+            return False
 
-    pos_args, named_args = args
+        if len(target_args) != 2:
+            return False
 
-    if not is_set_of_names(set(pos_args)):
-        return False
+        target_pos_args, target_keyword_args = target_args
 
-    if not all(is_name(name) for name in named_args.keys()):
-        return False
-    if not all(is_name(arg) for arg in named_args.values()):
-        return False
+        if not is_list_of_names(target_pos_args):
+            return False
+
+        for arg_name, local_identifier in target_keyword_args.items():
+            if not is_name(arg_name):
+                return False
+            if not is_name(local_identifier):
+                return False
 
     return True
 
 
+def validate_rattr_results(rattr_results: RattrResults) -> None:
+    """Raise a RattrResultsError if the given results are invalid.
+
+    Raises:
+        RattrResultsError: The given rattr results are invalid.
+    """
+    for key in ("gets", "sets", "dels"):
+        if not is_set_of_names(rattr_results[key]):
+            raise RattrResultsError(
+                f"'rattr_results' expects a set[Identifier] for {key!r}, where "
+                f"Identifier is a type alias for str"
+            )
+
+    if not is_list_of_call_specs(rattr_results["calls"]):
+        raise RattrResultsError(
+            "'rattr_results' expects 'calls' to be a "
+            "list[tuple[TargetName, tuple[list[PositionalArgumentName], "
+            "dict[KeywordArgumentName, LocalIdentifier]]]]; "
+            "where TargetName, PositionalArgumentName, KeywordArgumentName, and "
+            "LocalIdentifier are type aliases for str"
+        )
+
+
+def parse_rattr_results_from_annotation_args_impl(
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> RattrResults:
+    stderr_stream = io.StringIO()
+    has_likely_missing_comma = False
+
+    try:
+        with redirect_stderr(stderr_stream):
+            decorator_args, decorator_kwargs = parse_annotation("rattr_results", fn_def)
+    except SystemExit as exc:
+        stderr = stderr_stream.getvalue()
+
+        # TODO On switching to proper logging use logger here
+        for line in stderr.splitlines():
+            if "unable to evaluate" in line:
+                has_likely_missing_comma = True
+            else:
+                print(line)
+
+        if has_likely_missing_comma:
+            error.fatal(
+                "unable to parse 'rattr_results', you are likely missing a "
+                "comma in 'calls'",
+                culprit=fn_def,
+            )
+
+        raise exc
+
+    if decorator_args != []:
+        error.fatal(
+            f"unexpected positional arguments to 'rattr_results'; expected "
+            f"none, got {decorator_args}",
+            culprit=fn_def,
+        )
+
+    rattr_results_from_annotation: RattrResults = {
+        "gets": set(),
+        "sets": set(),
+        "dels": set(),
+        "calls": list(),
+    }
+    for key, results in decorator_kwargs.items():
+        if key not in rattr_results_from_annotation:
+            continue
+        rattr_results_from_annotation[key] = results
+
+    if decorator_kwargs.keys() - rattr_results_from_annotation.keys():
+        error.fatal(
+            f"unexpected keyword arguments to 'rattr_results'; expected any of "
+            f"{list(rattr_results_from_annotation.keys())}, got "
+            f"{list(decorator_kwargs.keys())}",
+            culprit=fn_def,
+        )
+
+    return rattr_results_from_annotation
+
+
 def parse_rattr_results_from_annotation(
-    fn_def: AnyFunctionDef,
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+    *,
     context: Context,
 ) -> FunctionIr:
     """Return the IR for the given function, assuming it is annotated."""
-    # Check arguments
-    expected = {"sets": set(), "gets": set(), "calls": list(), "dels": set()}
-    pos_args, named_args = parse_annotation("rattr_results", fn_def)
+    rattr_results = parse_rattr_results_from_annotation_args_impl(fn_def)
 
-    if pos_args != list():
-        error.fatal(
-            f"unexpected positional arguments to 'rattr_results'; expected "
-            f"none, got {pos_args}",
-            fn_def,
-        )
+    try:
+        validate_rattr_results(rattr_results)
+    except RattrResultsError as exc:
+        error.fatal(exc.message, culprit=fn_def)
 
-    for name, default in expected.items():
-        if name in named_args:
-            continue
-        named_args[name] = default
-
-    if not all(key in expected.keys() for key in named_args.keys()):
-        error.fatal(
-            f"'rattr_results' expects one-or-many of the arguments "
-            f"{set(expected.keys())}, found {set(named_args.keys())}",
-            fn_def,
-        )
-
-    # Check argument types
-    def __type_error(msg: str) -> None:
-        error.fatal("type error:" + msg, fn_def)
-
-    if not is_set_of_names(named_args.get("sets")):
-        __type_error("'rattr_results' expects set of names for 'sets'")
-
-    if not is_set_of_names(named_args.get("gets")):
-        __type_error("'rattr_results' expects set of names for 'gets'")
-
-    if not is_set_of_names(named_args.get("dels")):
-        __type_error("'rattr_results' expects set of names for 'dels'")
-
-    if not all(is_name(c[0]) for c in named_args.get("calls")):
-        __type_error("'rattr_results' LHS of 'calls' to be names")
-
-    if not all(is_args(c[1]) for c in named_args.get("calls")):
-        __type_error("'rattr_results' expects args for 'calls'")
-
-    if not all(len(c) == 2 for c in named_args.get("calls")):
-        __type_error("'rattr_results' expects two elements per call")
-
-    def parse_name(name: Identifier) -> Name:
+    def as_name(name: Identifier) -> Name:
         return Name(
             name=name,
             basename=name.replace("*", "").split(".")[0],
             token=fn_def,
         )
 
-    def parse_call(
-        callee: Identifier,
-        args: list[Identifier],
-        kwargs: dict[Identifier, Identifier],
-        target: Symbol | None = None,
+    def as_call(
+        call: tuple[Identifier, tuple[list[Identifier], dict[Identifier, Identifier]]],
     ) -> Call:
+        (target_name, (args, kwargs)) = call
         return Call(
-            name=callee,
+            name=target_name,
             args=CallArguments(args=args, kwargs=kwargs),
-            target=target,
+            target=context.get_call_target(target_name, culprit=fn_def),
             token=fn_def,
         )
 
-    # Parse arguments as IR
     return {
-        "sets": {parse_name(n) for n in named_args.get("sets")},
-        "gets": {parse_name(n) for n in named_args.get("gets")},
-        "dels": {parse_name(n) for n in named_args.get("dels")},
-        "calls": {
-            parse_call(
-                callee,
-                *callee_args_and_kwargs,
-                context.get_call_target(callee, fn_def),
-            )
-            for callee, callee_args_and_kwargs in named_args.get("calls")
-        },
+        "gets": {as_name(name) for name in rattr_results["gets"]},
+        "sets": {as_name(name) for name in rattr_results["sets"]},
+        "dels": {as_name(name) for name in rattr_results["dels"]},
+        "calls": {as_call(call) for call in rattr_results["calls"]},
     }
 
 

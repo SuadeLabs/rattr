@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Union
+from typing import TYPE_CHECKING, TypedDict, Union
 
 from rattr.ast.types import (  # noqa: F401
     AstStrictlyNameable,
@@ -12,8 +12,8 @@ from rattr.models.ir import FileIr, FunctionIr
 from rattr.models.symbol import UserDefinedCallableSymbol
 from rattr.versioning.typing import TypeAlias
 
-ResultsCategory: TypeAlias = Literal["gets", "sets", "dels", "calls"]
-
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
 
 PythonLiteral: TypeAlias = Union[
     None,
@@ -27,8 +27,27 @@ PythonLiteral: TypeAlias = Union[
 """Python literals."""
 
 ClassIr: TypeAlias = dict[UserDefinedCallableSymbol, FunctionIr]
-"""The intermediate representation for a class."""
-
 
 _ModuleName: TypeAlias = str
 ImportsIr: TypeAlias = dict[_ModuleName, FileIr]
+
+
+TargetName: TypeAlias = Identifier
+PositionalArgumentName: TypeAlias = Identifier
+KeywordArgumentName: TypeAlias = Identifier
+LocalIdentifier: TypeAlias = Identifier
+
+
+class RattrResults(TypedDict):
+    gets: set[Identifier]
+    sets: set[Identifier]
+    dels: set[Identifier]
+    calls: list[
+        tuple[
+            TargetName,
+            tuple[
+                list[PositionalArgumentName],
+                dict[KeywordArgumentName, LocalIdentifier],
+            ],
+        ]
+    ]
