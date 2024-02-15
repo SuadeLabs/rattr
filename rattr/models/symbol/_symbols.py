@@ -226,7 +226,7 @@ class Class(Symbol):
     @classmethod
     def from_class_def(cls: type[Class], ast_class: ast.ClassDef) -> None:
         """Return a new `Class` parsed from the given class def."""
-        init_interface = None
+        init_interface = AnyCallInterface()
 
         for stmt in ast_class.body:
             if not isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
