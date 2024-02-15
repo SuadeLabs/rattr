@@ -237,5 +237,6 @@ class ClassAnalyser(NodeVisitor):
         return cls
 
     def update_symbol(self, new_class_symbol: Class) -> Class:
+        _ = self.context.pop(new_class_symbol.id)
         self.context[new_class_symbol.id] = new_class_symbol
         return new_class_symbol
