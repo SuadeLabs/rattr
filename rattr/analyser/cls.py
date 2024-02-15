@@ -175,11 +175,13 @@ class ClassAnalyser(NodeVisitor):
 
     def visit_static_method(self, method: AnyFunctionDef) -> None:
         qualified_name = f"{self.name}.{method.name}"
+
         fn = Func(
             name=qualified_name,
             token=method,
             interface=CallInterface.from_fn_def(method),
         )
+        self.context.add(fn)
 
         method_analyser = FunctionAnalyser(method, self.context)
         self.class_ir[fn] = method_analyser.analyse()
