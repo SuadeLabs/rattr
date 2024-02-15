@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import ast
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import attrs
 from attrs import field
@@ -52,6 +52,14 @@ class Symbol(abc.ABC):
     @property
     def is_import(self) -> Literal[False]:
         return False
+
+
+class ConsumableCallInterface(NamedTuple):
+    posonlyargs: list[Identifier]
+    args: list[Identifier]
+    vararg: Identifier | None
+    kwonlyargs: list[Identifier]
+    kwarg: Identifier | None
 
 
 @attrs.frozen
@@ -112,6 +120,20 @@ class CallInterface:
             kwarg=kwarg,
         )
 
+    def as_consumable_call_interface(self) -> ConsumableCallInterface:
+        """Return a copy of this interface as a consumable named tuple.
+
+        This is s.t. the caller can freely `pop` or otherwise destructively consume the
+        interface at the point of call.
+        """
+        return ConsumableCallInterface(
+            posonlyargs=[arg for arg in self.posonlyargs],
+            args=[arg for arg in self.args],
+            vararg=self.vararg,
+            kwonlyargs=[kwarg for kwarg in self.kwonlyargs],
+            kwarg=self.kwarg,
+        )
+
 
 @attrs.frozen
 class AnyCallInterface(CallInterface):
@@ -159,9 +181,36 @@ class CallArguments:
 @attrs.frozen
 class Location:
     token: ast.AST | None = field(default=None)
+    _file: Path = field(alias="file", factory=get_current_file, kw_only=True)
 
-    _derived_location: Path = field(factory=get_current_file, kw_only=True)
+    @property
+    def file(self) -> Path:
+        return self._file
+
+    @property
+    def lineno(self) -> int | None:
+        if self.token is None:
+            return None
+        return self.token.lineno
+
+    @property
+    def end_lineno(self) -> int | None:
+        if self.token is None:
+            return None
+        return self.token.end_lineno
+
+    @property
+    def col_offset(self) -> int | None:
+        if self.token is None:
+            return None
+        return self.token.col_offset
+
+    @property
+    def end_col_offset(self) -> int | None:
+        if self.token is None:
+            return None
+        return self.token.end_col_offset
 
     @property
     def defined_in(self) -> Path:
-        return self._derived_location
+        return self._file

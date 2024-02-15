@@ -1,6 +1,7 @@
 """Represent the IR of functions as a DAG, for simplification."""
 from __future__ import annotations
 
+import ast
 import copy
 from typing import TYPE_CHECKING
 
@@ -17,7 +18,7 @@ from rattr.analyser.util import (
 )
 from rattr.config import Config
 from rattr.models.ir import FileIr
-from rattr.models.symbol import Builtin, Call, Class, Func, Import, Name
+from rattr.models.symbol import Builtin, Call, Class, Func, Import, Location, Name
 from rattr.module_locator.util import derive_module_name_from_path
 
 if TYPE_CHECKING:
@@ -268,8 +269,17 @@ def resolve_import(
 
 def partially_unbind_name(symbol: Name, new_basename: str) -> Name:
     """Return a new symbol bound to the new base name."""
+
+    def as_name(name: Identifier, basename: Identifier | None = None) -> Name:
+        return Name(
+            name,
+            basename,
+            token=symbol.token,
+            location=Location(token=symbol.token, file=symbol.location.file),
+        )
+
     if symbol.basename == new_basename:
-        return Name(symbol.name, symbol.basename)
+        return as_name(symbol.name, symbol.basename)
 
     new_name = symbol.name
     if symbol.name.startswith("*"):
@@ -277,7 +287,7 @@ def partially_unbind_name(symbol: Name, new_basename: str) -> Name:
     else:
         new_name = symbol.name.replace(symbol.basename, new_basename, 1)
 
-    return Name(new_name, new_basename)
+    return as_name(new_name, new_basename)
 
 
 def partially_unbind(func_ir: FunctionIr, swaps: dict[str, str]) -> FunctionIr:
@@ -299,40 +309,108 @@ def partially_unbind(func_ir: FunctionIr, swaps: dict[str, str]) -> FunctionIr:
     }
 
 
-def construct_swap(func: Func, call: Call) -> dict[str, str]:
+def construct_swap(func: Func, call: Call) -> dict[Identifier, Identifier]:
     """Return the map of local function names to bound names."""
-    swaps: dict[str, str] = dict()
+    # TODO
+    # The func.interface needs to store the default arguments, the ast makes this tricky
+    # as it is just a list of default values (not a dict of argument to default value)
+    # but as you can't have a non-defaulted value after a defaulted one we can work this
+    # out at when we build the context.
+    # TODO
+    # Handle vararg and kwargs
+    config = Config()
 
-    f_args = copy.deepcopy(func.args)
+    swaps: dict[Identifier, Identifier] = {}
 
-    c_args = copy.deepcopy(call.args)
-    c_kwargs = copy.deepcopy(call.kwargs)
+    # Copy the input args / interface so we can pop to keep track of state
+    interface = func.interface.as_consumable_call_interface()
+    call_args = [a for a in call.args.args]
+    call_kwargs = {k: v for k, v in call.args.kwargs.items()}
 
-    # Python call must be ([pos_arg | *'d], ..., [named_arg | **'d], ...)
-    # Python function def must be (pos_arg, ..., named_arg, ..., *'d?, **'d?)
+    while True:
+        if not interface.posonlyargs:
+            break
 
-    for target, replacement in zip(f_args, c_args):
+        if not call_args:
+            error.error(
+                f"call to {func.name!r} expected {len(func.interface.posonlyargs)} "
+                f"posonlyargs but only received {len(call.args)} positional arguments",
+                culprit=call,
+            )
+            return {}
+
+        target = interface.posonlyargs.pop(0)
+        replacement = call_args.pop(0)
+
         swaps[target] = replacement
-    f_args = f_args[len(c_args) :]
 
-    # Ensure no ambiguities
-    for target in swaps.keys():
-        if target not in c_kwargs.keys():
-            continue
+    while True:
+        if not interface.args:
+            break
 
-        error.fatal(f"{__prefix(func)} {target!r} given by position and name")
+        if not call_args:
+            break  # no error as the remaining args may be supplied by kw
 
-        return swaps
+        target = interface.args.pop(0)
+        replacement = call_args.pop(0)
 
-    # Allow no match as a default may be present
-    for target in f_args:
-        if target not in c_kwargs:
-            continue
-        swaps[target] = c_kwargs[target]
-        del c_kwargs[target]
+        swaps[target] = replacement
 
-    if len(c_kwargs) > 0:
-        error.error(f"{__prefix(func)} unexpected named arguments {c_kwargs}")
+    if interface.vararg is not None:
+        swaps[interface.vararg] = f"{config.LOCAL_VALUE_PREFIX}{ast.Tuple.__name__}"
+        call_args = []
+
+    # We can't be very specific here as we don't know if any of the positional arguments
+    # have defaults (yet, we need a better CallInterface, see the todo above).
+    if call_args:
+        error.error(
+            f"call to {func.name!r} received too many positional arguments",
+            culprit=call,
+        )
+
+    # interface.args may be [] or [...]
+    # call_args is []
+
+    unexpected_keyword_arguments: list[Identifier] = []
+    arguments_given_by_position_and_name: list[Identifier] = []
+
+    while True:
+        if not call_kwargs:
+            break
+
+        (target, replacement) = call_kwargs.popitem()
+
+        if target in swaps:
+            arguments_given_by_position_and_name.append(target)
+
+        if target in interface.args:
+            interface.args.remove(target)
+            swaps[target] = replacement
+        elif target in interface.kwonlyargs:
+            interface.kwonlyargs.remove(target)
+            swaps[target] = replacement
+        elif interface.kwarg is not None:
+            swaps[interface.kwarg] = f"{config.LOCAL_VALUE_PREFIX}{ast.Dict.__name__}"
+        else:
+            unexpected_keyword_arguments.append(target)
+
+    if unexpected_keyword_arguments:
+        error.error(
+            f"call to {func.name!r} received unexpected keyword arguments: "
+            f"{unexpected_keyword_arguments}",
+            culprit=call,
+        )
+
+    if arguments_given_by_position_and_name:
+        error.error(
+            f"call to {func.name!r} received the arguments "
+            f"{arguments_given_by_position_and_name} by position and name",
+            culprit=call,
+        )
+
+    # There could be interface.args remaining but for now we don't know if they might
+    # be defaulted so we can't do anything here
+    # There could also be interface.kwonlyargs but, likewise, they could have defaults
 
     return swaps
 
