@@ -149,6 +149,7 @@ class FunctionAnalyser(NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> None:
         """Visit ast.Call(func, args, keywords)."""
+        config = Config()
         _, fullname = self.get_and_verify_name(node, ast.Load())
 
         # Handle special builtins such as getattr, setattr, etc
@@ -156,21 +157,25 @@ class FunctionAnalyser(NodeVisitor):
             return
 
         # NOTE
-        #   Add the call to the IR and manually visit the arguments,
-        #   but not `node.func` as it will register an incorrect "gets"
+        # Add the call to the IR and manually visit the arguments, but not `node.func`
+        # as it will register an incorrect "gets"
 
         target = self.context.get_call_target(fullname, node)
 
         if isinstance(target, Class):
-            error.warning(f"'{target.name}' initialised but not stored", node)
+            error.warning(f"{target.name!r} initialised but not stored", node)
+            self_name = config.LOCAL_VALUE_PREFIX + target.name
+        else:
+            self_name = None
 
-        # NOTE On a call to `cls.member.method()` then it must get `class.member`
         # TODO Refactor
+        # On a call to `cls.member.method()` then it must get `class.member`
         parts = without_call_brackets(fullname).split(".")[:-1]
         for attr in list(accumulate(parts, lambda a, b: f"{a}.{b}"))[1:]:
             self.func_ir["gets"].add(Name(attr, parts[0], token=node))
 
-        self.func_ir["calls"].add(Call.from_call(fullname, call=node, target=target))
+        call = Call.from_call(fullname, call=node, target=target, self=self_name)
+        self.func_ir["calls"].add(call)
 
         for arg in (*node.args, *node.keywords):
             self.visit(arg)
@@ -193,10 +198,10 @@ class FunctionAnalyser(NodeVisitor):
 
         ir = analyser.on_call(name, node, self.context)
 
-        self.func_ir["sets"] = set.union(self.func_ir["sets"], ir["sets"])
-        self.func_ir["gets"] = set.union(self.func_ir["gets"], ir["gets"])
-        self.func_ir["dels"] = set.union(self.func_ir["dels"], ir["dels"])
-        self.func_ir["calls"] = set.union(self.func_ir["calls"], ir["calls"])
+        self.func_ir["sets"] |= ir["sets"]
+        self.func_ir["gets"] |= ir["gets"]
+        self.func_ir["dels"] |= ir["dels"]
+        self.func_ir["calls"] |= ir["calls"]
 
         return True
 
@@ -214,8 +219,15 @@ class FunctionAnalyser(NodeVisitor):
         error.error("unable to unbind lambdas defined in functions", node)
 
         name = fullname_of(target)
-        func = Func(name=name, token=node, interface=CallInterface.from_fn_def(node))
 
+        if not isinstance(node.value, ast.Lambda):
+            error.fatal("unable to find lambda in rhs")  # never
+
+        func = Func(
+            name=name,
+            token=node,
+            interface=CallInterface.from_fn_def(node.value),
+        )
         self.context.add(func)
 
     def visit_NamedTupleAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
@@ -247,7 +259,12 @@ class FunctionAnalyser(NodeVisitor):
         class_name = fullname_of(node.value)
         init_body = self.context.get_call_target(class_name, node)
 
-        call = Call.from_call(class_name, call=node.value, target=init_body)
+        call = Call.from_call(
+            class_name,
+            call=node.value,
+            target=init_body,
+            self=lhs_name,
+        )
         self.func_ir["calls"].add(call)
 
         # Create set to LHS
@@ -271,7 +288,6 @@ class FunctionAnalyser(NodeVisitor):
         """
         targets = get_assignment_targets(node)
 
-        # NOTE Handle special case, non-anonymous lambda
         if lambda_in_rhs(node):
             self.visit_LambdaAssign(node, targets)
             return
@@ -280,7 +296,6 @@ class FunctionAnalyser(NodeVisitor):
             self.visit_NamedTupleAssign(node, targets)
             return
 
-        # NOTE Handle special case, rhs is class
         if class_in_rhs(node, self.context):
             self.visit_ClassAssign(node, targets)
             return
