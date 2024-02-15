@@ -68,7 +68,7 @@ def generate_results_from_ir(file_ir: FileIr, imports_ir: ImportsIr) -> FileResu
             "gets": {s.name for s in composed_ir["gets"]},
             "sets": {s.name for s in composed_ir["sets"]},
             "dels": {s.name for s in composed_ir["dels"]},
-            "calls": {s.name for s in composed_ir["calls"]},
+            "calls": {s.name_of_call for s in composed_ir["calls"]},
         }
 
     return simplified

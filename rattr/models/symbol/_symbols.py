@@ -90,10 +90,7 @@ class Builtin(Symbol):
 
     @location.default
     def _location_default(self) -> Location:
-        return Location(
-            token=self.token,
-            derived_location=Path(PYTHON_BUILTINS_LOCATION),
-        )
+        return Location(token=self.token, file=Path(PYTHON_BUILTINS_LOCATION))
 
     @property
     def has_affect(self) -> bool:
@@ -274,3 +271,7 @@ class Call(Symbol):
             target=target,
             token=call,
         )
+
+    @property
+    def name_of_call(self) -> str:
+        return f"{self.name}()"

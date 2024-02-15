@@ -4,9 +4,10 @@ from __future__ import annotations
 import ast
 import sys
 from enum import Enum
-from typing import NoReturn, Optional, Tuple
+from typing import NoReturn
 
 from rattr.config import Config, ShowWarnings
+from rattr.models.symbol import Symbol
 
 __ERROR = "{prefix}: {optional_file_info}{optional_line_info}: {message}"
 __FILE_INFO = "\033[1m{}\033[0m"
@@ -28,7 +29,7 @@ class Level(Enum):
 
 def rattr(
     message: str,
-    culprit: Optional[ast.AST] = None,
+    culprit: ast.AST | Symbol | None = None,
     badness: int = 0,
 ) -> None:
     """Log a message with the prefix "rattr", not for analyser errors."""
@@ -37,7 +38,7 @@ def rattr(
 
 def info(
     message: str,
-    culprit: Optional[ast.AST] = None,
+    culprit: ast.AST | Symbol | None = None,
     badness: int = 0,
 ) -> None:
     """Log a low-priority warning and, if given, include culprit info."""
@@ -60,7 +61,7 @@ def info(
 
 def warning(
     message: str,
-    culprit: Optional[ast.AST] = None,
+    culprit: ast.AST | Symbol | None = None,
     badness: int = 1,
 ) -> None:
     """Log a warning and, if given, include culprit line and file info."""
@@ -83,7 +84,7 @@ def warning(
 
 def error(
     message: str,
-    culprit: Optional[ast.AST] = None,
+    culprit: ast.AST | Symbol | None = None,
     badness: int = 5,
 ) -> None:
     """Log an error and, if given, include culprit line and file info."""
@@ -98,7 +99,7 @@ def error(
 
 def fatal(
     message: str,
-    culprit: Optional[ast.AST] = None,
+    culprit: ast.AST | Symbol | None = None,
     badness: int = 0,  # noqa
 ) -> NoReturn:
     """Log a fatal error and, if given, include culprit line and file info.
@@ -119,7 +120,7 @@ def fatal(
     sys.exit(1)
 
 
-def get_file_and_line_info(culprit: Optional[ast.AST]) -> Tuple[str, str]:
+def get_file_and_line_info(culprit: ast.AST | None) -> tuple[str, str]:
     """Return the formatted line and line and file info as strings."""
     config = Config()
 
@@ -139,8 +140,11 @@ def get_file_and_line_info(culprit: Optional[ast.AST]) -> Tuple[str, str]:
 def __log(
     level: Level,
     message: str,
-    culprit: Optional[ast.AST] = None,
+    culprit: ast.AST | Symbol | None = None,
 ) -> None:
+    if isinstance(culprit, Symbol):
+        culprit = culprit.token
+
     file_info, line_info = get_file_and_line_info(culprit)
 
     print(

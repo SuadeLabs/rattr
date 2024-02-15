@@ -4,7 +4,6 @@ from __future__ import annotations
 import ast
 import copy
 from collections import deque
-from typing import NamedTuple
 
 import attrs
 
@@ -41,7 +40,8 @@ from rattr.models.symbol import Import
 from rattr.plugins import plugins
 
 
-class RattrStats(NamedTuple):
+@attrs.mutable
+class RattrStats:
     parse_time: float
     root_context_time: float
     assert_time: float
@@ -55,7 +55,8 @@ class RattrStats(NamedTuple):
     number_of_unique_imports: int
 
 
-class RattrImportStats(NamedTuple):
+@attrs.mutable
+class RattrImportStats:
     import_lines: int
     number_of_imports: int
     number_of_unique_imports: int
@@ -97,15 +98,15 @@ def __parse_and_analyse_file_impl() -> tuple[FileIr, ImportsIr, RattrStats]:
         file_ir = FileAnalyser(ast_module, context).analyse()
 
     stats = RattrStats(
-        parse_timer.time,
-        root_context_timer.time,
-        assert_timer.time,
-        analyse_imports_timer.time,
-        analyse_file_timer.time,
-        file_lines,
-        import_stats.import_lines,
-        import_stats.number_of_imports,
-        import_stats.number_of_unique_imports,
+        parse_time=parse_timer.time,
+        root_context_time=root_context_timer.time,
+        assert_time=assert_timer.time,
+        analyse_imports_time=analyse_imports_timer.time,
+        analyse_file_time=analyse_file_timer.time,
+        file_lines=file_lines,
+        import_lines=import_stats.import_lines,
+        number_of_imports=import_stats.number_of_imports,
+        number_of_unique_imports=import_stats.number_of_unique_imports,
     )
     return file_ir, imports_ir, stats
 
@@ -123,7 +124,11 @@ def parse_and_analyse_imports(
     queue = deque(imports)
 
     import_irs: ImportsIr = {}
-    import_stats = RattrImportStats(0, 0, 0)
+    import_stats = RattrImportStats(
+        import_lines=0,
+        number_of_imports=0,
+        number_of_unique_imports=0,
+    )
 
     seen_module_origins: set[str] = set()
 
@@ -188,7 +193,6 @@ def parse_and_analyse_imports(
     return import_irs, import_stats
 
 
-
 class FileAnalyser(NodeVisitor):
     """Walk a file's AST and analyse the contained functions and classes."""
 
@@ -217,7 +221,10 @@ class FileAnalyser(NodeVisitor):
             return error.error(str(exc.args[0]), culprit=node)
 
         if has_annotation("rattr_results", node):
-            self.file_ir[fn] = parse_rattr_results_from_annotation(node, self.context)
+            self.file_ir[fn] = parse_rattr_results_from_annotation(
+                node,
+                context=self.context,
+            )
             return
 
         if plugins.custom_function_handler.has_analyser(node.name, self.context):

@@ -255,9 +255,7 @@ class Config(metaclass=ConfigMetaclass):
 
         home = str(Path.home().resolve())
 
-        # TODO Python 3.9
-        #   Path.is_relative_to(...) is introduced
-        if self.arguments.collapse_home and str(path).startswith(home):
+        if self.arguments.collapse_home and path.is_relative_to(home):
             relative_path = str(path).replace(home, "")
 
             if relative_path.startswith(("/", "\\")):

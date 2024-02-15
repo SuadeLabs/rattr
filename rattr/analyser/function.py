@@ -462,7 +462,7 @@ class FunctionAnalyser(NodeVisitor):
                 return False
 
             target = self.context.get_call_target(
-                fullname_of(node, True),
+                fullname_of(node, safe=True),
                 node,
                 warn=False,
             )

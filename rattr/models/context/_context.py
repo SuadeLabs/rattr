@@ -145,7 +145,7 @@ class Context(MutableMapping[Identifier, Symbol]):
     def get_call_target(
         self,
         callee: Identifier,
-        culprit: ast.Call,
+        culprit: ast.Call | ast.FunctionDef,
         *,
         warn: bool = True,
     ) -> CallableSymbol | None:
@@ -153,7 +153,10 @@ class Context(MutableMapping[Identifier, Symbol]):
 
         Args:
             callee (Identifier): The callee name.
-            culprit (ast.Call): The AST call node, used as the error culprit.
+            culprit (ast.Call | ast.FunctionDef): \
+                The ast.Call node, used as the error culprit. This can be an \
+                ast.FunctionDef if it comes from a `rattr_results` decorator for \
+                example.
             warn (bool, optional): If `True` give warnings. Defaults to True.
 
         Returns:
