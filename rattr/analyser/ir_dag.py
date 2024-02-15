@@ -334,7 +334,8 @@ def construct_swap(func: Func, call: Call) -> dict[Identifier, Identifier]:
         if not call_args:
             error.error(
                 f"call to {func.name!r} expected {len(func.interface.posonlyargs)} "
-                f"posonlyargs but only received {len(call.args)} positional arguments",
+                f"posonlyargs but only received {len(call.args.args)} positional "
+                f"arguments",
                 culprit=call,
             )
             return {}
@@ -391,7 +392,7 @@ def construct_swap(func: Func, call: Call) -> dict[Identifier, Identifier]:
             swaps[target] = replacement
         elif interface.kwarg is not None:
             swaps[interface.kwarg] = f"{config.LOCAL_VALUE_PREFIX}{ast.Dict.__name__}"
-        else:
+        elif target not in func.interface.all:
             unexpected_keyword_arguments.append(target)
 
     if unexpected_keyword_arguments:
