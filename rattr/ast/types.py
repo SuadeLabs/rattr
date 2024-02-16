@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from typing import Union
 
-from typing_extensions import TypeAlias
+from rattr.versioning.typing import TypeAlias
 
 Identifier: TypeAlias = str
 

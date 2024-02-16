@@ -14,7 +14,7 @@ from rattr.analyser.types import (
 if TYPE_CHECKING:
     from typing import Callable, TypeVar
 
-    from typing_extensions import ParamSpec
+    from rattr.versioning.typing import ParamSpec
 
     P = ParamSpec("P")
     R = TypeVar("R")

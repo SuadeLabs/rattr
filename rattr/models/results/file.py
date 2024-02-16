@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from typing import Iterator, MutableMapping
+from typing import TYPE_CHECKING, MutableMapping
 
 import attrs
 from attrs import field
-from typing_extensions import TypeAlias
 
 from rattr.models.results.function import FunctionResults
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from rattr.versioning.typing import TypeAlias
 
 FunctionName: TypeAlias = str
 

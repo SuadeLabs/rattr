@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from importlib.machinery import ModuleSpec
 
-    from typing_extensions import TypeAlias
+    from rattr.versioning.typing import TypeAlias
 
     ModuleName: TypeAlias = str
     FullyQualifiedName: TypeAlias = str

@@ -13,7 +13,7 @@ from rattr.models.symbol import UserDefinedCallableSymbol
 from rattr.versioning.typing import TypeAlias
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
+    from rattr.versioning.typing import TypeAlias
 
 PythonLiteral: TypeAlias = Union[
     None,

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 if TYPE_CHECKING:
     from typing import Callable, Iterable, Mapping
 
-    from typing_extensions import Self
+    from rattr.versioning.typing import Self
 
 
 KT = TypeVar("KT")
