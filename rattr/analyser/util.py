@@ -48,7 +48,6 @@ from rattr.models.symbol import (
     PYTHON_BUILTINS,
     Call,
     CallArguments,
-    CallInterface,
     Class,
     Import,
     Name,
@@ -641,51 +640,6 @@ def is_stdlib_module(module: str) -> bool:
 
 def is_in_builtins(name_or_qualified_name: str) -> bool:
     return name_or_qualified_name in dir(builtins)
-
-
-def get_function_def_args(
-    fn: ast.Lambda | AnyFunctionDef,
-) -> tuple[list[str], list[str], list[str]]:
-    """Return the identifiers of the arguments in the given function definition.
-
-    >>> get_function_def_args(ast.parse("def f(): pass").body[0])
-    ([], [], [])
-
-    >>> get_function_def_args(ast.parse("def f(a, b, c): pass").body[0])
-    ([], ["a", "b", "c"], [])
-
-    >>> get_function_def_args(ast.parse("def f(a, b, /, c, d, *, e): pass").body[0])
-    (["a" ,"b"], ["c", "d"], ["e"])
-    """
-    _interface = CallInterface.from_fn_def(fn)
-    return (_interface.posonlyargs, _interface.args, _interface.kwonlyargs)
-
-
-def get_function_call_args(
-    call: ast.Call,
-    *,
-    self: str | None = None,
-) -> tuple[list[str], dict[str, str]]:
-    """Return the args and kwargs for the given call.
-
-    #### Class Initialisers
-    This takes an optional `self` parameter, which is the name of the self argument in
-    the `__init__` definition, to be prepended to the resultant  args.
-
-    #### Examples
-    >>> get_function_call_args(ast.parse("fn(a, b, c='val', d=foobar)").body[0].value)
-    (["a", "b"], {"c": "@Str", "d": "foobar"})
-
-    >>> get_function_call_args(ast.parse("MyClass(a, b)").body[0].value, self="self")
-    (["self", "a", "b"], {})
-
-    >>> # def __init__(blah, a, b): ...
-    >>> get_function_call_args(ast.parse("MyClass(a, b)").body[0].value, self="blah")
-    (["blah", "a", "b"], {})
-    """
-    # TODO Does this need to account for vararg, kwarg, etc?
-    _arguments = CallArguments.from_call(call, self=self)
-    return _arguments.args, _arguments.kwargs
 
 
 class timer:
