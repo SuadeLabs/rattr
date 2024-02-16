@@ -498,7 +498,6 @@ def stdlib_modules():
         "timeit",
         "trace",
         "tracemalloc",
-        "distutils",
         "venv",
         "zipapp",
         "sys",
