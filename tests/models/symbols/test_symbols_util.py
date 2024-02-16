@@ -19,8 +19,8 @@ class WithCallBrackets:
 
     def test_call_brackets(self):
         assert (
-            with_call_brackets("keep_my_call_brackets()")
-            == "keep_my_call_brackets()"
+            with_call_brackets("keep_my_call_brackets_please()")
+            == "keep_my_call_brackets_please()"
         )
 
     def test_just_brackets(self):

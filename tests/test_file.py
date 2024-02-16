@@ -23,7 +23,6 @@ def __set_current_file(state: StateFn) -> Iterator[None]:
         yield
 
 
-
 class TestModuleLevelStatements:
     def test_assignment(self, parse):
         _ast = parse(

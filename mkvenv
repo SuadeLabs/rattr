@@ -16,6 +16,9 @@ python3.9 -m venv $venvdir
 echo "[mkvenv] activating venv..."
 source $venvdir/bin/activate
 
+echo "[mkvenv] updating .python-version..."
+python -V | cut -f2 -d" " > .python-version
+
 echo "[mkvenv] installing dependencies..."
 python -m pip install --upgrade pip
 python -m pip install .[dev]
