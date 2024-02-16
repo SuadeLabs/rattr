@@ -17,10 +17,8 @@ class TestErrorUtils:
         culprit = _ast.body[0]
 
         file = "some_file_name.py"
-        line_info = "\033[1mline {}:{}: \033[0m".format(
-            culprit.lineno, culprit.col_offset
-        )
-        file_info = "\033[1m{}: \033[0m".format(file)
+        file_info = "\033[1m{}\033[0m".format(file)
+        line_info = "\033[1m:{}:{}\033[0m".format(culprit.lineno, culprit.col_offset)
 
         # No file, no culprit
         # No file, w/ culprit

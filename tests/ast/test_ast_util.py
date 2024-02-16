@@ -286,17 +286,24 @@ class TestIsRelativeImport:
 
 
 @pytest.mark.parametrize(
-    "expr, targets",
+    "expr, expected",
     testcases := [
-        ("a = 1", [ast.Name("a")]),
-        ("a, b = 1, 2", [ast.Name("a"), ast.Name("b")]),
-        ("a: int = 1", [ast.Name("a")]),
-        ("a += 1", [ast.Name("a")]),
+        ("a = 1", ["a"]),
+        ("a, b = 1, 2", ["a", "b"]),
+        ("a: int = 1", ["a"]),
+        ("a += 1", ["a"]),
     ],
     ids=[t[0] for t in testcases],
 )
-def test_assignment_targets(expr: str, targets: list[ast.expr]):
-    assert assignment_targets(ast.parse(expr).body[0]) == targets
+def test_assignment_targets(expr: str, expected: list[ast.expr]):
+    # We must convert to str and compare as `ast.Name(id="a") != ast.Name(id="a")` as
+    # ast node equality is an `is` check.
+    targets = [
+        name
+        for target in assignment_targets(ast.parse(expr).body[0])
+        for name in unravel_names(target)
+    ]
+    assert targets == expected
 
 
 def test_assignment_targets_in_walrus():
@@ -379,7 +386,7 @@ def test_walruses_in_rhs(walrus, expr: str, expected: list[str]):
     # seems)
     actual_as_string = [ast.dump(e) for e in walruses_in_rhs(ast.parse(expr).body[0])]
     expected_as_string = [ast.dump(walrus(e)) for e in expected]
-    return actual_as_string == expected_as_string
+    assert actual_as_string == expected_as_string
 
 
 @pytest.mark.parametrize(

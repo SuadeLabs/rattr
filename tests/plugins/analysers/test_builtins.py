@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from rattr.analyser.file import FileAnalyser
-from rattr.models.context import compile_root_context
+from rattr.models.context import Context, compile_root_context
+from rattr.models.ir import FileIr
 from rattr.models.symbol import Call, CallArguments, CallInterface, Func, Name
 from rattr.plugins import plugins
 from rattr.plugins.analysers.builtins import SortedAnalyser
+
+if TYPE_CHECKING:
+    from tests.shared import MakeSymbolTableFn, ParseFn
 
 
 class TestCustomFunctionAnalysers:
@@ -14,7 +20,7 @@ class TestCustomFunctionAnalysers:
     def apply_plugins(self):
         plugins.register(SortedAnalyser())
 
-    def test_sorted_no_key(self, parse):
+    def test_sorted_no_key(self, parse: ParseFn, make_symbol_table: MakeSymbolTableFn):
         _ast = parse(
             """
             def a_func(arg):
@@ -25,19 +31,30 @@ class TestCustomFunctionAnalysers:
 
         a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
-        expected = {
-            a_func: {
-                "gets": {
-                    Name("arg"),
-                },
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=Context(
+                parent=None,
+                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
+
         assert results == expected
 
-    def test_sorted_with_constant_key(self, parse):
+    def test_sorted_with_constant_key(
+        self,
+        parse: ParseFn,
+        make_symbol_table: MakeSymbolTableFn,
+    ):
         a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         # Literal
@@ -49,16 +66,22 @@ class TestCustomFunctionAnalysers:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            a_func: {
-                "gets": {
-                    Name("arg"),
-                },
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=Context(
+                parent=None,
+                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
@@ -71,21 +94,31 @@ class TestCustomFunctionAnalysers:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            a_func: {
-                "gets": {
-                    Name("arg"),
-                    Name("arg.attr", "arg"),
-                },
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=Context(
+                parent=None,
+                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.attr", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
-    def test_sorted_key_is_callable(self, parse):
+    def test_sorted_key_is_callable(
+        self,
+        parse: ParseFn,
+        make_symbol_table: MakeSymbolTableFn,
+    ):
         # Via lambda
         _ast = parse(
             """
@@ -106,27 +139,44 @@ class TestCustomFunctionAnalysers:
             target=key_func,
         )
 
-        expected = {
-            a_func: {
-                "gets": {
-                    Name("arg"),
+        expected = FileIr(
+            context=Context(
+                parent=None,
+                symbol_table=make_symbol_table(
+                    [
+                        a_func,
+                        key_func,
+                    ],
+                    include_root_symbols=True,
+                ),
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {key_func_call},
                 },
-                "sets": set(),
-                "dels": set(),
-                "calls": {key_func_call},
-            },
-            key_func: {
-                "gets": {
-                    Name("a.b", "a"),
+                key_func: {
+                    "gets": {
+                        Name("a.b", "a"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
             },
-        }
+        )
+
         assert results == expected
 
-    def test_sorted_key_is_attribute_or_element(self, parse):
+    def test_sorted_key_is_attribute_or_element(
+        self,
+        parse: ParseFn,
+        make_symbol_table: MakeSymbolTableFn,
+    ):
         a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         # Attribute
@@ -138,17 +188,23 @@ class TestCustomFunctionAnalysers:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            a_func: {
-                "gets": {
-                    Name("arg"),
-                    Name("arg.attr", "arg"),
-                },
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=Context(
+                parent=None,
+                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.attr", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
@@ -161,17 +217,23 @@ class TestCustomFunctionAnalysers:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            a_func: {
-                "gets": {
-                    Name("arg"),
-                    Name("arg[]", "arg"),
-                },
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=Context(
+                parent=None,
+                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("arg"),
+                        Name("arg[]", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
@@ -184,16 +246,22 @@ class TestCustomFunctionAnalysers:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            a_func: {
-                "gets": {
-                    Name("arg"),
-                    Name("arg[].attr", "arg"),
-                },
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=Context(
+                parent=None,
+                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("arg"),
+                        Name("arg[].attr", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected

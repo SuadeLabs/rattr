@@ -16,11 +16,11 @@ import pytest
 from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
-from rattr.analyser.types import FunctionIr
 from rattr.ast.types import AstFunctionDef, Identifier
 from rattr.config import Arguments, Config, Output, State
 from rattr.models.context import Context, SymbolTable, compile_root_context
-from rattr.models.ir import FileIr
+from rattr.models.ir import FileIr, FunctionIr
+from rattr.models.results import FileResults
 from rattr.models.symbol import (
     Builtin,
     Call,
@@ -33,8 +33,14 @@ from rattr.models.symbol import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
 
-    from rattr.analyser.types import FileResults
-    from tests.shared import ArgumentsFn, MakeSymbolTableFn, ParseFn
+    from tests.shared import (
+        ArgumentsFn,
+        FileIrFromDictFn,
+        MakeRootContextFn,
+        MakeSymbolTableFn,
+        ParseFn,
+        StateFn,
+    )
 
 
 def pytest_configure(config):
@@ -223,16 +229,6 @@ def analyse_single_file(
 
 
 @pytest.fixture
-def root_context_with() -> Callable[[list[Symbol]], Context]:
-    def _inner(extra: list[Symbol]) -> Context:
-        context = compile_root_context(ast.Module(body=[]))
-        context.add_all(extra)
-        return context
-
-    return _inner
-
-
-@pytest.fixture
 def builtin() -> Callable[[str], Builtin]:
     # TODO This is no longer useful, refactor to remove it
 
@@ -256,46 +252,53 @@ def RootSymbolTable():
     return _inner
 
 
-@pytest.fixture(scope="function", autouse=True)
-def _set_current_file(config) -> Iterator[None]:
-    with config("current_file", "_in_test.py"):
+@pytest.fixture()
+def run_in_strict_mode(arguments: ArgumentsFn) -> Iterator[None]:
+    with arguments(is_strict=True):
         yield
 
 
 @pytest.fixture()
-def run_in_strict_mode(config) -> Iterator[None]:
-    with config("strict", True):
-        yield
-
-
-@pytest.fixture()
-def run_in_permissive_mode(config) -> Iterator[None]:
-    with config("strict", False):
+def run_in_permissive_mode(arguments: ArgumentsFn) -> Iterator[None]:
+    with arguments(is_strict=True):
         yield
 
 
 @pytest.fixture
-def make_symbol_table() -> MakeSymbolTableFn:
+def make_symbol_table(make_root_context: MakeRootContextFn) -> MakeSymbolTableFn:
     def _make_symbol_table(
-        symbols: Mapping[Identifier, Symbol] | Iterable[Symbol],
+        symbols: Mapping[Identifier, Symbol] | Iterable[Symbol] = (),
+        *,
+        include_root_symbols: bool = False,
+    ) -> SymbolTable:
+        context = make_root_context(symbols, include_root_symbols=include_root_symbols)
+        return context.symbol_table
+
+    return _make_symbol_table
+
+
+@pytest.fixture
+def make_root_context() -> MakeRootContextFn:
+    def _make_root_context(
+        symbols: Mapping[Identifier, Symbol] | Iterable[Symbol] = (),
         *,
         include_root_symbols: bool = False,
     ) -> SymbolTable:
         if include_root_symbols:
-            symbol_table = compile_root_context(ast.Module(body=[])).symbol_table
+            context = compile_root_context(ast.Module(body=[]))
         else:
-            symbol_table = SymbolTable()
+            context = Context(parent=None)
 
         if isinstance(symbols, Mapping):
-            symbol_table._symbols = symbols
+            context.symbol_table._symbols = symbols
         elif isinstance(symbols, Iterable):
-            symbol_table.add(symbols)
+            context.add(symbols)
         else:
             raise TypeError
 
-        return symbol_table
+        return context
 
-    return _make_symbol_table
+    return _make_root_context
 
 
 @pytest.fixture
@@ -324,7 +327,7 @@ def arguments() -> ArgumentsFn:
 
 
 @pytest.fixture
-def state():
+def state() -> StateFn:
     @contextmanager
     def _inner(**kwargs):
         state = Config().state
@@ -627,17 +630,12 @@ def snippet():
 
 
 @pytest.fixture
-def file_ir_from_dict():
-    def _inner(ir: Mapping[UserDefinedCallableSymbol, FunctionIr]):
-        # Make quasi-context
-        ctx = Context(None)
-        ctx.add(ir.keys())
-
-        # Create FileIR
-        file_ir = FileIr(context=ctx)
-        file_ir._file_ir = ir
-
-        return file_ir
+def file_ir_from_dict(make_root_context: MakeRootContextFn) -> FileIrFromDictFn:
+    def _inner(ir: Mapping[UserDefinedCallableSymbol, FunctionIr]) -> FileIr:
+        return FileIr(
+            context=make_root_context(ir.keys(), include_root_symbols=False),
+            file_ir=ir,
+        )
 
     return _inner
 
@@ -760,7 +758,7 @@ def handler():
 
 
 @pytest.fixture
-def constant():
+def constant() -> str:
     config = Config()
 
     _prefix = config.LOCAL_VALUE_PREFIX

@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 import tests.helpers as helpers
-from rattr.analyser.context import Context
+from rattr.models.context import Context
 from rattr.plugins.assertors.import_clobbering import ImportClobberingAssertor
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'math'")],
         )
@@ -73,7 +73,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'join'")],
         )
@@ -97,7 +97,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'join'")],
         )
@@ -120,7 +120,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'math'")],
         )
@@ -143,7 +143,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -167,7 +167,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'join'")],
         )
@@ -192,7 +192,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'join'")],
         )
@@ -216,7 +216,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'join'")],
         )
@@ -240,7 +240,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'Path'")],
         )
@@ -264,7 +264,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -289,7 +289,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -313,7 +313,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -336,7 +336,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -360,7 +360,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -384,7 +384,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -408,7 +408,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -433,7 +433,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -458,7 +458,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -483,7 +483,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -506,7 +506,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -529,7 +529,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -552,7 +552,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -575,7 +575,7 @@ class TestImportNameClobbering:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )
@@ -647,7 +647,7 @@ class TestMultipleClobbersWithLocation:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [
                 helpers.as_fatal("attempt to delete imported name 'pi'", line=4, col=4),
@@ -734,7 +734,7 @@ class TestDeleteImportedName:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("attempt to delete imported name 'pi'")],
         )
@@ -758,7 +758,7 @@ class TestDeleteImportedName:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("attempt to delete imported name 'pi'")],
         )
@@ -784,7 +784,7 @@ class TestNameClobberedByMethod:
         with mock.patch("sys.exit") as _exit:
             ImportClobberingAssertor(is_strict=True).assert_holds(_ast, _ctx)
 
-        assert helpers.stdout_matches(
+        assert helpers.stderr_matches(
             capfd,
             [helpers.as_fatal("redefinition of imported name 'pi'")],
         )

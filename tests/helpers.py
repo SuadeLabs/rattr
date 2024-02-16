@@ -118,6 +118,28 @@ def stdout_matches(
 ) -> bool:
     if isinstance(stdout, pytest.CaptureFixture):
         (stdout, _) = stdout.readouterr()
+    return output_matches(stdout, expected, silent=silent)
+
+
+def stderr_matches(
+    stderr: str | pytest.CaptureFixture[str],
+    expected: list[ExpectedError],
+    *,
+    silent: bool = False,
+) -> bool:
+    if isinstance(stderr, pytest.CaptureFixture):
+        (_, stderr) = stderr.readouterr()
+    return output_matches(stderr, expected, silent=silent)
+
+
+def output_matches(
+    stdout: str | pytest.CaptureFixture[str],
+    expected: list[ExpectedError],
+    *,
+    silent: bool = False,
+) -> bool:
+    if isinstance(stdout, pytest.CaptureFixture):
+        (stdout, _) = stdout.readouterr()
 
     lines = stdout.splitlines()
 

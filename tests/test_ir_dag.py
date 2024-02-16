@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -21,6 +23,18 @@ from rattr.models.symbol import (
     Import,
     Name,
 )
+from tests.shared import Import_, match_output
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from tests.shared import FileIrFromDictFn, StateFn
+
+
+@pytest.fixture(autouse=True)
+def __set_current_file(state: StateFn) -> Iterator[None]:
+    with state(current_file=Path(__file__)):
+        yield
 
 
 class TestIrDag_Utils:
@@ -124,10 +138,11 @@ class TestIrDag_Utils:
         assert stdlib.target.module_name == "math"
         assert get_callee_target(stdlib, file_ir, {}) == (None, None)
 
-    def test_get_callee_target_imported_function(self, file_ir_from_dict, capfd):
-        # TODO Imported class/method
+    def test_get_callee_target_imported_function(
+        self,
+        file_ir_from_dict: FileIrFromDictFn,
+    ):
         fn = Func(name="fn", interface=CallInterface())
-
         fn_ir = {
             "sets": set(),
             "gets": set(),
@@ -136,30 +151,58 @@ class TestIrDag_Utils:
         }
         imports_ir = {"module": file_ir_from_dict({fn: fn_ir})}
 
-        # Callee is imported
-        _i = Import("fn", "module.fn")
-        _i.module_name = "module"
-        _i.module_spec = mock.Mock()
-        call = Call(name="fn()", args=CallArguments(), target=_i)
+        import_symbol = Import_(
+            "fn",
+            "module.fn",
+            module_name_and_spec=("module", mock.Mock()),
+        )
+        call = Call(name="fn()", args=CallArguments(), target=import_symbol)
         assert get_callee_target(call, {}, imports_ir) == (fn, fn_ir)
 
-        # Callee is imported but not defined in source
-        _i = Import("nope", "module.nope")
-        _i.module_name = "module"
-        _i.module_spec = mock.Mock()
-        call = Call(name="nope()", args=CallArguments(), target=_i)
+    def test_get_callee_target_imported_function_undefined_in_module(
+        self,
+        file_ir_from_dict: FileIrFromDictFn,
+        capfd: pytest.CaptureFixture[str],
+    ):
+        fn = Func(name="fn", interface=CallInterface())
+        fn_ir = {
+            "sets": set(),
+            "gets": set(),
+            "dels": set(),
+            "calls": set(),
+        }
+        imports_ir = {"module": file_ir_from_dict({fn: fn_ir})}
 
+        import_symbol = Import_(
+            "nope",
+            "module.nope",
+            module_name_and_spec=("module", mock.Mock()),
+        )
+        call = Call(name="nope()", args=CallArguments(), target=import_symbol)
         assert get_callee_target(call, {}, imports_ir) == (None, None)
 
         _, stderr = capfd.readouterr()
         assert "unable to resolve call to 'nope' in import" in stderr
 
-        # Callee module and target not found
-        _i = Import("nah", "noway.nah")
-        _i.module_name = "noway"
-        _i.module_spec = mock.Mock()
-        call = Call(name="nah()", args=CallArguments(), target=_i)
+    def test_get_callee_target_imported_function_from_undefined_module(
+        self,
+        file_ir_from_dict: FileIrFromDictFn,
+    ):
+        fn = Func(name="fn", interface=CallInterface())
+        fn_ir = {
+            "sets": set(),
+            "gets": set(),
+            "dels": set(),
+            "calls": set(),
+        }
+        imports_ir = {"module": file_ir_from_dict({fn: fn_ir})}
 
+        import_symbol = Import_(
+            "nah",
+            "noway.nah",
+            module_name_and_spec=("noway", mock.Mock()),
+        )
+        call = Call(name="nah()", args=CallArguments(), target=import_symbol)
         with pytest.raises(ImportError):
             get_callee_target(call, {}, imports_ir)
 
@@ -305,24 +348,22 @@ class TestIrDag_Utils:
 
         assert partially_unbind(func_ir, swaps) == expected
 
-    def test_construct_swap(self, capfd):
+    def test_construct_swap_no_arguments_in_both(self):
         # No args in both
         fn_def = Func(name="fn", interface=CallInterface())
         fn_call = Call(name="fn", args=CallArguments())
 
         expected = {}
-
         assert construct_swap(fn_def, fn_call) == expected
 
-        # Positional
+    def test_construct_swap_positional_arguments(self):
         fn_def = Func(name="fn", interface=CallInterface(args=("a", "b")))
         fn_call = Call(name="fn", args=CallArguments(args=("c", "d")))
 
         expected = {"a": "c", "b": "d"}
-
         assert construct_swap(fn_def, fn_call) == expected
 
-        # Keyword
+    def test_construct_swap_keyword_arguments(self):
         fn_def = Func(name="fn", interface=CallInterface(args=("a", "b")))
         fn_call = Call(
             name="fn",
@@ -330,10 +371,9 @@ class TestIrDag_Utils:
         )
 
         expected = {"a": "not_a", "b": "not_b"}
-
         assert construct_swap(fn_def, fn_call) == expected
 
-        # Mixed
+    def test_construct_swap_positional_and_keyword_arguments(self):
         fn_def = Func(name="fn", interface=CallInterface(args=("a", "b", "c", "d")))
         fn_call = Call(
             name="fn",
@@ -344,10 +384,9 @@ class TestIrDag_Utils:
         )
 
         expected = {"a": "not_a", "b": "not_b", "c": "not_c", "d": "not_d"}
-
         assert construct_swap(fn_def, fn_call) == expected
 
-        # Complex mixed w/ default on 'e'
+    def test_construct_swap_positional_and_keyword_arguments_with_assumed_default(self):
         fn_def = Func(
             name="fn",
             interface=CallInterface(args=("a", "b", "c", "d", "e")),
@@ -361,10 +400,12 @@ class TestIrDag_Utils:
         )
 
         expected = {"a": "not_a", "b": "not_b", "c": "not_c", "d": "not_d"}
-
         assert construct_swap(fn_def, fn_call) == expected
 
-        # No matches
+    def test_construct_swap_with_no_matches(
+        self,
+        capfd: pytest.CaptureFixture[str],
+    ):
         fn_def = Func(name="fn", interface=CallInterface(args=("a", "b")))
         fn_call = Call(
             name="fn",
@@ -375,24 +416,240 @@ class TestIrDag_Utils:
         )
 
         expected = {}
-
         assert construct_swap(fn_def, fn_call) == expected
 
         _, stderr = capfd.readouterr()
 
-        assert "unexpected named arguments" in stderr
+        assert match_output(
+            stderr,
+            ["call to 'fn' received unexpected keyword arguments: ['d', 'c']"],
+        )
 
-        # Provide as positional and named
+    def test_construct_swap_provided_as_positional_and_named(
+        self,
+        capfd: pytest.CaptureFixture[str],
+    ):
         fn_def = Func(name="fn", interface=CallInterface(args=("a",)))
         fn_call = Call(
             name="fn",
             args=CallArguments(args=("not_a",), kwargs={"a": "not_a"}),
         )
 
-        with mock.patch("sys.exit") as _exit:
-            construct_swap(fn_def, fn_call)
+        expected = {"a": "not_a"}
+        assert construct_swap(fn_def, fn_call) == expected
 
-        assert _exit.call_count == 1
+        _, stderr = capfd.readouterr()
+        assert match_output(
+            stderr,
+            [
+                "call to 'fn' received the arguments ['a'] by position and name",
+            ],
+        )
+
+    @pytest.mark.parametrize(
+        "interface, arguments, expected, expected_stderr",
+        testcases := [
+            # Not enough args to satisfy positional arguments
+            (
+                CallInterface(posonlyargs=("a",)),
+                CallArguments(args=()),
+                {},
+                [
+                    "call to 'fn' expected 1 posonlyargs but only received 0 "
+                    "positional arguments",
+                ],
+            ),
+            (
+                CallInterface(posonlyargs=("a",)),
+                CallArguments(args=(), kwargs={"a": "fail?"}),
+                {},
+                [
+                    "call to 'fn' expected 1 posonlyargs but only received 0 "
+                    "positional arguments",
+                ],
+            ),
+            # posonlyargs
+            (
+                CallInterface(posonlyargs=("a_interface", "b_interface")),
+                CallArguments(args=("a_call", "b_call"), kwargs={}),
+                {"a_interface": "a_call", "b_interface": "b_call"},
+                [],
+            ),
+            # positional args
+            (
+                CallInterface(posonlyargs=("a", "b"), args=("c", "d")),
+                CallArguments(args=("A", "B", "C"), kwargs={"d": "D"}),
+                {"a": "A", "b": "B", "c": "C", "d": "D"},
+                [],
+            ),
+            (
+                CallInterface(posonlyargs=("a", "b"), args=("c", "d")),
+                CallArguments(args=("A", "B", "C"), kwargs={"d": "D", "e": "E"}),
+                {"a": "A", "b": "B", "c": "C", "d": "D"},
+                [
+                    "call to 'fn' received unexpected keyword arguments: ['e']",
+                ],
+            ),
+            # positional args w/ vararg
+            # ... with empty `rem`
+            (
+                CallInterface(posonlyargs=("a",), args=("b", "c"), vararg="rem"),
+                CallArguments(args=("A", "B", "C"), kwargs={}),
+                {"a": "A", "b": "B", "c": "C", "rem": "@Tuple"},
+                [],
+            ),
+            # ... with non-empty `rem`
+            (
+                CallInterface(posonlyargs=("a",), args=("b", "c"), vararg="rem"),
+                CallArguments(args=("A", "B", "C", "D", "E", "F"), kwargs={}),
+                {"a": "A", "b": "B", "c": "C", "rem": "@Tuple"},
+                [],
+            ),
+            # keyword args
+            (
+                CallInterface(args=("a", "b", "c")),
+                CallArguments(args=("A",), kwargs={"c": "C", "b": "B"}),
+                {"a": "A", "b": "B", "c": "C"},
+                [],
+            ),
+            # ... with a vararg
+            (
+                CallInterface(args=("a", "b", "c"), vararg="rem"),
+                CallArguments(args=("A", "B"), kwargs={"c": "C", "b": "B"}),
+                {"a": "A", "b": "B", "c": "C", "rem": "@Tuple"},
+                [
+                    "call to 'fn' received the arguments ['b'] by position and name",
+                ],
+            ),
+            # kwonlyargs
+            (
+                CallInterface(kwonlyargs=("a", "b", "c")),
+                CallArguments(args=("A", "B"), kwargs={"c": "C"}),
+                {"c": "C"},
+                [
+                    "call to 'fn' received too many positional arguments",
+                ],
+            ),
+            (
+                CallInterface(kwonlyargs=("a", "b", "c")),
+                CallArguments(args=(), kwargs={"c": "C"}),
+                {"c": "C"},
+                [],
+            ),
+            (
+                CallInterface(kwonlyargs=("a", "b", "c")),
+                CallArguments(args=(), kwargs={"a": "A", "c": "C", "b": "B"}),
+                {"a": "A", "b": "B", "c": "C"},
+                [],
+            ),
+            # keyword args
+            (
+                CallInterface(args=("a",), vararg="rem", kwonlyargs=("b", "c")),
+                CallArguments(args=("A", "extra"), kwargs={"c": "C", "b": "B"}),
+                {"a": "A", "b": "B", "c": "C", "rem": "@Tuple"},
+                [],
+            ),
+            # kwarg
+            (
+                CallInterface(
+                    args=("a",),
+                    vararg="rem",
+                    kwonlyargs=("b", "c"),
+                    kwarg="kwargs",
+                ),
+                CallArguments(args=("A", "extra"), kwargs={"c": "C", "b": "B"}),
+                {"a": "A", "b": "B", "c": "C", "rem": "@Tuple"},
+                [],
+            ),
+            (
+                CallInterface(
+                    args=("a",),
+                    vararg="rem",
+                    kwonlyargs=("b", "c"),
+                    kwarg="kwargs",
+                ),
+                CallArguments(
+                    args=("A", "extra"),
+                    kwargs={
+                        "c": "C",
+                        "b": "B",
+                        "kw": "a_kwarg",
+                        "kw2": "another_kwarg",
+                    },
+                ),
+                {"a": "A", "b": "B", "c": "C", "rem": "@Tuple", "kwargs": "@Dict"},
+                [],
+            ),
+            # complex
+            (
+                CallInterface(
+                    posonlyargs=("a", "b"),
+                    args=("c", "d"),
+                    vararg="args",
+                    kwonlyargs=("e",),
+                    kwarg="kwarg",
+                ),
+                CallArguments(args=(), kwargs={}),
+                {},
+                [
+                    "call to 'fn' expected 2 posonlyargs but only received 0 "
+                    "positional arguments",
+                ],
+            ),
+            (
+                CallInterface(
+                    posonlyargs=("a", "b"),
+                    args=("c", "d"),
+                    vararg="args",
+                    kwonlyargs=("e",),
+                    kwarg="kwarg",
+                ),
+                CallArguments(args=("A", "B", "C", "D", "extra"), kwargs={"e": "E"}),
+                {"a": "A", "b": "B", "c": "C", "d": "D", "args": "@Tuple", "e": "E"},
+                [],
+            ),
+            (
+                CallInterface(
+                    posonlyargs=("a", "b"),
+                    args=("c", "d"),
+                    vararg="args",
+                    kwonlyargs=("e",),
+                    kwarg="kwarg",
+                ),
+                CallArguments(args=("A", "B", "C", "D", "extra"), kwargs={}),
+                {"a": "A", "b": "B", "c": "C", "d": "D", "args": "@Tuple"},
+                [],
+            ),
+            (
+                CallInterface(
+                    posonlyargs=("a", "b"),
+                    args=("c", "d"),
+                    vararg="args",
+                    kwonlyargs=("e",),
+                    kwarg="kwarg",
+                ),
+                CallArguments(args=("A", "B", "C"), kwargs={"e": "E", "d": "D"}),
+                {"a": "A", "b": "B", "c": "C", "d": "D", "args": "@Tuple", "e": "E"},
+                [],
+            ),
+        ],
+        ids=[i for i, _ in enumerate(testcases)],
+    )
+    def test_construct_swap_NEW(
+        self,
+        interface: CallInterface,
+        arguments: CallArguments,
+        expected: dict[str, str],
+        expected_stderr: list[str],
+        capfd: pytest.CaptureFixture[str],
+    ):
+        fn_def = Func(name="fn", interface=interface)
+        fn_call = Call(name="fn", args=arguments)
+
+        assert construct_swap(fn_def, fn_call) == expected
+
+        _, stderr = capfd.readouterr()
+        assert match_output(stderr, expected_stderr)
 
 
 class TestIrDagNode:
@@ -644,7 +901,7 @@ class TestIrDagNode:
         # B
         fn_b_call_in_fn_a = Call(
             name="fn_b",
-            interface=CallInterface(args=("a",)),
+            args=CallArguments(args=("a",)),
             target=fn_b,
         )
         assert B_in_A.call == fn_b_call_in_fn_a
@@ -656,7 +913,7 @@ class TestIrDagNode:
         # C
         fn_c_call_in_fn_a = Call(
             name="fn_c",
-            interface=CallInterface(args=("b",)),
+            args=CallArguments(args=("b",)),
             target=fn_c,
         )
         assert C_in_A.call == fn_c_call_in_fn_a

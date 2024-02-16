@@ -115,6 +115,7 @@ class TestEndToEndRegressionTests:
         config = Config()
         config.arguments = parse_arguments(
             sys_args=[
+                "-H",
                 "-w",
                 "none",
                 "--threshold",

@@ -237,8 +237,8 @@ class TestIsCallToMethodOnPyType:
 class TestIsCallToCallResult:
     @pytest.mark.parametrize("expr", ["my_var()()"])
     def test_positive_case(self, expr):
-        assert is_call_to_call_result(expr)
+        assert is_call_to_call_result(ast.parse(expr).body[0].value)
 
-    @pytest.mark.parametrize("expr", ["my_var().method()", "my_var[]()"])
+    @pytest.mark.parametrize("expr", ["my_var().method()", "my_var[0]()"])
     def test_negative_case(self, expr):
-        assert not is_call_to_call_result(expr)
+        assert not is_call_to_call_result(ast.parse(expr).body[0].value)

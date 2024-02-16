@@ -4,20 +4,32 @@ from typing import TYPE_CHECKING
 from unittest import mock
 
 import attrs
+from attrs import field
 
 from rattr.models.context._root_context import (
     MODULE_LEVEL_DUNDER_ATTRS,
     PYTHON_BUILTINS,
 )
+from rattr.models.symbol import Import
 
 if TYPE_CHECKING:
     import ast
     from collections.abc import Iterable, Iterator, Mapping
+    from importlib.machinery import ModuleSpec
     from typing import Any, Protocol
 
     from rattr.ast.types import Identifier
-    from rattr.models.context import SymbolTable
-    from rattr.models.symbol import Symbol
+    from rattr.models.context import Context, SymbolTable
+    from rattr.models.ir import FileIr, FunctionIr
+    from rattr.models.symbol import Symbol, UserDefinedCallableSymbol
+    from rattr.module_locator.util import ModuleName
+
+    class FileIrFromDictFn(Protocol):
+        def __call__(
+            self,
+            ir: Mapping[UserDefinedCallableSymbol, FunctionIr],
+        ) -> FileIr:
+            ...
 
     class MakeSymbolTableFn(Protocol):
         def __call__(
@@ -28,7 +40,23 @@ if TYPE_CHECKING:
         ) -> SymbolTable:
             ...
 
+    class MakeRootContextFn(Protocol):
+        def __call__(
+            self,
+            symbols: Mapping[Identifier, Symbol] | Iterable[Symbol],
+            *,
+            include_root_symbols: bool = False,
+        ) -> Context:
+            ...
+
     class ArgumentsFn(Protocol):
+        def __call__(
+            self,
+            **kwargs: Mapping[str, Any],
+        ) -> Iterator[None]:
+            ...
+
+    class StateFn(Protocol):
         def __call__(
             self,
             **kwargs: Mapping[str, Any],
@@ -40,9 +68,22 @@ if TYPE_CHECKING:
             ...
 
 
-def compare_symbol_table_symbols(
-    lhs: SymbolTable,
-    rhs: SymbolTable,
+@attrs.frozen
+class Import_(Import):
+    """
+    This is a specialisation of `Import` where the module name and spec can be set
+    explicitly, which is useful for many tests.
+    """
+
+    _module_name_and_spec: tuple[ModuleName, ModuleSpec] = field(
+        alias="module_name_and_spec",
+        default=("blah", "blah"),
+    )
+
+
+def compare_identifier_symbol_mappings(
+    lhs: Mapping[Identifier, FunctionIr],
+    rhs: Mapping[Identifier, FunctionIr],
     /,
 ) -> bool:
     errors: list[str] = []
@@ -73,6 +114,14 @@ def compare_symbol_table_symbols(
         return False
 
     return True
+
+
+def compare_symbol_table_symbols(
+    lhs: SymbolTable,
+    rhs: SymbolTable,
+    /,
+) -> bool:
+    return compare_identifier_symbol_mappings(lhs, rhs)
 
 
 def match_output(

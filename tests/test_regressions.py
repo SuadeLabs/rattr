@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest import mock
 
@@ -9,6 +10,7 @@ import tests.helpers as helpers
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
 from rattr.models.context import compile_root_context
+from rattr.models.ir import FileIr
 from rattr.models.symbol import (
     Builtin,
     Call,
@@ -16,19 +18,31 @@ from rattr.models.symbol import (
     CallInterface,
     Class,
     Func,
+    Import,
     Name,
 )
+from tests.shared import match_output
 
 if TYPE_CHECKING:
-    from typing import Callable, Iterator
+    from collections.abc import Callable, Iterator
 
-    from rattr.analyser.types import FileIR, FileResults
-    from rattr.models.context import Context
-    from rattr.models.symbol import Symbol
+    from rattr.models.ir import FileIr
+    from rattr.models.results import FileResults
+    from tests.shared import MakeRootContextFn, ParseFn, StateFn
+
+
+@pytest.fixture(autouse=True)
+def __set_current_file(state: StateFn) -> Iterator[None]:
+    with state(current_file=Path(__file__)):
+        yield
 
 
 class TestRegression:
-    def test_highly_nested(self, parse):
+    def test_highly_nested(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         _ast = parse(
             """
             def getter(a):
@@ -43,28 +57,37 @@ class TestRegression:
         getter_symbol = Func(name="getter", interface=CallInterface(args=("a",)))
         setter_symbol = Func(name="setter", interface=CallInterface(args=("a",)))
 
-        expected = {
-            getter_symbol: {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("*a.b[]().c", "a"),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    getter_symbol,
+                    setter_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                getter_symbol: {
+                    "gets": {Name("*a.b[]().c", "a")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
-            },
-            setter_symbol: {
-                "calls": set(),
-                "dels": set(),
-                "gets": set(),
-                "sets": {
-                    Name("*a.b[]().c", "a"),
+                setter_symbol: {
+                    "gets": set(),
+                    "sets": {Name("*a.b[]().c", "a")},
+                    "dels": set(),
+                    "calls": set(),
                 },
             },
-        }
+        )
 
         assert results == expected
 
-    def test_tuple_assignment(self, parse):
+    def test_tuple_assignment(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         _ast = parse(
             """
             def getter(a):
@@ -79,36 +102,50 @@ class TestRegression:
         getter_symbol = Func(name="getter", interface=CallInterface(args=("a",)))
         setter_symbol = Func(name="setter", interface=CallInterface(args=("a",)))
 
-        expected = {
-            getter_symbol: {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("a.attr_a", "a"),
-                    Name("a.attr_b", "a"),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    getter_symbol,
+                    setter_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                getter_symbol: {
+                    "gets": {
+                        Name("a.attr_a", "a"),
+                        Name("a.attr_b", "a"),
+                    },
+                    "sets": {
+                        Name("x"),
+                        Name("y"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": {
-                    Name("x"),
-                    Name("y"),
+                setter_symbol: {
+                    "gets": {
+                        Name("x"),
+                        Name("y"),
+                    },
+                    "sets": {
+                        Name("a.attr_a", "a"),
+                        Name("a.attr_b", "a"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
             },
-            setter_symbol: {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("x"),
-                    Name("y"),
-                },
-                "sets": {
-                    Name("a.attr_a", "a"),
-                    Name("a.attr_b", "a"),
-                },
-            },
-        }
+        )
 
         assert results == expected
 
-    def test_operation_on_anonymous_return_value(self, parse, constant):
+    def test_operation_on_anonymous_return_value(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
         _ast = parse(
             """
             def test_1(a):
@@ -125,43 +162,54 @@ class TestRegression:
         getter_symbol = Func(name="test_1", interface=CallInterface(args=("a",)))
         setter_symbol = Func(name="test_2", interface=CallInterface(args=("a",)))
 
-        expected = {
-            getter_symbol: {
-                "calls": {
-                    Call(
-                        name="@BinOp.method()",
-                        args=CallArguments(args=(), kwargs={}),
-                        target=None,
-                    ),
-                    Call(
-                        name="max()",
-                        args=CallArguments(
-                            args=("@BinOp.method()", constant("Num")),
-                            kwargs={},
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    getter_symbol,
+                    setter_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                getter_symbol: {
+                    "gets": set(),
+                    "sets": {Name("a")},
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="@BinOp.method()",
+                            args=CallArguments(args=(), kwargs={}),
+                            target=None,
                         ),
-                        target=max_symbol,
-                    ),
+                        Call(
+                            name="max()",
+                            args=CallArguments(
+                                args=("@BinOp.method()", constant),
+                                kwargs={},
+                            ),
+                            target=max_symbol,
+                        ),
+                    },
                 },
-                "dels": set(),
-                "gets": set(),
-                "sets": {
-                    Name("a"),
+                setter_symbol: {
+                    "gets": {
+                        Name("b"),
+                        Name("@UnaryOp.c", "@UnaryOp"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
             },
-            setter_symbol: {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("b"),
-                    Name("@UnaryOp.c", "@UnaryOp"),
-                },
-                "sets": set(),
-            },
-        }
+        )
 
         assert results == expected
 
-    def test_resolve_getattr_name(self, parse):
+    def test_resolve_getattr_name(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         _ast = parse(
             """
             def act(on):
@@ -176,38 +224,50 @@ class TestRegression:
         fn_act = Func(name="act", interface=CallInterface(args=("on",)))
         fn_a = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
-        expected = {
-            fn_act: {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("on.attr", "on"),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_act,
+                    fn_a,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_act: {
+                    "gets": {Name("on.attr", "on")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
+                fn_a: {
+                    "gets": {
+                        Name("arg.attr", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="act()",
+                            args=CallArguments(args=("arg.attr",), kwargs={}),
+                            target=fn_act,
+                        ),
+                    },
+                },
             },
-            fn_a: {
-                "calls": {
-                    Call(
-                        name="act()",
-                        args=CallArguments(args=("arg.attr",), kwargs={}),
-                        target=fn_act,
-                    ),
-                },
-                "dels": set(),
-                "gets": {
-                    Name("arg.attr", "arg"),
-                },
-                "sets": set(),
-            },
-        }
+        )
 
         assert results == expected
 
-    def test_higher_order_functions(self, parse, capfd):
+    def test_procedural_parameter(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        capfd: pytest.CaptureFixture[str],
+    ):
         # NOTE
-        #   Higher-order functions will not give the "correct" results as they
-        #   can't realistically be statically resolved, however, they should
-        #   not cause a crash or a fatal error.
+        # Higher-order functions will not give the "correct" results as they can't
+        # realistically be resolved, however, they should not cause a crash or a fatal
+        # error.
 
         # Procedural parameter
         _ast = parse(
@@ -220,29 +280,47 @@ class TestRegression:
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         bad_map = Func(name="bad_map", interface=CallInterface(args=("f", "target")))
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    bad_map,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                bad_map: {
+                    "gets": {Name("target")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="f()",
+                            args=CallArguments(args=("target",), kwargs={}),
+                            target=Name("f"),
+                        ),
+                    },
+                }
+            },
+        )
 
-        expected = {
-            bad_map: {
-                "sets": set(),
-                "gets": {
-                    Name("target"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        name="f()",
-                        args=CallArguments(args=("target",), kwargs={}),
-                        target=Name("f"),
-                    ),
-                },
-            }
-        }
-
+        assert results._file_ir[bad_map]["calls"] == expected._file_ir[bad_map]["calls"]
         assert results == expected
 
         _, stderr = capfd.readouterr()
-        assert "likely a procedural parameter" in stderr
+        assert match_output(
+            stderr,
+            [
+                "unable to resolve call to 'f()', target is likely a procedural "
+                "parameter",
+            ],
+        )
 
+    def test_local_function_as_return_value(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        capfd: pytest.CaptureFixture[str],
+    ):
         # Procedural return value
         _ast = parse(
             """
@@ -260,34 +338,54 @@ class TestRegression:
         wrapper = Func(name="wrapper", interface=CallInterface(args=()))
         actor = Func(name="actor", interface=CallInterface(args=()))
 
-        expected = {
-            wrapper: {
-                "sets": set(),
-                "gets": {
-                    Name("inner"),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    wrapper,
+                    actor,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                wrapper: {
+                    "gets": {Name("inner")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "dels": set(),
-                "calls": set(),
-            },
-            actor: {
-                "sets": set(),
-                "gets": set(),
-                "dels": set(),
-                "calls": {
-                    Call(
-                        name="wrapper()()",
-                        args=CallArguments(args=(), kwargs={}),
-                        target=wrapper,
-                    ),
+                actor: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="wrapper",
+                            args=CallArguments(args=(), kwargs={}),
+                            target=wrapper,
+                        ),
+                    },
                 },
             },
-        }
+        )
 
+        assert results._file_ir[actor]["calls"] == expected._file_ir[actor]["calls"]
         assert results == expected
 
         _, stderr = capfd.readouterr()
-        assert "unable to resolve call result of call" in stderr
+        assert match_output(
+            stderr,
+            [
+                "unable to unbind nested functions",
+                "unable to resolve call to 'wrapper()()', target is a call on a call",
+            ],
+        )
 
+    def test_iterate_over_list_of_functions(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        capfd: pytest.CaptureFixture[str],
+    ):
         # Local function
         # Technically not higher-order, but w/e
         _ast = parse(
@@ -313,48 +411,61 @@ class TestRegression:
         fn_b = Func(name="fn_b", interface=CallInterface(args=("arg",)))
         bad = Func(name="bad", interface=CallInterface(args=("argument",)))
 
-        expected = {
-            fn_a: {
-                "gets": {Name("arg.a", "arg")},
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            },
-            fn_b: {
-                "gets": {Name("arg.b", "arg")},
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            },
-            bad: {
-                "gets": {
-                    Name("accumulator"),
-                    Name("fn_a"),
-                    Name("fn_b"),
-                    Name("argument"),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_a,
+                    fn_b,
+                    bad,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_a: {
+                    "gets": {Name("arg.a", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": {
-                    Name("accumulator"),
-                    Name("f"),
+                fn_b: {
+                    "gets": {Name("arg.b", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        name="f()",
-                        args=CallArguments(args=("argument",), kwargs={}),
-                        target=Name("f"),
-                    ),
+                bad: {
+                    "gets": {
+                        Name("accumulator"),
+                        Name("fn_a"),
+                        Name("fn_b"),
+                        Name("argument"),
+                    },
+                    "sets": {
+                        Name("accumulator"),
+                        Name("f"),
+                    },
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="f()",
+                            args=CallArguments(args=("argument",), kwargs={}),
+                            target=Name("f"),
+                        ),
+                    },
                 },
             },
-        }
+        )
 
         assert results == expected
 
         _, stderr = capfd.readouterr()
         assert "likely a procedural parameter" in stderr
 
-    def test_regression_generator_iterable_is_literal(self, parse):
-        # List of many
+    def test_regression_generator_iterable_is_literal(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         _ast = parse(
             """
             def fn():
@@ -368,26 +479,37 @@ class TestRegression:
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         fn_symbol = Func(name="fn", interface=CallInterface(args=()))
-
-        expected = {
-            fn_symbol: {
-                "gets": {
-                    Name("thing_one"),
-                    Name("thing_two"),
-                    Name("e.whatever", "e"),
-                },
-                "sets": {
-                    Name("e"),
-                    Name("list_of_tuples"),
-                },
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {
+                        Name("thing_one"),
+                        Name("thing_two"),
+                        Name("e.whatever", "e"),
+                    },
+                    "sets": {
+                        Name("e"),
+                        Name("list_of_tuples"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
-        # List of one
+    def test_regression_generator_iterable_is_literal_rhs_is_singlet(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         _ast = parse(
             """
             def fn():
@@ -400,30 +522,37 @@ class TestRegression:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            fn_symbol: {
-                "gets": {
-                    Name("thing"),
-                    Name("e.whatever", "e"),
-                },
-                "sets": {
-                    Name("list_of_tuples"),
-                    Name("e"),
-                },
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        fn_symbol = Func(name="fn", interface=CallInterface(args=()))
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {
+                        Name("thing"),
+                        Name("e.whatever", "e"),
+                    },
+                    "sets": {
+                        Name("e"),
+                        Name("list_of_tuples"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
-    def test_regression_gets_in_bin_op(self, parse):
-        # NOTE in Python 3.8 support / tests for "sets" in BinOp will be needed
-
-        #
-        # In Attribute
-        #
-
+    def test_regression_gets_in_bin_op(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         # ALWAYS WORKED
         # Test if "arg.first" and "arg.second" are in "gets"
         _ast = parse(
@@ -435,21 +564,33 @@ class TestRegression:
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
-
-        expected = {
-            fn_symbol: {
-                "sets": set(),
-                "gets": {
-                    Name("arg.first", "arg"),
-                    Name("arg.second", "arg"),
-                },
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {
+                        Name("arg.first", "arg"),
+                        Name("arg.second", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
+    def test_regression_attr_access_on_bin_op_result(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         # REGRESSION
         # Test if "arg.first" and "arg.second" are in "gets"
         _ast = parse(
@@ -460,24 +601,36 @@ class TestRegression:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            fn_symbol: {
-                "sets": set(),
-                "gets": {
-                    Name("arg.first", "arg"),
-                    Name("arg.second", "arg"),
-                    Name("@BinOp.some_property", "@BinOp"),
-                },
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {
+                        Name("arg.first", "arg"),
+                        Name("arg.second", "arg"),
+                        Name("@BinOp.some_property", "@BinOp"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
-        #
-        # In Starred
-        #
+    def test_regression_bin_op_result_in_starred_expression(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        # REGRESSION
         _ast = parse(
             """
             def fn(arg):
@@ -486,30 +639,41 @@ class TestRegression:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            fn_symbol: {
-                "sets": set(),
-                "gets": {
-                    Name("arg.first", "arg"),
-                    Name("arg.second", "arg"),
-                    Name("*@List", "@List"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        name="call()",
-                        args=CallArguments(args=("*@List",), kwargs={}),
-                        target=None,
-                    ),
-                },
-            }
-        }
+        fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {
+                        Name("arg.first", "arg"),
+                        Name("arg.second", "arg"),
+                        Name("*@List", "@List"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="call()",
+                            args=CallArguments(args=("*@List",), kwargs={}),
+                            target=None,
+                        ),
+                    },
+                }
+            },
+        )
 
         assert results == expected
 
-        #
-        # In Subscript
-        #
+    def test_regression_subscript_on_bin_op_result(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         _ast = parse(
             """
             def fn(arg):
@@ -518,22 +682,35 @@ class TestRegression:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            fn_symbol: {
-                "sets": set(),
-                "gets": {
-                    Name("arg.first", "arg"),
-                    Name("arg.second", "arg"),
-                    Name("@BinOp[]", "@BinOp"),
-                },
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {
+                        Name("arg.first", "arg"),
+                        Name("arg.second", "arg"),
+                        Name("@BinOp[]", "@BinOp"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
-    def test_regression_gets_in_method_call(self, parse):
+    def test_regression_gets_attr(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         # ALWAYS WORKED
         _ast = parse(
             """
@@ -544,20 +721,31 @@ class TestRegression:
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
-
-        expected = {
-            fn_symbol: {
-                "sets": set(),
-                "gets": {
-                    Name("arg.attr", "arg"),
-                },
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {Name("arg.attr", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
+    def test_regression_gets_attr_of_method_call(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        capfd: pytest.CaptureFixture[str],
+    ):
         # ALWAYS WORKED
         _ast = parse(
             """
@@ -567,23 +755,45 @@ class TestRegression:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            fn_symbol: {
-                "sets": set(),
-                "gets": set(),
-                "dels": set(),
-                "calls": {
-                    Call(
-                        name="arg.method()",
-                        args=CallArguments(args=(), kwargs=[]),
-                        target=Name("arg"),
-                    ),
-                },
-            }
-        }
+        fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="arg.method()",
+                            args=CallArguments(args=(), kwargs=[]),
+                            target=None,
+                        ),
+                    },
+                }
+            },
+        )
 
         assert results == expected
 
+        _, stderr = capfd.readouterr()
+        assert match_output(
+            stderr,
+            [
+                "unable to resolve call to 'arg.method()', target is a method",
+            ],
+        )
+
+    def test_regression_gets_attr_of_method_parent_on_call(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         # REGRESSION 1
         _ast = parse(
             """
@@ -593,25 +803,37 @@ class TestRegression:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            fn_symbol: {
-                "sets": set(),
-                "gets": {
-                    Name("arg.attr", "arg"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        name="arg.attr.method()",
-                        args=CallArguments(args=(), kwargs={}),
-                        target=Name("arg"),
-                    ),
-                },
-            }
-        }
+        fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {Name("arg.attr", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="arg.attr.method()",
+                            args=CallArguments(args=(), kwargs={}),
+                            target=None,
+                        ),
+                    },
+                }
+            },
+        )
 
         assert results == expected
 
+    def test_regression_gets_attrs_of_deep_method_parents_on_call(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         # REGRESSION 2
         _ast = parse(
             """
@@ -621,25 +843,34 @@ class TestRegression:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {
-            fn_symbol: {
-                "sets": set(),
-                "gets": {
-                    Name("arg.a", "arg"),
-                    Name("arg.a.b", "arg"),
-                    Name("arg.a.b.c", "arg"),
-                    Name("arg.a.b.c.d", "arg"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        name="arg.a.b.c.d.method()",
-                        args=CallArguments(args=(), kwargs={}),
-                        target=Name("arg"),
-                    ),
-                },
-            }
-        }
+        fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    fn_symbol,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn_symbol: {
+                    "gets": {
+                        Name("arg.a", "arg"),
+                        Name("arg.a.b", "arg"),
+                        Name("arg.a.b.c", "arg"),
+                        Name("arg.a.b.c.d", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            name="arg.a.b.c.d.method()",
+                            args=CallArguments(args=(), kwargs={}),
+                            target=None,
+                        ),
+                    },
+                }
+            },
+        )
 
         assert results == expected
 
@@ -654,7 +885,12 @@ class TestNamedTupleFromCall:
         with arguments(is_strict=True):
             yield
 
-    def test_call_with_positional_arguments(self, constant, parse):
+    def test_call_with_positional_arguments(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
         _ast = parse(
             """
             from collections import namedtuple
@@ -671,6 +907,10 @@ class TestNamedTupleFromCall:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
+        namedtuple_import = Import(
+            name="namedtuple",
+            qualified_name="collections.namedtuple",
+        )
         point = Class(
             name="point",
             interface=CallInterface(args=("self", "x", "y")),
@@ -678,32 +918,47 @@ class TestNamedTupleFromCall:
         point_call = Call(
             name="point()",
             args=CallArguments(
-                args=("@ReturnValue", constant("Str"), constant("Str")),
+                args=("@ReturnValue", constant, constant),
                 kwargs={},
             ),
             target=point,
         )
         by_pos = Func(name="by_pos", interface=CallInterface(args=()))
 
-        expected = {
-            point: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    namedtuple_import,
+                    point,
+                    by_pos,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                point: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
+                by_pos: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {point_call},
+                },
             },
-            by_pos: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": {point_call},
-            },
-        }
+        )
 
-        assert file_ir._file_ir == expected
+        assert file_ir == expected
         assert _exit.call_count == 0
 
-    def test_call_with_keyword_arguments(self, constant, parse):
+    def test_call_with_keyword_arguments(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
         _ast = parse(
             """
             from collections import namedtuple
@@ -720,6 +975,10 @@ class TestNamedTupleFromCall:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
+        namedtuple_import = Import(
+            name="namedtuple",
+            qualified_name="collections.namedtuple",
+        )
         point = Class(
             name="point",
             interface=CallInterface(args=("self", "x", "y")),
@@ -728,31 +987,46 @@ class TestNamedTupleFromCall:
             name="point()",
             args=CallArguments(
                 args=("@ReturnValue",),
-                kwargs={"x": constant("Str"), "y": constant("Str")},
+                kwargs={"x": constant, "y": constant},
             ),
             target=point,
         )
         by_keyword = Func(name="by_keyword", interface=CallInterface(args=()))
 
-        expected = {
-            point: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    namedtuple_import,
+                    point,
+                    by_keyword,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                point: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
+                by_keyword: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {point_call},
+                },
             },
-            by_keyword: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": {point_call},
-            },
-        }
+        )
 
-        assert file_ir._file_ir == expected
+        assert file_ir == expected
         assert _exit.call_count == 0
 
-    def test_call_with_positional_and_keyword_arguments(self, constant, parse):
+    def test_call_with_positional_and_keyword_arguments(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
         _ast = parse(
             """
             from collections import namedtuple
@@ -769,6 +1043,10 @@ class TestNamedTupleFromCall:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
+        namedtuple_import = Import(
+            name="namedtuple",
+            qualified_name="collections.namedtuple",
+        )
         point = Class(
             name="point",
             interface=CallInterface(args=("self", "x", "y")),
@@ -776,32 +1054,48 @@ class TestNamedTupleFromCall:
         point_call = Call(
             name="point()",
             args=CallArguments(
-                args=("@ReturnValue", constant("Str")),
-                kwargs={"y": constant("Str")},
+                args=("@ReturnValue", constant),
+                kwargs={"y": constant},
             ),
             target=point,
         )
         by_mixture = Func(name="by_mixture", interface=CallInterface(args=()))
 
-        expected = {
-            point: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    namedtuple_import,
+                    point,
+                    by_mixture,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                point: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
+                by_mixture: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {point_call},
+                },
             },
-            by_mixture: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": {point_call},
-            },
-        }
+        )
 
-        assert file_ir._file_ir == expected
+        assert file_ir == expected
         assert _exit.call_count == 0
 
-    def test_locally_defined_named_tuple(self, constant, parse):
+    def test_locally_defined_named_tuple(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+        capfd: pytest.CaptureFixture[str],
+    ):
         _ast = parse(
             """
             from collections import namedtuple
@@ -817,6 +1111,10 @@ class TestNamedTupleFromCall:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
+        namedtuple_import = Import(
+            name="namedtuple",
+            qualified_name="collections.namedtuple",
+        )
         point = Class(
             name="point",
             interface=CallInterface(args=("self", "x", "y")),
@@ -824,28 +1122,52 @@ class TestNamedTupleFromCall:
         point_call = Call(
             name="point()",
             args=CallArguments(
-                args=("@ReturnValue", constant("Str")),
-                kwargs={"y": constant("Str")},
+                args=("@ReturnValue", constant),
+                kwargs={"y": constant},
             ),
             target=point,
         )
         fn = Func(name="fn", interface=CallInterface(args=()))
 
-        expected = {
-            fn: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": {point_call},
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    namedtuple_import,
+                    fn,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                fn: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {point_call},
+                },
             },
-        }
+        )
 
         # `point` is defined as a local callable, which is no yet supported, thus this
         # should fail in strict mode.
-        assert file_ir._file_ir == expected
+        assert file_ir == expected
         assert _exit.call_count == 1
 
-    def test_call_with_space_delimited_string_argument(self, constant, parse):
+        # TODO Why is the output repeated here?
+        _, stderr = capfd.readouterr()
+        assert match_output(
+            stderr,
+            [
+                "unable to resolve initialiser for 'point'",
+                "unable to resolve initialiser for 'point'",
+            ],
+        )
+
+    def test_call_with_space_delimited_string_argument(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
         _ast = parse(
             """
             from collections import namedtuple
@@ -862,6 +1184,10 @@ class TestNamedTupleFromCall:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
+        namedtuple_import = Import(
+            name="namedtuple",
+            qualified_name="collections.namedtuple",
+        )
         point = Class(
             name="point",
             interface=CallInterface(args=("self", "x", "y")),
@@ -869,29 +1195,39 @@ class TestNamedTupleFromCall:
         point_call = Call(
             name="point()",
             args=CallArguments(
-                args=("@ReturnValue", constant("Str")),
-                kwargs={"y": constant("Str")},
+                args=("@ReturnValue", constant),
+                kwargs={"y": constant},
             ),
             target=point,
         )
         my_function = Func(name="my_function", interface=CallInterface(args=()))
 
-        expected = {
-            point: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    namedtuple_import,
+                    point,
+                    my_function,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                point: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
+                my_function: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {point_call},
+                },
             },
-            my_function: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": {point_call},
-            },
-        }
+        )
 
-        assert file_ir._file_ir == expected
+        assert file_ir == expected
         assert _exit.call_count == 0
 
 
@@ -904,7 +1240,12 @@ class TestNamedTupleFromInheritance:
         with arguments(is_strict=True):
             yield
 
-    def test_call_with_positional_arguments(self, constant, parse):
+    def test_call_with_positional_arguments(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
         _ast = parse(
             """
             from typing import NamedTuple
@@ -922,39 +1263,62 @@ class TestNamedTupleFromInheritance:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
+        namedtuple_import = Import(
+            name="NamedTuple",
+            qualified_name="typing.NamedTuple",
+        )
         point = Class(
             name="Point",
             interface=CallInterface(args=("self", "x", "y")),
         )
+        point_x = Name(name="Point.x", basename="Point")
+        point_y = Name(name="Point.y", basename="Point")
         point_call = Call(
             "Point()",
             args=CallArguments(
-                args=("@ReturnValue", constant("Str"), constant("str")),
+                args=("@ReturnValue", constant, constant),
                 kwargs={},
             ),
             target=point,
         )
         by_pos = Func(name="by_pos", interface=CallInterface(args=()))
 
-        expected = {
-            point: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    namedtuple_import,
+                    point,
+                    point_x,
+                    point_y,
+                    by_pos,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                point: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
+                by_pos: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {point_call},
+                },
             },
-            by_pos: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": {point_call},
-            },
-        }
+        )
 
-        assert file_ir._file_ir == expected
+        assert file_ir == expected
         assert _exit.call_count == 0
 
-    def test_call_with_keyword_arguments(self, constant, parse):
+    def test_call_with_keyword_arguments(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
         _ast = parse(
             """
             from typing import NamedTuple
@@ -973,39 +1337,62 @@ class TestNamedTupleFromInheritance:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
+        namedtuple_import = Import(
+            name="NamedTuple",
+            qualified_name="typing.NamedTuple",
+        )
         point = Class(
             name="Point",
             interface=CallInterface(args=("self", "x", "y")),
         )
+        point_x = Name(name="Point.x", basename="Point")
+        point_y = Name(name="Point.y", basename="Point")
         point_call = Call(
             name="Point()",
             args=CallArguments(
                 args=("@ReturnValue",),
-                kwargs={"x": constant("Str"), "y": constant("Str")},
+                kwargs={"x": constant, "y": constant},
             ),
             target=point,
         )
         by_keyword = Func(name="by_keyword", interface=CallInterface(args=()))
 
-        expected = {
-            point: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    namedtuple_import,
+                    point,
+                    point_x,
+                    point_y,
+                    by_keyword,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                point: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
+                by_keyword: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {point_call},
+                },
             },
-            by_keyword: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": {point_call},
-            },
-        }
+        )
 
-        assert file_ir._file_ir == expected
+        assert file_ir == expected
         assert _exit.call_count == 0
 
-    def test_call_with_positional_and_keyword_arguments(self, constant, parse):
+    def test_call_with_positional_and_keyword_arguments(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
         _ast = parse(
             """
             from typing import NamedTuple
@@ -1024,36 +1411,54 @@ class TestNamedTupleFromInheritance:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 
+        namedtuple_import = Import(
+            name="NamedTuple",
+            qualified_name="typing.NamedTuple",
+        )
         point = Class(
             name="Point",
             interface=CallInterface(args=("self", "x", "y")),
         )
+        point_x = Name(name="Point.x", basename="Point")
+        point_y = Name(name="Point.y", basename="Point")
         point_call = Call(
             name="Point()",
             args=CallArguments(
-                args=("@ReturnValue", constant("Str")),
-                kwargs={"y": constant("Str")},
+                args=("@ReturnValue", constant),
+                kwargs={"y": constant},
             ),
             target=point,
         )
         by_mixture = Func(name="by_mixture", interface=CallInterface(args=()))
 
-        expected = {
-            point: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    namedtuple_import,
+                    point,
+                    point_x,
+                    point_y,
+                    by_mixture,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                point: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
+                by_mixture: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {point_call},
+                },
             },
-            by_mixture: {
-                "gets": set(),
-                "sets": set(),
-                "dels": set(),
-                "calls": {point_call},
-            },
-        }
+        )
 
-        assert file_ir._file_ir == expected
+        assert file_ir == expected
         assert _exit.call_count == 0
 
 
@@ -1067,7 +1472,13 @@ class TestRattrConstantInNameableOnCheckForNamedTuple:
     Fixed: 0.1.8
     """
 
-    def test_safely_determine_rhs_name_on_namedtuple_check(self, parse, constant):
+    def test_safely_determine_rhs_name_on_namedtuple_check(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+        capfd: pytest.CaptureFixture[str],
+    ):
         _ast = parse(
             """
             def my_function(foobar, info=None):
@@ -1083,31 +1494,47 @@ class TestRattrConstantInNameableOnCheckForNamedTuple:
             name="my_function",
             interface=CallInterface(args=("foobar", "info")),
         )
-        string_join = f"{constant('@Str')}.join()"
+        string_join = f"{constant}.join()"
         string_join_call = Call(
             string_join,
             args=CallArguments(args=("info.parts",), kwargs={}),
         )
 
-        expected_file_ir = {
-            my_function: {
-                "gets": {Name("info.parts", basename="info")},
-                "sets": {Name("i_cause_the_error")},
-                "dels": set(),
-                "calls": {string_join_call},
-            }
-        }
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    my_function,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                my_function: {
+                    "gets": {Name("info.parts", basename="info")},
+                    "sets": {Name("i_cause_the_error")},
+                    "dels": set(),
+                    "calls": {string_join_call},
+                }
+            },
+        )
 
+        assert file_ir == expected
         assert not _exit.called
-        assert file_ir._file_ir == expected_file_ir
+
+        _, stderr = capfd.readouterr()
+        assert match_output(
+            stderr,
+            [
+                "unable to resolve call to '@Constant.join()', target lhs is a literal",
+            ],
+        )
 
 
 @pytest.mark.usefixtures("run_in_strict_mode")
 class TestGeneratorAndComprehensionsAreDeeplyVisited:
     def test_generator_expression(
         self,
-        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
-        root_context_with: Callable[[list[Symbol]], Context],
+        analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+        make_root_context: MakeRootContextFn,
         capfd: pytest.CaptureFixture[str],
     ):
         file_ir, file_results = analyse_single_file(
@@ -1130,10 +1557,10 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
         assert helpers.stdout_matches(stdout, [])
 
         symbols = {
-            "fn": Func("fn", ["xss"]),
+            "fn": Func("fn", interface=CallInterface(args=("xss",))),
         }
 
-        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir.context == make_root_context(symbols.values())
         assert file_ir._file_ir == {
             symbols["fn"]: {
                 "gets": {
@@ -1164,8 +1591,8 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
 
     def test_simple_ternary_in_generator_expression(
         self,
-        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
-        root_context_with: Callable[[list[Symbol]], Context],
+        analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+        make_root_context: MakeRootContextFn,
         capfd: pytest.CaptureFixture[str],
         builtin: Callable[[str], Builtin],
     ):
@@ -1180,10 +1607,10 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
         assert helpers.stdout_matches(stdout, [])
 
         symbols = {
-            "fn": Func("fn", ["foos"]),
+            "fn": Func("fn", interface=CallInterface(args=("foos",))),
         }
 
-        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir.context == make_root_context(symbols.values())
         assert file_ir._file_ir == {
             symbols["fn"]: {
                 "gets": {
@@ -1196,7 +1623,11 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("any()", ["@GeneratorExp"], {}, target=builtin("any")),
+                    Call(
+                        "any()",
+                        args=CallArguments(args=("@GeneratorExp",)),
+                        target=builtin("any"),
+                    ),
                 },
             }
         }
@@ -1211,8 +1642,8 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
 
     def test_simple_walrus_in_generator_expression(
         self,
-        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
-        root_context_with: Callable[[list[Symbol]], Context],
+        analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+        make_root_context: MakeRootContextFn,
         capfd: pytest.CaptureFixture[str],
         builtin: Callable[[str], Builtin],
     ):
@@ -1227,10 +1658,10 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
         assert helpers.stdout_matches(stdout, [])
 
         symbols = {
-            "fn": Func("fn", ["foos"]),
+            "fn": Func("fn", interface=CallInterface(args=("foos",))),
         }
 
-        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir.context == make_root_context(symbols.values())
         assert file_ir._file_ir == {
             symbols["fn"]: {
                 "gets": {
@@ -1244,8 +1675,16 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("any()", ["@GeneratorExp"], {}, target=builtin("any")),
-                    Call("sum()", ["baz"], {}, target=builtin("sum")),
+                    Call(
+                        "any()",
+                        args=CallArguments(args=("@GeneratorExp",)),
+                        target=builtin("any"),
+                    ),
+                    Call(
+                        "sum()",
+                        args=CallInterface(args=("baz",)),
+                        target=builtin("sum"),
+                    ),
                 },
             }
         }
@@ -1260,8 +1699,8 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
 
     def test_nested_ternary_in_generator_expression(
         self,
-        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
-        root_context_with: Callable[[list[Symbol]], Context],
+        analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+        make_root_context: MakeRootContextFn,
         capfd: pytest.CaptureFixture[str],
         builtin: Callable[[str], Builtin],
     ):
@@ -1276,10 +1715,10 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
         assert helpers.stdout_matches(stdout, [])
 
         symbols = {
-            "fn": Func("fn", ["foos"]),
+            "fn": Func("fn", interface=CallInterface(args=("foos",))),
         }
 
-        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir.context == make_root_context(symbols.values())
         assert file_ir._file_ir == {
             symbols["fn"]: {
                 "gets": {
@@ -1294,7 +1733,11 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("any()", ["@GeneratorExp"], {}, target=builtin("any")),
+                    Call(
+                        "any()",
+                        args=CallArguments(args=("@GeneratorExp",)),
+                        target=builtin("any"),
+                    ),
                 },
             }
         }
@@ -1309,8 +1752,8 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
 
     def test_nested_walrus_in_generator_expression(
         self,
-        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
-        root_context_with: Callable[[list[Symbol]], Context],
+        analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+        make_root_context: MakeRootContextFn,
         capfd: pytest.CaptureFixture[str],
         builtin: Callable[[str], Builtin],
     ):
@@ -1325,10 +1768,10 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
         assert helpers.stdout_matches(stdout, [])
 
         symbols = {
-            "fn": Func("fn", ["foos"]),
+            "fn": Func("fn", interface=CallInterface(args=("foos",))),
         }
 
-        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir.context == make_root_context(symbols.values())
         assert file_ir._file_ir == {
             symbols["fn"]: {
                 "gets": {
@@ -1344,8 +1787,16 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("any()", ["@GeneratorExp"], {}, target=builtin("any")),
-                    Call("sum()", ["b"], {}, target=builtin("sum")),
+                    Call(
+                        "any()",
+                        args=CallArguments(args=("@GeneratorExp",)),
+                        target=builtin("any"),
+                    ),
+                    Call(
+                        "sum()",
+                        args=CallArguments(args=("b",)),
+                        target=builtin("sum"),
+                    ),
                 },
             }
         }
@@ -1363,8 +1814,8 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
 class TestGeneratorAndComprehensionsAreDeeplyVisitedPermissive:
     def test_deeply_nested_comprehensions(
         self,
-        analyse_single_file: Callable[[str], tuple[FileIR, FileResults]],
-        root_context_with: Callable[[list[Symbol]], Context],
+        analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+        make_root_context: MakeRootContextFn,
         builtin: Callable[[str], Builtin],
         capfd: pytest.CaptureFixture[str],
     ):
@@ -1414,10 +1865,10 @@ class TestGeneratorAndComprehensionsAreDeeplyVisitedPermissive:
         )
 
         symbols = {
-            "fn": Func("fn", ["data"]),
+            "fn": Func("fn", interface=CallInterface(args=("data",))),
         }
 
-        assert file_ir.context == root_context_with(symbols.values())
+        assert file_ir.context == make_root_context(symbols.values())
         assert file_ir._file_ir == {
             symbols["fn"]: {
                 "gets": {
@@ -1450,10 +1901,18 @@ class TestGeneratorAndComprehensionsAreDeeplyVisitedPermissive:
                 },
                 "dels": set(),
                 "calls": {
-                    Call("any()", ["@GeneratorExp"], {}, builtin("any")),
-                    Call("p()", [], {}, Name("p")),
-                    Call("isinstance()", ["p", "Callable"], {}, builtin("isinstance")),
-                    Call("foo.as_dict()", [], {}, Name("foo")),
+                    Call(
+                        "any()",
+                        args=CallArguments(args=("@GeneratorExp",)),
+                        target=Builtin("any"),
+                    ),
+                    Call("p()", args=CallArguments(), target=Name("p")),
+                    Call(
+                        "isinstance()",
+                        args=CallArguments(args=("p", "Callable")),
+                        target=Builtin("isinstance"),
+                    ),
+                    Call("foo.as_dict()", args=CallArguments(), target=Name("foo")),
                 },
             }
         }

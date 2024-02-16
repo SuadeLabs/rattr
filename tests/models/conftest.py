@@ -22,7 +22,7 @@ def test_file() -> Path:
 
 
 @pytest.fixture(autouse=True)
-def _set_current_file(state, test_file):
+def __set_current_file(state, test_file):
     # Many symbols automatically derive a location
     # The derivation will error if the state's file is not set
     # Se just set it universally for all symbol tests.

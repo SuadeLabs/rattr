@@ -148,7 +148,7 @@ class TestLocation:
     def test_with_explicit_location(self, state, file):
         # This is not the intended interface, but should no break
         with state(current_file=file):
-            assert Location(derived_location=file).defined_in == file
+            assert Location(file=file).defined_in == file
 
     def test_is_hashable(self):
         assert isinstance(hash(Location()), int)

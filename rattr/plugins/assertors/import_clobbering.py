@@ -72,26 +72,26 @@ class ImportClobberingAssertor(Assertor):
         self.failed(f"attempt to delete imported name {name!r}", culprit=node)
 
     def visit_Assign(self, node: ast.Assign) -> None:
-        for name in imports_in_node_lhs_names(node, context=self.context):
-            self.__clobbered(name, node)
+        for import_ in imports_in_node_lhs_names(node, context=self.context):
+            self.__clobbered(import_.name, node)
 
         return super().generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        for name in imports_in_node_lhs_names(node, context=self.context):
-            self.__clobbered(name, node)
+        for import_ in imports_in_node_lhs_names(node, context=self.context):
+            self.__clobbered(import_.name, node)
 
         return super().generic_visit(node)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
-        for name in imports_in_node_lhs_names(node, context=self.context):
-            self.__clobbered(name, node)
+        for import_ in imports_in_node_lhs_names(node, context=self.context):
+            self.__clobbered(import_.name, node)
 
         return super().generic_visit(node)
 
     def visit_Delete(self, node: ast.Delete) -> None:
-        for name in imports_in_node_lhs_names(node, context=self.context):
-            self.__deleted(name, node)
+        for import_ in imports_in_node_lhs_names(node, context=self.context):
+            self.__deleted(import_.name, node)
 
         return super().generic_visit(node)
 
@@ -125,8 +125,8 @@ class ImportClobberingAssertor(Assertor):
         interface = CallInterface.from_fn_def(node)
         names = {a for a in interface.all if a is not None}
 
-        for name in imports_in_names(names, context=self.context):
-            self.__clobbered(name, node)
+        for import_ in imports_in_names(names, context=self.context):
+            self.__clobbered(import_.name, node)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         if has_annotation("rattr_ignore", node):
@@ -145,8 +145,8 @@ class ImportClobberingAssertor(Assertor):
     def visit_For(self, node: ast.For | ast.AsyncFor) -> None:
         names = [n for n in unravel_names(node.target)]
 
-        for name in imports_in_names(names, context=self.context):
-            self.__clobbered(name, node)
+        for import_ in imports_in_names(names, context=self.context):
+            self.__clobbered(import_.name, node)
 
         return super().generic_visit(node)
 
@@ -160,8 +160,8 @@ class ImportClobberingAssertor(Assertor):
 
             names = [n for n in unravel_names(item.optional_vars)]
 
-            for name in imports_in_names(names, context=self.context):
-                self.__clobbered(name, node)
+            for import_ in imports_in_names(names, context=self.context):
+                self.__clobbered(import_.name, node)
 
         return super().generic_visit(node)
 
@@ -175,8 +175,8 @@ class ImportClobberingAssertor(Assertor):
         for generator in node.generators:
             names = [n for n in unravel_names(generator.target)]
 
-            for name in imports_in_names(names, context=self.context):
-                self.__clobbered(name, node)
+            for import_ in imports_in_names(names, context=self.context):
+                self.__clobbered(import_.name, node)
 
         return super().generic_visit(node)
 

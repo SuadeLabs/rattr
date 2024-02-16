@@ -1,6 +1,8 @@
 """Tests for module/file level features."""
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -8,6 +10,18 @@ import pytest
 from rattr.analyser.file import FileAnalyser
 from rattr.models.context import compile_root_context
 from rattr.models.symbol import CallInterface, Func, Name
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from tests.shared import StateFn
+
+
+@pytest.fixture(autouse=True)
+def __set_current_file(state: StateFn) -> Iterator[None]:
+    with state(current_file=Path(__file__)):
+        yield
+
 
 
 class TestModuleLevelStatements:

@@ -138,7 +138,7 @@ def test_context_get_call_target_not_callable(capfd: pytest.CaptureFixture[str])
     child = Context(parent=root)
 
     # The root defines 'a' so it is likely a procedural parameter in practise
-    assert root.get_call_target(a.name, culprit=None) is None
+    assert root.get_call_target(a.name, culprit=None) == a
     _, stderr = capfd.readouterr()
     assert (
         "unable to resolve call to 'a()', target is likely a procedural parameter"
@@ -146,7 +146,7 @@ def test_context_get_call_target_not_callable(capfd: pytest.CaptureFixture[str])
     )
 
     # The child merely inherits 'a' so it is just generically not callable
-    assert child.get_call_target(a.name, culprit=None) is None
+    assert child.get_call_target(a.name, culprit=None) == a
     _, stderr = capfd.readouterr()
     assert "unable to resolve call to 'a()', target is not callable" in stderr
 

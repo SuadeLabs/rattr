@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
 
 from rattr import error
+from rattr.analyser.exc import RattrResultsError
 from rattr.analyser.util import (
     DictChanges,
     assignment_is_one_to_one,
@@ -22,18 +26,17 @@ from rattr.analyser.util import (
     get_first_argument_name,
     get_fullname,
     get_function_body,
-    get_function_call_args,
-    get_function_def_args,
     get_function_form,
     get_namedtuple_attrs_from_call,
     get_xattr_obj_name_pair,
     has_affect,
     has_annotation,
-    is_args,
     is_blacklisted_module,
     is_call_to,
     is_excluded_name,
     is_in_builtins,
+    is_list_of_call_specs,
+    is_list_of_names,
     is_method_on_cast,
     is_method_on_constant,
     is_method_on_primitive,
@@ -48,10 +51,23 @@ from rattr.analyser.util import (
     parse_annotation,
     parse_rattr_results_from_annotation,
     unravel_names,
+    validate_rattr_results,
     walrus_in_rhs,
 )
 from rattr.models.context import Context, compile_root_context
 from rattr.models.symbol import Call, CallArguments, CallInterface, Class, Name
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from rattr.analyser.types import RattrResults
+    from tests.shared import ArgumentsFn, StateFn
+
+
+@pytest.fixture(autouse=True)
+def __set_current_file(state: StateFn) -> Iterator[None]:
+    with state(current_file=Path(__file__)):
+        yield
 
 
 class TestUtil:
@@ -80,7 +96,7 @@ class TestUtil:
 
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
-    def test_get_basename_full_name_pair_coverage(self, constant):
+    def test_get_basename_full_name_pair_coverage(self, constant: str):
         # Name
         nameable = ast.parse("ast_name").body[0].value
         expected = ("ast_name", "ast_name")
@@ -122,14 +138,14 @@ class TestUtil:
 
         # NameConstant
         nameable = ast.parse("True").body[0].value
-        expected = (constant("NameConstant"), constant("NameConstant"))
+        expected = (constant, constant)
         with pytest.raises(error.RattrConstantInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
 
         # Literal
         nameable = ast.parse("(1).to_bytes()").body[0].value
-        expected = (constant("Num"), f"{constant('Num')}.to_bytes()")
+        expected = (constant, f"{constant}.to_bytes()")
         with pytest.raises(error.RattrConstantInNameable):
             get_basename_fullname_pair(nameable)
         assert get_basename_fullname_pair(nameable, safe=True) == expected
@@ -658,35 +674,145 @@ class TestUtil:
 
         assert not is_name("")
 
-    def test_is_set_of_names(self):
-        assert is_set_of_names(set())
+    @pytest.mark.parametrize(
+        "input, expected",
+        [
+            # the empty set
+            (set(), True),
+            # expected usage
+            ({"a", "b", "c"}, True),
+            ({"var.a", "var_b", "*c"}, True),
+            # other empty iterable
+            ([], False),
+            ({}, False),
+            # iterable, but wrongly typed
+            ([1, 2, 3, 4], False),
+            (["a", "b", "c"], False),
+            # set with non-names
+            ({"a", "b", "1111"}, False),
+            # not an iterable
+            (1234, False),
+        ],
+    )
+    def test_is_set_of_names(self, input: object, expected: bool):
+        assert is_set_of_names(input) == expected
 
-        assert is_set_of_names({"a", "b", "c"})
-        assert is_set_of_names({"var.a", "var_b", "*c"})
+    @pytest.mark.parametrize(
+        "input, expected",
+        [
+            # the empty list
+            ([], True),
+            # expected usage
+            (["a", "b", "c"], True),
+            (["var.a", "var_b", "*c"], True),
+            # other empty iterable
+            (set(), False),
+            ({}, False),
+            # iterable, but wrongly typed
+            ([1, 2, 3, 4], False),
+            ({"a", "b", "c"}, False),
+            # set with non-names
+            ({"a", "b", "1111"}, False),
+            # not an iterable
+            (1234, False),
+        ],
+    )
+    def test_is_list_of_names(self, input: object, expected: bool):
+        assert is_list_of_names(input) == expected
 
-        assert not is_set_of_names(1234)
-        assert not is_set_of_names([1, 2, 3, 4])
+    @pytest.mark.parametrize(
+        "input, expected",
+        testcases := [
+            # typical call specs
+            (([], {}), True),
+            ((["a"], {}), True),
+            ((["a", "b", "c"], {}), True),
+            (([], {"a": "A"}), True),
+            (([], {"a": "A", "b": "B"}), True),
+            ((["a"], {"b": "B"}), True),
+            ((["a", "b", "c"], {"d": "D"}), True),
+            ((["a", "b", "c"], {"d": "D", "e": "E"}), True),
+            # look like call specs, but wrongly typed
+            ((["1", "b"], {"c": "d"}), False),
+            ((["a", "b"], {"1": "d"}), False),
+            ((["a", "b"], {"c": "1"}), False),
+            (([111, "b"], {"c": "d"}), False),
+            ((["a", "b"], {111: "d"}), False),
+            ((["a", "b"], {"c": 111}), False),
+            # entirely incorrect
+            (1234, False),
+            ("abcd", False),
+            ((["a", "b"],), False),
+        ],
+        ids=[i for i, _ in enumerate(testcases)],
+    )
+    def test_is_call_spec(self, input: object, expected: bool):
+        assert is_list_of_call_specs([("my_function", input)]) == expected
 
-        assert not is_set_of_names({"a", "b", "1111"})
+    @pytest.mark.parametrize(
+        "inputs, expected",
+        testcases := [
+            # correct
+            (
+                [
+                    ([], {}),
+                    (["a"], {}),
+                    ([], {"a": "A", "b": "B"}),
+                    (["a", "b", "c"], {"d": "D", "e": "E"}),
+                ],
+                True,
+            ),
+            # mostly correct but one is wrong
+            (
+                [
+                    ([], {}),
+                    (["a"], {}),
+                    ("NAUGHTY"),
+                    (["a", "b", "c"], {"d": "D", "e": "E"}),
+                ],
+                False,
+            ),
+        ],
+        ids=[i for i, _ in enumerate(testcases)],
+    )
+    def test_is_list_of_call_specs(self, inputs: object, expected: bool):
+        assert is_list_of_call_specs([("func", input) for input in inputs]) == expected
 
-    def test_is_args(self):
-        assert is_args(([], {}))
-        assert is_args((["a", "b"], {"c": "d"}))
-
-        assert not is_args(1234)
-        assert not is_args("abcd")
-        assert not is_args((["a", "b"],))
-
-        assert not is_args((["1", "b"], {"c": "d"}))
-        assert not is_args((["a", "b"], {"1": "d"}))
-        assert not is_args((["a", "b"], {"c": "1"}))
-
-        assert not is_args(([111, "b"], {"c": "d"}))
-        assert not is_args((["a", "b"], {111: "d"}))
-        assert not is_args((["a", "b"], {"c": 111}))
+    @pytest.mark.parametrize(
+        "input, error",
+        testcases := [
+            (
+                {
+                    "gets": ["fail here"],
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": [],
+                },
+                "'rattr_results' expects a set[Identifier] for 'gets', where "
+                "Identifier is a type alias for str",
+            ),
+            (
+                {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": [("fail here", ...)],
+                },
+                "'rattr_results' expects 'calls' to be a "
+                "list[tuple[TargetName, tuple[list[PositionalArgumentName], "
+                "dict[KeywordArgumentName, LocalIdentifier]]]]; "
+                "where TargetName, PositionalArgumentName, KeywordArgumentName, and "
+                "LocalIdentifier are type aliases for str",
+            ),
+        ],
+        ids=[i for i, _ in enumerate(testcases)],
+    )
+    def test_validate_rattr_results(self, input: RattrResults, error: str):
+        with pytest.raises(RattrResultsError, match=re.escape(error)):
+            validate_rattr_results(input)
 
     def test_parse_rattr_results_from_annotation(self, parse):
-        _ast = parse(
+        ast_module = parse(
             """
             @rattr_results(
                 sets={"a"},
@@ -716,44 +842,44 @@ class TestUtil:
                 pass
             """
         )
-        _ctx = compile_root_context(_ast)
+        context = compile_root_context(ast_module)
 
         # Can set values
-        fn_def = _ast.body[0]
+        fn_def = ast_module.body[0]
         expected = {
             "sets": {Name("a")},
             "gets": {Name("b")},
             "calls": {Call("c", args=CallArguments())},
             "dels": {Name("d")},
         }
-        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, context=context) == expected
 
         # Defaults
-        fn_def = _ast.body[1]
+        fn_def = ast_module.body[1]
         expected = {
             "sets": {Name("a"), Name("b")},
             "gets": set(),
             "calls": set(),
             "dels": set(),
         }
-        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, context=context) == expected
 
         # Illegal: has pos arg
-        fn_def = _ast.body[2]
+        fn_def = ast_module.body[2]
         with mock.patch("sys.exit") as _exit:
-            parse_rattr_results_from_annotation(fn_def, _ctx)
+            parse_rattr_results_from_annotation(fn_def, context=context)
         assert _exit.call_count == 1
 
         # Illegal: has invalid key
-        fn_def = _ast.body[3]
+        fn_def = ast_module.body[3]
         with mock.patch("sys.exit") as _exit:
-            parse_rattr_results_from_annotation(fn_def, _ctx)
+            parse_rattr_results_from_annotation(fn_def, context=context)
         assert _exit.call_count == 1
 
         # Illegal: has invalid type
-        fn_def = _ast.body[4]
+        fn_def = ast_module.body[4]
         with mock.patch("sys.exit") as _exit:
-            parse_rattr_results_from_annotation(fn_def, _ctx)
+            parse_rattr_results_from_annotation(fn_def, context=context)
         assert _exit.call_count == 1
 
     def test_parse_rattr_results_from_annotation_complex(self, parse):
@@ -786,7 +912,7 @@ class TestUtil:
             "dels": {Name("del_me")},
             "calls": set(),
         }
-        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, context=_ctx) == expected
 
         # Complex calls
         fn_def = _ast.body[1]
@@ -797,10 +923,13 @@ class TestUtil:
             "calls": {
                 Call(name="fn_a", args=CallArguments()),
                 Call(name="fn_b", args=CallArguments(args=("a", "b"))),
-                Call(name="fn_c", args=CallArguments(arg=("a",), kwargs={"c": "@Str"})),
+                Call(
+                    name="fn_c",
+                    args=CallArguments(args=("a",), kwargs={"c": "@Str"}),
+                ),
             },
         }
-        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, context=_ctx) == expected
 
     def test_parse_rattr_results_from_annotation_follow_call(self, parse):
         _ast = parse(
@@ -831,7 +960,7 @@ class TestUtil:
             },
         }
 
-        assert parse_rattr_results_from_annotation(fn_def, _ctx) == expected
+        assert parse_rattr_results_from_annotation(fn_def, context=_ctx) == expected
 
     def test_is_blacklisted_module(self, stdlib_modules):
         for m in stdlib_modules:
@@ -1121,7 +1250,7 @@ class TestUtil:
         fn = ast.parse("def fn(a, b, c=None, *args, **kwargs): pass").body[0]
         assert get_function_form(fn) == "'fn(a, b, c, *args, **kwargs)'"
 
-    def test_is_excluded_name(self, arguments):
+    def test_is_excluded_name(self, arguments: ArgumentsFn):
         assert not is_excluded_name("sin")
         assert not is_excluded_name("_hidden_func")
 
@@ -1133,14 +1262,14 @@ class TestUtil:
             assert not is_excluded_name("sin")
             assert is_excluded_name("_hidden_func")
 
-    def test_is_method_on_constant(self, constant):
+    def test_is_method_on_constant(self, constant: str):
         assert not is_method_on_constant("some_var")
         assert not is_method_on_constant("some_var.methodd")
         assert not is_method_on_constant("some_var[0].method")
 
-        assert not is_method_on_constant(constant("Str"))
-        assert is_method_on_constant(constant("Str") + ".methodd")
-        assert is_method_on_constant(constant("Str") + ".[0].method")
+        assert not is_method_on_constant(constant)
+        assert is_method_on_constant(constant + ".methodd")
+        assert is_method_on_constant(constant + ".[0].method")
 
     def test_is_method_on_cast(self):
         assert not is_method_on_cast("some_var")
@@ -1151,8 +1280,8 @@ class TestUtil:
         assert is_method_on_cast("set().union")
         assert is_method_on_cast("list().append")
 
-    def test_is_method_on_primitive(self, constant):
-        assert not is_method_on_primitive(constant("Str"))
+    def test_is_method_on_primitive(self, constant: str):
+        assert not is_method_on_primitive(constant)
         assert not is_method_on_primitive("some_var")
         assert not is_method_on_primitive("func")
         assert not is_method_on_primitive("func")
@@ -1160,8 +1289,8 @@ class TestUtil:
 
         assert is_method_on_primitive("set().union")
         assert is_method_on_primitive("list().append")
-        assert is_method_on_primitive(constant("Str") + ".methodd")
-        assert is_method_on_primitive(constant("Str") + ".[0].method")
+        assert is_method_on_primitive(constant + ".methodd")
+        assert is_method_on_primitive(constant + ".[0].method")
 
     def test_get_dynamic_name(self):
         call = ast.parse("getattr(object, 'attribute')").body[0].value

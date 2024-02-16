@@ -88,7 +88,7 @@ def __parse_and_analyse_file_impl() -> tuple[FileIr, ImportsIr, RattrStats]:
 
     with timer() as analyse_imports_timer:
         if config.arguments.follow_imports:
-            symbols = context.symbol_table.symbols()
+            symbols = context.symbol_table.symbols
             imports = [s for s in symbols if isinstance(s, Import)]
             imports_ir, import_stats = parse_and_analyse_imports(imports)
         else:

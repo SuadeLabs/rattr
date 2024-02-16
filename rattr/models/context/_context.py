@@ -218,7 +218,6 @@ class Context(MutableMapping[Identifier, Symbol]):
                     _error.format(reason="target is a call on a call"),
                     culprit=culprit,
                 )
-            print("5")
             return target
 
         # Give warnings for targets likely to be resolved incorrectly
@@ -248,10 +247,8 @@ class Context(MutableMapping[Identifier, Symbol]):
                         _error.format(reason="target is not callable"),
                         culprit=culprit,
                     )
-            print("6")
             return target
 
-        print("7")
         return target
 
     # TODO Note to self: I don't like this method name, change it!
