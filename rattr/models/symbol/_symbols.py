@@ -245,7 +245,7 @@ class Call(Symbol):
     name: str = field(converter=without_call_brackets)
 
     args: CallArguments = field(factory=CallArguments)
-    target: Builtin | Import | Func | Class | None = field(default=None)
+    target: Builtin | Import | Func | Class | Name | None = field(default=None)
 
     token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
     location: Location = field(kw_only=True, hash=False, eq=False)

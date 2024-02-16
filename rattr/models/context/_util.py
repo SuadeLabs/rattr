@@ -109,6 +109,6 @@ def is_call_to_method_on_py_type(name: str) -> bool:
     return False
 
 
-def is_call_to_call_result(name: str) -> bool:
-    """Return `True` if the given name is a call to a call result."""
-    return name.endswith("()()")
+def is_call_to_call_result(call: ast.expr) -> bool:
+    """Return `True` if the given call is a call to another call's result."""
+    return isinstance(call, ast.Call) and isinstance(call.func, ast.Call)

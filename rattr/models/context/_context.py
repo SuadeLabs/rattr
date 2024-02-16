@@ -169,20 +169,31 @@ class Context(MutableMapping[Identifier, Symbol]):
         (lhs_name, *_) = name.split(".")
 
         if is_call_to_literal(name):
-            error.error(_error.format(reason="target lhs is a literal"), culprit)
+            if warn:
+                error.error(
+                    _error.format(reason="target lhs is a literal"),
+                    culprit=culprit,
+                )
             return None
 
         if is_call_to_subscript_item(name):
-            error.error(_error.format(reason="target is run-time dependent"), culprit)
+            if warn:
+                error.error(
+                    _error.format(reason="target is run-time dependent"),
+                    culprit=culprit,
+                )
             return None
 
         target = self.get(name)
         lhs_target = self.get(lhs_name)
 
         if is_call_to_method(target, name, lhs_target, lhs_name):
-            if not is_call_to_method_on_py_type(name):
-                error.error(_error.format(reason="target is a method"), culprit)
-            return None
+            if warn and not is_call_to_method_on_py_type(name):
+                error.error(
+                    _error.format(reason="target is a method"),
+                    culprit=culprit,
+                )
+            return target
 
         # Check for calls to members of imported modules, i.e. the second case below:
         #   `from math import pi`   ->  pi is in context, already resolved above
@@ -193,27 +204,54 @@ class Context(MutableMapping[Identifier, Symbol]):
         _target_is_callable = target is not None and target.is_callable
 
         # Give warnings for unresolvable targets
-        if warn and target is None:
-            if is_call_to_call_result(name):
-                error.error(_error.format(reason="target is a call on a call"), culprit)
-            else:
-                error.error(_error.format(reason="target is undefined"), culprit)
+        if target is None:
+            if warn:
+                error.error(
+                    _error.format(reason="target is undefined"),
+                    culprit=culprit,
+                )
             return None
+
+        if is_call_to_call_result(culprit):
+            if warn:
+                error.error(
+                    _error.format(reason="target is a call on a call"),
+                    culprit=culprit,
+                )
+            print("5")
+            return target
 
         # Give warnings for targets likely to be resolved incorrectly
         # TODO On method support, upgrade info to warning
-        if warn and not _target_is_callable:
-            if "." not in name and self.declares(target.name):
-                error.error(
-                    _error.format(reason="target is likely a procedural parameter"),
-                    culprit=culprit,
-                )
-            elif "." in target.name:
-                error.info(_error.format(reason="target is a method"), culprit)
-            else:
-                error.error(_error.format(reason="target is not callable"), culprit)
-            return None
+        if not _target_is_callable:
+            if warn:
+                if target is not None:
+                    if "." not in name and self.declares(target.name):
+                        error.error(
+                            _error.format(
+                                reason="target is likely a procedural parameter",
+                            ),
+                            culprit=culprit,
+                        )
+                    elif "." in target.name:
+                        error.error(
+                            _error.format(reason="target is a method"),
+                            culprit=culprit,
+                        )
+                    else:
+                        error.error(
+                            _error.format(reason="target is not callable"),
+                            culprit=culprit,
+                        )
+                else:
+                    error.error(
+                        _error.format(reason="target is not callable"),
+                        culprit=culprit,
+                    )
+            print("6")
+            return target
 
+        print("7")
         return target
 
     # TODO Note to self: I don't like this method name, change it!

@@ -14,7 +14,7 @@ FunctionName: TypeAlias = str
 @attrs.mutable
 class FileResults(MutableMapping[FunctionName, FunctionResults]):
     _function_results: dict[FunctionName, FunctionResults] = field(
-        init=False,
+        alias="function_results",
         factory=dict,
     )
 

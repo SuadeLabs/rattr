@@ -29,7 +29,9 @@ def without_call_brackets(call: str) -> str:
     >>> without_call_brackets("i_dont_have_call_brackets")
     "i_dont_have_call_brackets"
     """
-    return call.removesuffix("()")
+    while call.endswith("()"):
+        call = call.removesuffix("()")
+    return call
 
 
 def get_basename_from_name(name: str) -> str:
