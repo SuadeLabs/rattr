@@ -27,7 +27,7 @@ from rattr.module_locator.util import find_module_name_and_spec
 if TYPE_CHECKING:
     from typing import Final, Literal
 
-    from rattr.ast.types import AnyFunctionDef, Identifier
+    from rattr.ast.types import Identifier
     from rattr.module_locator.util import ModuleName
 
 
@@ -173,7 +173,10 @@ class Func(Symbol):
         return Location(token=self.token)
 
     @classmethod
-    def from_fn_def(cls: type[Func], fn: AnyFunctionDef) -> Func:
+    def from_fn_def(
+        cls: type[Func],
+        fn: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> Func:
         """Return a new `Func` parsed from the given function def."""
         return Func(
             name=fn.name,

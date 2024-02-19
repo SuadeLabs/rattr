@@ -4,11 +4,10 @@ from __future__ import annotations
 import ast
 
 from rattr.analyser.base import CustomFunctionAnalyser
-from rattr.analyser.types import FunctionIr
 from rattr.analyser.util import get_dynamic_name
-from rattr.ast.types import AnyFunctionDef
 from rattr.ast.util import fullname_of
 from rattr.models.context import Context
+from rattr.models.ir import FunctionIr
 from rattr.models.symbol import Name
 
 
@@ -21,7 +20,12 @@ class GetattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "getattr"
 
-    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
@@ -44,7 +48,12 @@ class SetattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "setattr"
 
-    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
@@ -67,7 +76,12 @@ class HasattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "hasattr"
 
-    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
@@ -90,7 +104,12 @@ class DelattrAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "delattr"
 
-    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
@@ -113,7 +132,12 @@ class SortedAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "sorted"
 
-    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:

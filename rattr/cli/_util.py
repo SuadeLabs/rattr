@@ -46,7 +46,7 @@ def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
         _width = width
 
     def _preserve(text: str) -> str:
-        lines = list()
+        lines = []
 
         for line in text.splitlines():
             if not line.startswith(">"):
@@ -64,7 +64,7 @@ def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
     def _paragraph(text: str) -> str:
         return fill(text, _width)
 
-    paragraphs = list()
+    paragraphs = []
 
     for p in dedent(text).split("\n\n"):
         if p.startswith(">"):

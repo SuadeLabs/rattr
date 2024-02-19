@@ -702,7 +702,7 @@ class TestIrDagNode:
             fn_d: fn_d_ir,
         }
 
-        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, dict())
+        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, {})
         A.populate()
 
         B_in_A = A.children[0]
@@ -807,7 +807,7 @@ class TestIrDagNode:
             fn_a: fn_a_ir,
         }
 
-        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, dict())
+        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, {})
         A.populate()
 
         _, stderr = capfd.readouterr()
@@ -832,7 +832,7 @@ class TestIrDagNode:
             fn_a: fn_a_ir,
         }
 
-        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, dict())
+        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, {})
         A.populate()
 
         _, stderr = capfd.readouterr()
@@ -876,7 +876,7 @@ class TestIrDagNode:
             fn_c: fn_c_ir,
         }
 
-        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, dict())
+        A = IrDagNode(None, fn_a, fn_a_ir, file_ir, {})
         A.populate()
 
         # Can be either way around as it is a set

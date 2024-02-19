@@ -110,7 +110,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, dict()) == expected
+        assert generate_results_from_ir(file_ir, {}) == expected
 
     def test_generate_results_from_ir_direct_recursion(
         self,
@@ -140,7 +140,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, dict()) == expected
+        assert generate_results_from_ir(file_ir, {}) == expected
 
     def test_generate_results_from_ir_indirect_recursion(
         self,
@@ -190,7 +190,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, dict()) == expected
+        assert generate_results_from_ir(file_ir, {}) == expected
 
     def test_generate_results_from_ir_child_has_direct_recursion(
         self,
@@ -239,7 +239,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, dict()) == expected
+        assert generate_results_from_ir(file_ir, {}) == expected
 
     def test_generate_results_from_ir_child_has_indirect_recursion(
         self,
@@ -316,7 +316,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, dict()) == expected
+        assert generate_results_from_ir(file_ir, {}) == expected
 
     def test_generate_results_from_ir_repeated_calls_should_be_ignored(
         self,
@@ -364,7 +364,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, dict()) == expected
+        assert generate_results_from_ir(file_ir, {}) == expected
 
     def test_generate_results_from_ir_repeated_calls_should_not_be_ignored(
         self,
@@ -421,7 +421,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, dict()) == expected
+        assert generate_results_from_ir(file_ir, {}) == expected
 
     def test_imports_ir(
         self,
@@ -641,7 +641,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, dict()) == expected
+        assert generate_results_from_ir(file_ir, {}) == expected
 
 
 class TestResultsEncoder:

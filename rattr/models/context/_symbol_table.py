@@ -1,27 +1,24 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, MutableMapping
+from collections.abc import MutableMapping
+from typing import TYPE_CHECKING
 
 import attrs
 from attrs import field
 
+from rattr.ast.types import Identifier
 from rattr.models.symbol import Symbol
 
 if TYPE_CHECKING:
-    from typing import Iterable, Iterator, KeysView, ValuesView
-
-    from rattr.versioning.typing import TypeAlias
-
-
-_Identifier: TypeAlias = str
+    from collections.abc import Iterable, Iterator, KeysView, ValuesView
 
 
 @attrs.mutable
-class SymbolTable(MutableMapping[_Identifier, Symbol]):
-    _symbols: dict[_Identifier, Symbol] = field(init=False, factory=dict)
+class SymbolTable(MutableMapping[Identifier, Symbol]):
+    _symbols: dict[Identifier, Symbol] = field(init=False, factory=dict)
 
     @property
-    def names(self) -> KeysView[_Identifier]:
+    def names(self) -> KeysView[Identifier]:
         return self._symbols.keys()
 
     @property
@@ -40,18 +37,18 @@ class SymbolTable(MutableMapping[_Identifier, Symbol]):
 
     def remove(
         self,
-        target_or_targets: _Identifier | Symbol | Iterable[_Identifier | Symbol],
+        target_or_targets: Identifier | Symbol | Iterable[Identifier | Symbol],
     ) -> None:
         """Remove the given target(s) from the symbol table."""
-        if isinstance(target_or_targets, (_Identifier, Symbol)):
+        if isinstance(target_or_targets, (Identifier, Symbol)):
             targets = [target_or_targets]
         else:
             targets = target_or_targets
 
         for t in targets:
-            del self[t if isinstance(t, _Identifier) else t.id]
+            del self[t if isinstance(t, Identifier) else t.id]
 
-    def pop(self, target: _Identifier | Symbol) -> Symbol | None:
+    def pop(self, target: Identifier | Symbol) -> Symbol | None:
         """Return and remove the given target, returns `None` if absent."""
         id = target.id if isinstance(target, Symbol) else target
 
@@ -66,16 +63,16 @@ class SymbolTable(MutableMapping[_Identifier, Symbol]):
     # Mutable mapping abstract methods and mixin-overrides
     # ================================================================================ #
 
-    def __getitem__(self, __key: _Identifier) -> Symbol:
+    def __getitem__(self, __key: Identifier) -> Symbol:
         return self._symbols.__getitem__(__key)
 
-    def __setitem__(self, __key: _Identifier, __value: Symbol) -> None:
+    def __setitem__(self, __key: Identifier, __value: Symbol) -> None:
         return self._symbols.__setitem__(__key, __value)
 
-    def __delitem__(self, __key: _Identifier) -> None:
+    def __delitem__(self, __key: Identifier) -> None:
         return self._symbols.__delitem__(__key)
 
-    def __iter__(self) -> Iterator[_Identifier]:
+    def __iter__(self) -> Iterator[Identifier]:
         return self._symbols.__iter__()
 
     def __len__(self) -> int:

@@ -13,10 +13,6 @@ from rattr.analyser.base import NodeVisitor
 from rattr.analyser.function import FunctionAnalyser
 from rattr.analyser.types import ClassIr
 from rattr.analyser.util import has_annotation
-from rattr.ast.types import (
-    AnyAssign,
-    AnyFunctionDef,
-)
 from rattr.ast.util import assignment_targets, fullname_of, unravel_names
 from rattr.models.context import Context
 from rattr.models.symbol import CallInterface, Class, Func, Name
@@ -173,7 +169,10 @@ class ClassAnalyser(NodeVisitor):
             "dels": set(),
         }
 
-    def visit_static_method(self, method: AnyFunctionDef) -> None:
+    def visit_static_method(
+        self,
+        method: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> None:
         qualified_name = f"{self.name}.{method.name}"
 
         fn = Func(
@@ -190,7 +189,10 @@ class ClassAnalyser(NodeVisitor):
     # Non-method statements
     # ----------------------------------------------------------------------- #
 
-    def visit_AnyAssign(self, node: AnyAssign) -> None:
+    def visit_AnyAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+    ) -> None:
         """Helper method for assignments.
 
         Visit ast.Assign(targets, value, type_comment)\\

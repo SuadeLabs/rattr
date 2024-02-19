@@ -3,16 +3,9 @@ from __future__ import annotations
 
 import ast
 from itertools import accumulate
-from typing import List, Optional, Tuple
 
 from rattr import error
 from rattr.analyser.base import NodeVisitor
-from rattr.analyser.types import (
-    AstStrictlyNameable,
-    CompoundNameable,
-    FunctionIr,
-    Nameable,
-)
 from rattr.analyser.util import (
     assignment_is_one_to_one,
     class_in_rhs,
@@ -22,12 +15,7 @@ from rattr.analyser.util import (
     lambda_in_rhs,
     namedtuple_in_rhs,
 )
-from rattr.ast.types import (
-    AnyAssign,
-    AnyComprehension,
-    AnyFunctionDef,
-    AstFunctionDefOrLambda,
-)
+from rattr.ast.types import AstFunctionDefOrLambda, AstNodeWithName
 from rattr.ast.util import (
     fullname_of,
     namedtuple_init_signature_from_declaration,
@@ -35,6 +23,7 @@ from rattr.ast.util import (
 )
 from rattr.config import Config
 from rattr.models.context import Context, new_context
+from rattr.models.ir import FunctionIr
 from rattr.models.symbol import (
     PYTHON_ATTR_ACCESS_BUILTINS,
     Call,
@@ -50,12 +39,12 @@ from rattr.plugins import plugins
 class FunctionAnalyser(NodeVisitor):
     """Walk a function's AST to determine the accessed attributes."""
 
-    def __init__(self, _ast: ast.AST, context: Context) -> None:
+    def __init__(self, ast_function: ast.AST, context: Context) -> None:
         """Set configuration and initialise IR."""
-        if not isinstance(_ast, AstFunctionDefOrLambda):
+        if not isinstance(ast_function, AstFunctionDefOrLambda):
             raise TypeError("FunctionAnalyser expects `_ast` to be a function")
 
-        self._ast: ast.Lambda | AnyFunctionDef = _ast
+        self.ast: ast.Lambda | ast.FunctionDef | ast.AsyncFunctionDef = ast_function
 
         self.func_ir: FunctionIr = {
             "gets": set(),
@@ -70,18 +59,18 @@ class FunctionAnalyser(NodeVisitor):
     def analyse(self) -> FunctionIr:
         """Entry point, return the results of analysis."""
         with new_context(self):
-            self.context.add_arguments_to_context(self._ast.args)
+            self.context.add_arguments_to_context(self.ast.args)
 
-            for stmt in get_function_body(self._ast):
+            for stmt in get_function_body(self.ast):
                 self.visit(stmt)
 
         return self.func_ir
 
     def get_and_verify_name(
         self,
-        node: Nameable,
+        node: ast.expr,
         ctx: ast.expr_context,
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """Return the name, also verify validity."""
         config = Config()
 
@@ -116,7 +105,10 @@ class FunctionAnalyser(NodeVisitor):
         basename, fullname = self.get_and_verify_name(node, node.ctx)
         self.update_results(Name(fullname, basename, token=node), node.ctx)
 
-    def visit_compound_nameable(self, node: CompoundNameable) -> None:
+    def visit_compound_name(
+        self,
+        node: ast.Attribute | ast.Starred | ast.Subscript,
+    ) -> None:
         """Helper method for special nameable nodes.
 
         Visit ast.Starred(value, ctx).
@@ -133,19 +125,19 @@ class FunctionAnalyser(NodeVisitor):
         #       visited
         #       In `a.thing`, the expr should be visted once as a whole
         #       (neither `a` nor `thing` should be visited directly)
-        if not isinstance(node.value, AstStrictlyNameable):
+        if not isinstance(node.value, AstNodeWithName):
             self.generic_visit(node.value)
 
         self.update_results(Name(fullname, basename, token=node), node.ctx)
 
     def visit_Starred(self, node: ast.Starred) -> None:
-        self.visit_compound_nameable(node)
+        self.visit_compound_name(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
-        self.visit_compound_nameable(node)
+        self.visit_compound_name(node)
 
     def visit_Subscript(self, node: ast.Subscript) -> None:
-        self.visit_compound_nameable(node)
+        self.visit_compound_name(node)
 
     def visit_Call(self, node: ast.Call) -> None:
         """Visit ast.Call(func, args, keywords)."""
@@ -209,7 +201,11 @@ class FunctionAnalyser(NodeVisitor):
     # Context alterors: assignments and deleteion
     # ----------------------------------------------------------------------- #
 
-    def visit_LambdaAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
+    def visit_LambdaAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+        targets: list[ast.expr],
+    ) -> None:
         """Helper method for handling non-anonymous lambdas."""
         target = targets[0]
 
@@ -230,7 +226,11 @@ class FunctionAnalyser(NodeVisitor):
         )
         self.context.add(func)
 
-    def visit_NamedTupleAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
+    def visit_NamedTupleAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+        targets: list[ast.expr],
+    ) -> None:
         """Helper method for handling non-anonymous lambdas."""
         target = targets[0]
 
@@ -246,7 +246,11 @@ class FunctionAnalyser(NodeVisitor):
         cls = Class(name=name, token=node, interface=CallInterface(args=arguments))
         self.context.add(cls)
 
-    def visit_ClassAssign(self, node: AnyAssign, targets: List[ast.expr]) -> None:
+    def visit_ClassAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+        targets: list[ast.expr],
+    ) -> None:
         """Helper method for assignments where RHS is a new class instance."""
         target = targets[0]
 
@@ -278,7 +282,10 @@ class FunctionAnalyser(NodeVisitor):
         for arg in (*node.value.args, *node.value.keywords):
             self.visit(arg)
 
-    def visit_AnyAssign(self, node: AnyAssign) -> None:
+    def visit_AnyAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+    ) -> None:
         """Helper method for assignments.
 
         Visit ast.Assign(targets, value, type_comment)\\
@@ -361,7 +368,10 @@ class FunctionAnalyser(NodeVisitor):
     # Context creators: function, class definitions, etc
     # ----------------------------------------------------------------------- #
 
-    def visit_AnyFunctionDef(self, node: AnyFunctionDef | ast.Lambda) -> None:
+    def visit_AnyFunctionDef(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda,
+    ) -> None:
         """Helper method for visiting nested function definitions.
 
         Visit ast.FunctionDef(name, args, body, decorator_list, returns)\\
@@ -406,7 +416,7 @@ class FunctionAnalyser(NodeVisitor):
 
     def _visit_any_comprehension_or_generator_expr(
         self,
-        node: AnyComprehension | ast.GeneratorExp,
+        node: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp,
         names: list[ast.expr],
     ) -> None:
         with new_context(self):
@@ -432,17 +442,17 @@ class FunctionAnalyser(NodeVisitor):
     def visit_SetComp(self, node: ast.SetComp) -> None:
         self._visit_any_comprehension_or_generator_expr(node, [node.elt])
 
-    def visit_GeneratorExp(self, node: ast.GeneratorExp) -> None:
-        self._visit_any_comprehension_or_generator_expr(node, [node.elt])
-
     def visit_DictComp(self, node: ast.DictComp) -> None:
         self._visit_any_comprehension_or_generator_expr(node, [node.key, node.value])
+
+    def visit_GeneratorExp(self, node: ast.GeneratorExp) -> None:
+        self._visit_any_comprehension_or_generator_expr(node, [node.elt])
 
     # ----------------------------------------------------------------------- #
     # Special cases
     # ----------------------------------------------------------------------- #
 
-    def visit_ReturnValue(self, node: Optional[ast.expr]) -> bool:
+    def visit_ReturnValue(self, node: ast.expr | None) -> bool:
         """Helper method to handle a return value / tuple elt.
 
         Returns True if the return value has been fully handled.

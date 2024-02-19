@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, MutableMapping
+from typing import TYPE_CHECKING
 
 import attrs
 from attrs import field
@@ -31,7 +32,8 @@ from rattr.models.symbol.util import (
 from rattr.module_locator.util import derive_module_names_left
 
 if TYPE_CHECKING:
-    from typing import Container, Iterable, Iterator, Protocol, TypeVar
+    from collections.abc import Container, Iterable, Iterator
+    from typing import Protocol, TypeVar
 
     from rattr.models.symbol._types import CallableSymbol
 

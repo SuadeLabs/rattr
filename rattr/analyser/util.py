@@ -14,32 +14,13 @@ from os.path import isfile
 from pathlib import Path
 from string import ascii_lowercase
 from time import perf_counter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING
 
 from isort.api import place_module
 
 from rattr import error
 from rattr.analyser.exc import RattrResultsError
-from rattr.ast.types import (
-    AnyAssign,
-    AnyDef,
-    AnyFunctionDef,
-    AstComprehensions,
-    AstLiterals,
-    AstStrictlyNameable,
-    Nameable,
-)
+from rattr.ast.types import AstComprehensions, AstLiterals, AstNodeWithName
 from rattr.config import Config
 from rattr.extra import DictChanges  # noqa: F401
 from rattr.models.ir import FunctionIr
@@ -55,7 +36,8 @@ from rattr.models.symbol import (
 from rattr.module_locator.util import find_module_spec_fast
 
 if TYPE_CHECKING:
-    from typing import Final
+    from collections.abc import Callable, Iterable
+    from typing import Any, Final, Type
 
     from rattr.analyser.types import RattrResults
     from rattr.ast.types import Identifier
@@ -67,9 +49,9 @@ re_rattr_name: Final = re.compile(r"^[A-Za-z_][\w\(\)\[\]\.]*$")
 
 
 def get_basename_fullname_pair(
-    node: Nameable,
+    node: ast.expr,
     safe: bool = False,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Return the node's tuple of the basename and the fullname.
 
     If node (and it's children, recursively) are not StrictlyNameable, then a
@@ -115,7 +97,7 @@ def get_basename_fullname_pair(
     # node ⊂ ( StrictlyNameable \ { ast.Name } )
     if isinstance(node, ast.Call):
         basename, sub_name = get_basename_fullname_pair(node.func, safe)
-    elif isinstance(node, AstStrictlyNameable):
+    elif isinstance(node, AstNodeWithName):
         basename, sub_name = get_basename_fullname_pair(node.value, safe)
 
     if isinstance(node, ast.Attribute):
@@ -160,7 +142,7 @@ def get_basename_fullname_pair(
     raise _error_class(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def get_basename(node: Nameable, safe: bool = False) -> str:
+def get_basename(node: ast.expr, safe: bool = False) -> str:
     """Return the `_identifier` of the innermost ast.Name node.
 
     NOTE Deprecated, see rattr.ast.utils
@@ -168,7 +150,7 @@ def get_basename(node: Nameable, safe: bool = False) -> str:
     return get_basename_fullname_pair(node, safe)[0]
 
 
-def get_fullname(node: Nameable, safe: bool = False) -> str:
+def get_fullname(node: ast.expr, safe: bool = False) -> str:
     """Return the fullname of the given node.
 
     NOTE Deprecated, see rattr.ast.utils
@@ -176,7 +158,7 @@ def get_fullname(node: Nameable, safe: bool = False) -> str:
     return get_basename_fullname_pair(node, safe)[1]
 
 
-def get_attrname(node: Nameable) -> str:
+def get_attrname(node: ast.expr) -> str:
     """Return the `_identifier` of the outermost attribute in a nested name.
 
     E.g. `a.b.c.d` -> `d`
@@ -195,9 +177,9 @@ def get_attrname(node: Nameable) -> str:
 
 
 def unravel_names(
-    node: Nameable,
+    node: ast.expr,
     *,
-    get_name: Callable[[Nameable], str] = get_basename,
+    get_name: Callable[[ast.expr], str] = get_basename,
 ) -> Iterable[str]:
     """Return the basename of each nameable in the given node.
 
@@ -219,7 +201,7 @@ def unravel_names(
     NOTE Deprecated, see rattr.ast.util.unravel_names
 
     """
-    if isinstance(node, AstStrictlyNameable):
+    if isinstance(node, AstNodeWithName):
         return [get_name(node)]
 
     if isinstance(node, (ast.Tuple, ast.List)):
@@ -261,8 +243,10 @@ def has_affect(builtin: str) -> bool:
 
 
 def get_xattr_obj_name_pair(
-    xattr: str, node: ast.Call, warn: bool = False
-) -> Tuple[str, str]:
+    xattr: str,
+    node: ast.Call,
+    warn: bool = False,
+) -> tuple[str, str]:
     """Return the object-name pair for a call to getattr, setattr, etc.
 
     NOTE Deprecated, see rattr.ast.utils
@@ -293,7 +277,7 @@ def get_xattr_obj_name_pair(
 
     # Base Case
     # NOTE Call ∈ AstStrictlyNameable, thus base case comes second
-    if isinstance(obj, AstStrictlyNameable):
+    if isinstance(obj, AstNodeWithName):
         return get_fullname(node.args[0]), attr_name
 
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
@@ -328,16 +312,22 @@ def get_second_argument_name(arguments: ast.arguments) -> str:
     return get_nth_argument_name(arguments, 1)
 
 
-def has_annotation(name: str, fn: AnyDef) -> bool:
+def has_annotation(
+    name: str,
+    target: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+) -> bool:
     """Return `True` if the function is decorated with the given annotation."""
-    return name in map(get_attrname, fn.decorator_list)
+    return name in map(get_attrname, target.decorator_list)
 
 
-def get_annotation(name: str, fn: AnyDef) -> Optional[ast.expr]:
+def get_annotation(
+    name: str,
+    target: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+) -> ast.expr | None:
     """Return the decorator node for the given annotation on the function."""
-    matching: List[ast.expr] = list()
+    matching: list[ast.expr] = []
 
-    for decorator in fn.decorator_list:
+    for decorator in target.decorator_list:
         suffix = get_attrname(decorator)
 
         if suffix != name:
@@ -348,12 +338,15 @@ def get_annotation(name: str, fn: AnyDef) -> Optional[ast.expr]:
     if len(matching) < 1:
         return None
     if len(matching) > 1:
-        error.fatal(f"duplicated annotation '{name}' on '{fn.name}'", fn)
+        error.fatal(
+            f"duplicated annotation {name!r} on {target.name!r}",
+            culprit=target,
+        )
 
     return matching[0]
 
 
-def safe_eval(expr: ast.expr, culprit: ast.AST) -> Optional[Any]:
+def safe_eval(expr: ast.expr, culprit: ast.AST) -> Any | None:
     """Return the given expression as evaluated at compile-time.
 
     NOTE
@@ -394,13 +387,14 @@ def safe_eval(expr: ast.expr, culprit: ast.AST) -> Optional[Any]:
 
 
 def parse_annotation(
-    name: str, fn_def: AnyFunctionDef
-) -> Tuple[List[Any], Dict[str, Any]]:
+    name: str,
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> tuple[list[Any], dict[str, Any]]:
     """Return the positional and keyword arguments of the annotation."""
     annotation = get_annotation(name, fn_def)
 
-    pos_args: List[Any] = list()
-    named_args: Dict[str, Any] = dict()
+    pos_args: list[Any] = []
+    named_args: dict[str, Any] = {}
 
     if not annotation:
         return pos_args, named_args
@@ -678,7 +672,7 @@ def get_starred_imports(
     seen: Iterable[Import],
 ) -> list[Import]:
     """Return the starred imports in the given symbols."""
-    starred: list[Import] = list()
+    starred: list[Import] = []
 
     for symbol in symbols:
         if not isinstance(symbol, Import):
@@ -695,7 +689,9 @@ def get_starred_imports(
     return starred
 
 
-def get_function_body(node: ast.Lambda | AnyFunctionDef) -> List[ast.stmt]:
+def get_function_body(
+    node: ast.Lambda | ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[ast.stmt]:
     """Return the body of the given function as a list of statements."""
     if isinstance(node, ast.Lambda):
         return [node.body]
@@ -706,7 +702,9 @@ def get_function_body(node: ast.Lambda | AnyFunctionDef) -> List[ast.stmt]:
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def get_assignment_targets(node: AnyAssign) -> List[ast.expr]:
+def get_assignment_targets(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> list[ast.expr]:
     """Return the given assignment's targets as a list."""
     if isinstance(node, ast.Assign):
         return node.targets
@@ -717,7 +715,9 @@ def get_assignment_targets(node: AnyAssign) -> List[ast.expr]:
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def get_contained_walruses(node: AnyAssign) -> list[ast.NamedExpr]:
+def get_contained_walruses(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> list[ast.NamedExpr]:
     """Return the walruses in the RHS of the given assignment.
 
     >>> get_nested_walruses(ast.parse("a = (b := c)"))
@@ -737,7 +737,9 @@ def get_contained_walruses(node: AnyAssign) -> list[ast.NamedExpr]:
     return list(filter(lambda v: isinstance(v, ast.NamedExpr), rhs_values))
 
 
-def assignment_is_one_to_one(node: AnyAssign) -> bool:
+def assignment_is_one_to_one(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> bool:
     """Return `True` if the given assignment is one-to-one.
 
     NOTE Deprecated, see rattr.ast.util.assignment_is_one_to_one
@@ -753,7 +755,9 @@ def assignment_is_one_to_one(node: AnyAssign) -> bool:
     return not isinstance(node.value, _iterable)
 
 
-def lambda_in_rhs(node: AnyAssign) -> bool:
+def lambda_in_rhs(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> bool:
     """Return `True` if the RHS of the given assignment contains a lambda.
 
     NOTE Deprecated, see rattr.ast.util.has_lambda_in_rhs
@@ -768,7 +772,9 @@ def lambda_in_rhs(node: AnyAssign) -> bool:
         return False
 
 
-def walrus_in_rhs(node: AnyAssign) -> bool:
+def walrus_in_rhs(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> bool:
     """Return `True` if the RHS contains a walrus operator.
 
     NOTE Deprecated, see rattr.ast.util.has_walrus_in_rhs
@@ -783,7 +789,9 @@ def walrus_in_rhs(node: AnyAssign) -> bool:
         return False
 
 
-def namedtuple_in_rhs(node: AnyAssign) -> bool:
+def namedtuple_in_rhs(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> bool:
     """Return `True` if the RHS contains a namedtuple creation.
 
     NOTE Deprecated, see rattr.ast.util.has_namedtuple_declaration_in_rhs
@@ -849,7 +857,9 @@ def _namedtuple_attrs_from_second_argument(attrs_argument: ast.AST) -> list[str]
     raise SyntaxError
 
 
-def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str, str]]:
+def get_namedtuple_attrs_from_call(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> tuple[list[str], dict[str, str]]:
     """Return the args/attrs of the namedtuple constructed by this assignment by call.
 
     #### Note
@@ -896,7 +906,10 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
     return ["self", *attrs]
 
 
-def class_in_rhs(node: AnyAssign, context: Context) -> bool:
+def class_in_rhs(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+    context: Context,
+) -> bool:
     """Return `True` if the RHS of the given assignment is a class init."""
     _iterable = (ast.Tuple, ast.List)
 
@@ -918,7 +931,7 @@ def class_in_rhs(node: AnyAssign, context: Context) -> bool:
         return False
 
 
-def is_starred_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
+def is_starred_import(node: ast.Import | ast.ImportFrom) -> bool:
     """Return `True` if the given import is a `from module import *`.
 
     NOTE Deprecated, see rattr.ast.util.is_starred_import
@@ -929,7 +942,7 @@ def is_starred_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
     return any(target.name == "*" for target in node.names)
 
 
-def is_relative_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
+def is_relative_import(node: ast.Import | ast.ImportFrom) -> bool:
     """Return `True` if the given import is a relative import.
 
     NOTE Deprecated, see rattr.ast.util.is_relative_import
@@ -940,7 +953,7 @@ def is_relative_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
     return node.level != 0
 
 
-def module_name_from_file_path(file: Path | str | None) -> Optional[str]:
+def module_name_from_file_path(file: Path | str | None) -> str | None:
     """Return the recognised name of the given module.
 
     NOTE Deprecated, see rattr.module_locator.util.derive_module_name_from_path
@@ -991,7 +1004,7 @@ def get_absolute_module_name(base: str, level: int, target: str) -> str:
     return f"{new_base}.{target}"
 
 
-def get_function_form(node: AnyFunctionDef) -> str:
+def get_function_form(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
     """Return the string representing the function form.
 
     Given the function, fn:
@@ -1150,7 +1163,7 @@ def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
 
     if isfile(cache_filepath):
         with open(cache_filepath, "r") as f:
-            cache: Dict[str, Any] = json.load(f)
+            cache: dict[str, Any] = json.load(f)
     else:
         return False
 
@@ -1164,7 +1177,7 @@ def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
         return False
 
     # Check imports
-    for _import in cache.get("imports", dict()):
+    for _import in cache.get("imports", {}):
         file, hash = _import["filepath"], _import["filehash"]
         if hash != get_file_hash(file):
             return False

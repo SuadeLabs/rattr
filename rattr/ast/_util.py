@@ -6,21 +6,17 @@ from typing import TYPE_CHECKING
 
 from rattr import error
 from rattr.ast.types import (
-    AstCompoundNameable,
     AstComprehensions,
     AstLiterals,
-    CompoundNameable,
 )
 from rattr.config import Config
 from rattr.models.symbol._symbols import PYTHON_ATTR_ACCESS_BUILTINS
 
 if TYPE_CHECKING:
-    from rattr.versioning.typing import TypeAlias
-
-    _Identifier: TypeAlias = str
+    from rattr.ast.types import Identifier
 
 
-def is_call_to_fn(node: ast.Call, target: _Identifier) -> bool:
+def is_call_to_fn(node: ast.Call, target: Identifier) -> bool:
     """Return `True` if the given node is a direct call to `target`."""
     if not isinstance(node, ast.Call):
         raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
@@ -40,7 +36,7 @@ def get_python_attr_access_fn_obj_attr_pair(
     node: ast.Call,
     *,
     warn: bool = False,
-) -> tuple[_Identifier, _Identifier]:
+) -> tuple[Identifier, Identifier]:
     """Return the object-attr pair from the call to getattr, etc.
 
     ### Examples
@@ -94,7 +90,7 @@ def names_of(
     node: ast.expr,
     *,
     safe: bool = False,
-) -> tuple[_Identifier, _Identifier]:
+) -> tuple[Identifier, Identifier]:
     """Return the node's basename and fullname.
 
     Uses indirect recursion, see:
@@ -128,7 +124,10 @@ def names_of(
     if isinstance(node, ast.Call):
         return __ast_call_name(node, safe=safe)
 
-    if isinstance(node, AstCompoundNameable):
+    if isinstance(
+        node,
+        (ast.Attribute, ast.Subscript, ast.Starred),
+    ):
         return __ast_compound_name(node, safe=safe)
 
     # The expression is unnamable, if in safe mode give a "best-guess" as to avoid an
@@ -141,7 +140,7 @@ def names_of(
 
 
 @lru_cache(maxsize=1)
-def __safe_name(node: ast.expr) -> _Identifier:
+def __safe_name(node: ast.expr) -> Identifier:
     """Return a safe name for this unnameable expression."""
     config = Config()
 
@@ -155,7 +154,7 @@ def __ast_call_name(
     node: ast.Call,
     *,
     safe: bool = True,
-) -> tuple[_Identifier, _Identifier]:
+) -> tuple[Identifier, Identifier]:
     basename, lhs_name = names_of(node.func, safe=safe)
 
     # Special case: `getattr`, etc
@@ -167,10 +166,10 @@ def __ast_call_name(
 
 
 def __ast_compound_name(
-    node: CompoundNameable,
+    node: ast.Attribute | ast.Starred | ast.Subscript,
     *,
     safe: bool = True,
-) -> tuple[_Identifier, _Identifier]:
+) -> tuple[Identifier, Identifier]:
     basename, lhs_name = names_of(node.value, safe=safe)
 
     if isinstance(node, ast.Attribute):

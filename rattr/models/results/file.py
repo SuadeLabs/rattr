@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, MutableMapping
+from collections.abc import MutableMapping
+from typing import TYPE_CHECKING
 
 import attrs
 from attrs import field

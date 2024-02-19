@@ -15,7 +15,7 @@ from rattr.models.symbol._util import PYTHON_BUILTINS_LOCATION, arg_name, kwarg_
 if TYPE_CHECKING:
     from typing import Literal
 
-    from rattr.ast.types import AnyFunctionDef, Identifier
+    from rattr.ast.types import Identifier
 
 
 @attrs.frozen
@@ -91,7 +91,7 @@ class CallInterface:
     @classmethod
     def from_fn_def(
         cls: type[CallInterface],
-        fn: ast.Lambda | AnyFunctionDef,
+        fn: ast.Lambda | ast.FunctionDef | ast.AsyncFunctionDef,
     ) -> CallInterface:
         """Return a new `CallInterface` parsed from the given function def."""
         return cls.from_arguments(fn.args)
@@ -142,7 +142,7 @@ class AnyCallInterface(CallInterface):
     @classmethod
     def from_fn_def(
         cls: type[CallInterface],
-        fn: ast.Lambda | AnyFunctionDef,
+        fn: ast.Lambda | ast.FunctionDef | ast.AsyncFunctionDef,
     ) -> CallInterface:
         if cls != CallInterface:
             raise NotImplementedError(f"not applicable to {cls.__name__}")

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from rattr.analyser.base import CustomFunctionAnalyser
 from rattr.analyser.types import FunctionIr
-from rattr.ast.types import AnyFunctionDef
 
 if TYPE_CHECKING:
     from rattr.models.context import Context
@@ -21,7 +20,12 @@ class DefaultDictAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "collections.defaultdict"
 
-    def on_def(self, name: str, node: AnyFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
@@ -46,9 +50,7 @@ class DefaultDictAnalyser(CustomFunctionAnalyser):
                 args=[],
                 keywords=[],
             )
-
-            # Populate ast.AST fields
-            target._fields = tuple()
+            target._fields = ()
             target.lineno = default_factory.lineno
             target.col_offset = default_factory.col_offset
         elif isinstance(default_factory, ast.Lambda):

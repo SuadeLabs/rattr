@@ -15,18 +15,18 @@ else:
     from tomli import TOMLDecodeError  # noqa: F401
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, Optional
+    from typing import Any
 
 
 # HACK Wrap `tomllib.loads` to handle type hinting on different python versions
-def _load_from_file(file: Path) -> Dict[str, Any]:
+def _load_from_file(file: Path) -> dict[str, Any]:
     return tomllib.loads(file.read_text())
 
 
 def parse_project_toml(
-    pyproject_toml: Optional[Path],
-    project_toml_override: Optional[Path] = None,
-) -> Dict[str, Any]:
+    pyproject_toml: Path | None,
+    project_toml_override: Path | None = None,
+) -> dict[str, Any]:
     """Return the parsed project toml."""
     if project_toml_override:
         project_toml = project_toml_override

@@ -110,8 +110,8 @@ class CustomFunctionHandler:
         builtins: list[CustomFunctionAnalyser] | None = None,
         user_defined: list[CustomFunctionAnalyser] | None = None,
     ) -> None:
-        self._builtins: dict[str, CustomFunctionAnalyser] = dict()
-        self._user_def: dict[str, CustomFunctionAnalyser] = dict()
+        self._builtins: dict[str, CustomFunctionAnalyser] = {}
+        self._user_def: dict[str, CustomFunctionAnalyser] = {}
 
         for analyser in builtins or []:
             self._builtins[analyser.name] = analyser
@@ -135,7 +135,7 @@ class CustomFunctionHandler:
         name: Identifier,
         ctx: Context,
     ) -> CustomFunctionAnalyser | None:
-        symbols: list[Import] = list()
+        symbols: list[Import] = []
 
         for symbol in (s for s in ctx.symbol_table.symbols if isinstance(s, Import)):
             # From imported

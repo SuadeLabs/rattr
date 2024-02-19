@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, MutableMapping, TypedDict
+from collections.abc import MutableMapping
+from typing import TYPE_CHECKING, TypedDict
 
 import attrs
 from attrs import field
@@ -11,7 +12,7 @@ from rattr.models.context import Context
 from rattr.models.symbol import UserDefinedCallableSymbol
 
 if TYPE_CHECKING:
-    from typing import Iterator
+    from collections.abc import Iterator
 
     from rattr.models.symbol import Call, Name
 

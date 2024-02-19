@@ -23,7 +23,7 @@ from rattr.config import Config
 from rattr.models.results import FileResults, FunctionResults
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Set
+    from typing import Any
 
 here = Path(__file__).resolve().parent
 
@@ -32,13 +32,14 @@ results_dir = here / "results"
 
 code_files = [f for f in code_dir.rglob("*.py")]
 results_files = [
-    (results_dir / f.relative_to(code_dir)).with_suffix(".json") for f in code_files
+    (results_dir / code_file.relative_to(code_dir)).with_suffix(".json")
+    for code_file in code_files
 ]
 
 
 def _assert_actual_and_expected_have_the_same_functions(
     actual: FileResults,
-    expected: Dict[str, Any],
+    expected: dict[str, Any],
 ) -> None:
     _actual_results_functions = set(actual.keys())
     _expected_results_functions = set(expected.keys())
@@ -52,8 +53,8 @@ def _assert_actual_and_expected_have_the_same_functions(
     ), f"expected results missing functions: {_missing_expected}"
 
 
-def _get_diff(got: Set[str], expected: Set[str]) -> List[str]:
-    diff: Set[str] = set()
+def _get_diff(got: set[str], expected: set[str]) -> list[str]:
+    diff: set[str] = set()
 
     for missing in expected - got:
         diff.add(f"- {missing}")
@@ -66,8 +67,8 @@ def _get_diff(got: Set[str], expected: Set[str]) -> List[str]:
 
 def _get_function_diffs(
     fn_results: FunctionResults,
-    expected_fn_results: Dict[str, List[str]],
-) -> Dict[str, List[str]]:
+    expected_fn_results: dict[str, list[str]],
+) -> dict[str, list[str]]:
     return {
         k: _get_diff(fn_results[k], set(expected_fn_results[k]))
         for k in ("sets", "gets", "dels", "calls")
@@ -109,7 +110,7 @@ class TestEndToEndRegressionTests:
         #   small refactor here.
 
         # Parse expected results
-        expected_results: Dict[str, Any] = json.loads(results_file.read_text())
+        expected_results: dict[str, Any] = json.loads(results_file.read_text())
 
         # Setup simulated cli arguments and state
         config = Config()

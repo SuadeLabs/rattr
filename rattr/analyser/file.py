@@ -22,7 +22,6 @@ from rattr.analyser.util import (
     read,
     timer,
 )
-from rattr.ast.types import AnyAssign, AnyFunctionDef
 from rattr.ast.util import (
     assignment_is_one_to_one,
     assignment_targets,
@@ -208,7 +207,10 @@ class FileAnalyser(NodeVisitor):
 
         return self.file_ir
 
-    def visit_AnyFunctionDef(self, node: AnyFunctionDef) -> None:
+    def visit_AnyFunctionDef(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> None:
         if has_annotation("rattr_ignore", node):
             return
 
@@ -256,7 +258,10 @@ class FileAnalyser(NodeVisitor):
     # Lambdas
     # ----------------------------------------------------------------------- #
 
-    def visit_LambdaAssign(self, node: AnyAssign) -> None:
+    def visit_LambdaAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+    ) -> None:
         if not assignment_is_one_to_one(node):
             return error.fatal("lambda assignment must be one-to-one", node)
 
@@ -270,7 +275,10 @@ class FileAnalyser(NodeVisitor):
 
         self.file_ir[fn] = FunctionAnalyser(node.value, self.context).analyse()
 
-    def visit_NamedTupleAssign(self, node: AnyAssign) -> None:
+    def visit_NamedTupleAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+    ) -> None:
         if not assignment_is_one_to_one(node):
             return error.fatal("namedtuple assignment must be one-to-one", node)
 
@@ -288,7 +296,10 @@ class FileAnalyser(NodeVisitor):
             "calls": set(),
         }
 
-    def visit_AnyAssign(self, node: AnyAssign) -> None:
+    def visit_AnyAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+    ) -> None:
         if has_lambda_in_rhs(node):
             self.visit_LambdaAssign(node)
 

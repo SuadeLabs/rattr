@@ -14,10 +14,10 @@ from rattr.config import Arguments
 from rattr.config.util import find_pyproject_toml
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, NoReturn, Optional
+    from typing import Any, NoReturn
 
 
-TOML_ARGUMENT_NAME_TO_SYS_ARGUMENT_NAME_MAP: Dict[str, str] = {
+TOML_ARGUMENT_NAME_TO_SYS_ARGUMENT_NAME_MAP: dict[str, str] = {
     "exclude-imports": "exclude-import",
 }
 """Map from toml argument name to sys argument name.
@@ -34,7 +34,7 @@ the expected usage is as such:
 "paul"
 """
 
-TOML_ARGUMENT_TYPE_MAP: Dict[str, TomlArgumentType] = {
+TOML_ARGUMENT_TYPE_MAP: dict[str, TomlArgumentType] = {
     "follow-imports": TomlArgumentType.int,
     "exclude-imports": TomlArgumentType.list_of_strings,
     "exclude": TomlArgumentType.list_of_strings,
@@ -55,8 +55,8 @@ This is used for:
 
 def parse_arguments(
     *,
-    sys_args: Optional[List[str]] = None,
-    project_toml_conf: Optional[Dict[str, Any]] = None,
+    sys_args: list[str] | None = None,
+    project_toml_conf: dict[str, Any] | None = None,
     exit_on_error: bool = True,
 ) -> Arguments:
     cli_parser = make_cli_parser(exit_on_error=exit_on_error)
@@ -118,8 +118,8 @@ def make_toml_parser() -> ArgumentParser:
 def _get_toml_override(
     cli_parser: ArgumentParser,
     *,
-    sys_args: Optional[List[str]] = None,
-) -> Optional[Path]:
+    sys_args: list[str] | None = None,
+) -> Path | None:
     """Return the toml config override from the CLI if given, otherwise `None`."""
     cli_arguments = cli_parser.parse_args(args=sys_args, namespace=Arguments())
     pyproject_toml_override = cli_arguments.pyproject_toml_override
@@ -137,11 +137,11 @@ def _toml_error(exc: Exception, *, exit_on_error: bool) -> NoReturn:
 
 
 def _parse_project_config(
-    input_config: Optional[Dict[str, Any]],
-    project_toml_override: Optional[Path],
+    input_config: dict[str, Any] | None,
+    project_toml_override: Path | None,
     *,
     exit_on_error: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     pyproject_toml = find_pyproject_toml()
 
     # Allow the use of an explicit config
@@ -162,7 +162,7 @@ def _parse_project_config(
     return conf
 
 
-def _validate_toml_config(conf: Dict[str, Any]) -> Dict[str, Any]:
+def _validate_toml_config(conf: dict[str, Any]) -> dict[str, Any]:
     _type_error: str = (
         "{arg!r} expects type {expected_type}, got {value!r} of type {actual_type}"
     )
@@ -187,7 +187,7 @@ def _validate_toml_config(conf: Dict[str, Any]) -> Dict[str, Any]:
     return conf
 
 
-def _translate_toml_conf_to_sys_args(toml_conf: Dict[str, Any]) -> List[str]:
+def _translate_toml_conf_to_sys_args(toml_conf: dict[str, Any]) -> list[str]:
     """Return the toml conf translated to `sys.argv` style list.
 
     >>> _translate_toml_conf_to_sys_args(

@@ -14,15 +14,13 @@ from rattr.module_locator.util import derive_module_names_right, find_module_spe
 if TYPE_CHECKING:
     from typing import Final
 
-    from rattr.versioning.typing import TypeAlias
-
-    _Identifier: TypeAlias = str
+    from rattr.ast.types import Identifier
 
 
 RE_PIP_INSTALL_LOCATIONS: Final = (re.compile(r".+/site-packages.*"),)
 
 
-def is_in_stdlib(name: _Identifier) -> bool:
+def is_in_stdlib(name: Identifier) -> bool:
     """Return `True` if the given name is an stdlib module or in an stdlib module.
 
     >>> is_stdlib_module("math")
@@ -35,7 +33,7 @@ def is_in_stdlib(name: _Identifier) -> bool:
     return place_module(name) == sections.STDLIB
 
 
-def is_in_pip(name: _Identifier) -> bool:
+def is_in_pip(name: Identifier) -> bool:
     """Return `True` if the given name is available via pip.
 
     >>> # Given that pytest is pip installed
@@ -58,7 +56,7 @@ def is_in_pip(name: _Identifier) -> bool:
     )
 
 
-def is_in_import_blacklist(name: _Identifier) -> bool:
+def is_in_import_blacklist(name: Identifier) -> bool:
     """Return `True` if the given name matches a blacklisted pattern."""
     config = Config()
 
@@ -85,7 +83,7 @@ def is_in_import_blacklist(name: _Identifier) -> bool:
     )
 
 
-def _safe_origin(module: _Identifier) -> str | None:
+def _safe_origin(module: Identifier) -> str | None:
     spec = find_module_spec_fast(module)
 
     if spec is None or spec.origin is None:

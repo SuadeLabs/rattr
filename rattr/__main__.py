@@ -41,7 +41,7 @@ def main(config: Config) -> None:
 
 def show_ir(file: str, file_ir: FileIr, imports_ir: ImportsIr) -> None:
     """Prettily print the given file and imports IR."""
-    jsonable_ir = dict()
+    jsonable_ir = {}
 
     for i, ir in imports_ir.items():
         jsonable_ir[i] = {repr(c): r for c, r in ir.items()}

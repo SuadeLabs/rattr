@@ -14,16 +14,16 @@ from rattr.ast.place import (  # noqa: F401
     is_in_pip,
     is_in_stdlib,
 )
-from rattr.ast.types import AstStrictlyNameable
+from rattr.ast.types import AstNodeWithName
 
 if TYPE_CHECKING:
-    from typing import Callable, Final
+    from collections.abc import Callable
+    from typing import Final
 
+    from rattr.ast.types import Identifier
     from rattr.versioning.typing import TypeAlias
 
-    _Identifier: TypeAlias = str
-
-    _NameGetter: TypeAlias = Callable[[ast.expr], _Identifier]
+    _NameGetter: TypeAlias = Callable[[ast.expr], Identifier]
 
 
 NAMEDTUPLE_INVALID_SIGNATURE_ERROR: Final = (
@@ -36,12 +36,12 @@ NAMEDTUPLE_INVALID_SECOND_PARAMETER_VALUE_ERROR: Final = (
 )
 
 
-def basename_of(node: ast.expr, *, safe: bool = False) -> _Identifier:
+def basename_of(node: ast.expr, *, safe: bool = False) -> Identifier:
     """Return the basename of the given expression."""
     return names_of(node, safe=safe)[0]
 
 
-def fullname_of(node: ast.expr, *, safe: bool = False) -> _Identifier:
+def fullname_of(node: ast.expr, *, safe: bool = False) -> Identifier:
     """Return the fullname of the given expression."""
     return names_of(node, safe=safe)[1]
 
@@ -72,7 +72,7 @@ def unravel_names(
     >>> unravel_names(ravelled_names, _get_name=fullname_of)
     ["a", "b", "c", "d.e"]
     """
-    if isinstance(node, AstStrictlyNameable):
+    if isinstance(node, AstNodeWithName):
         return [_get_name(node)]
 
     if isinstance(node, (ast.Tuple, ast.List)):

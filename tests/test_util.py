@@ -587,7 +587,7 @@ class TestUtil:
             """
         )
 
-        the_empty_result = (list(), dict())
+        the_empty_result = ([], {})
 
         # No value, name
         fn_def = _ast.body[0]
