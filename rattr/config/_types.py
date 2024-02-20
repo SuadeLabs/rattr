@@ -44,6 +44,7 @@ class Output(Enum):
     stats = "stats"
     ir = "ir"
     results = "results"
+    silent = "silent"
 
     def __str__(self) -> str:
         return self.name
@@ -55,8 +56,8 @@ class Arguments(argparse.Namespace):
 
     _follow_imports_level: Literal[0, 1, 2, 3]
 
-    _excluded_imports: set[str] | None
-    _excluded_names: set[str] | None
+    _excluded_imports: list[str] | None
+    _excluded_names: list[str] | None
 
     _warning_level: Literal["none", "local", "default", "all"]
 
@@ -98,13 +99,13 @@ class Arguments(argparse.Namespace):
     def excluded_imports(self) -> set[str]:
         if self._excluded_imports is None:
             return set()
-        return self._excluded_imports
+        return set(self._excluded_imports)
 
     @property
     def excluded_names(self) -> set[str]:
         if self._excluded_names is None:
             return set()
-        return self._excluded_names
+        return set(self._excluded_names)
 
     @property
     def show_warnings(self) -> ShowWarnings:
@@ -290,5 +291,5 @@ class Config(metaclass=ConfigMetaclass):
         )
 
     @property
-    def re_blacklist_patterns(self) -> tuple(re.Pattern[str], ...):
+    def re_blacklist_patterns(self) -> tuple[re.Pattern[str], ...]:
         return tuple(_cached_re_compile(p) for p in self.blacklist_patterns)
