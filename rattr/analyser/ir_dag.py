@@ -59,7 +59,10 @@ class IrDagNode:
                 continue
 
             _foc, _foc_ir = get_callee_target(
-                callee, self.file_ir, self.imports_ir, self.func
+                callee,
+                self.file_ir,
+                self.imports_ir,
+                self.func,
             )
 
             # NOTE Could not find func/init (undef'd, <str>.join(), etc)
@@ -347,7 +350,7 @@ def construct_swap(func: Func, call: Call) -> dict[Identifier, Identifier]:
 
     while True:
         if not interface.args:
-            break   # no error as the remaining args may be supplied by kw
+            break  # no error as the remaining args may be supplied by kw
 
         if not call_args:
             break
@@ -438,14 +441,23 @@ def __resolve_target_and_ir(
     imports_ir: ImportsIr,
 ) -> tuple[Func, FunctionIr]:
     """Helper function for `resolve_function` and `resolve_class`."""
-    if callee.target in file_ir:
-        assert callee.target is not None, "unable to resolve callee target"
-        return callee.target, file_ir[callee.target]
+    # HACK
+    # If a class is called before it's initialiser is visited then callee.target is a
+    # placeholder without the correct interface so we must discard the callee.target and
+    # use the symbol from the module_ir
+    if isinstance(callee.target, Class):
+        target = __resolve_real_class_target(callee.target, file_ir, imports_ir)
+    else:
+        target = callee.target
 
-    if callee.target is None:
+    if target in file_ir:
+        assert target is not None, "unable to resolve callee target"
+        return target, file_ir[target]
+
+    if target is None:
         raise ImportError
 
-    filename = callee.target.location.defined_in
+    filename = target.location.defined_in
     module = derive_module_name_from_path(filename)
 
     if module is None:
@@ -456,7 +468,24 @@ def __resolve_target_and_ir(
     if module_ir is None:
         raise ImportError
 
-    if callee.target not in module_ir:
+    if target not in module_ir:
         raise ImportError
 
-    return callee.target, module_ir[callee.target]
+    return target, module_ir[target]
+
+
+def __resolve_real_class_target(
+    target: Class,
+    file_ir: FileIr,
+    imports_ir: ImportsIr,
+) -> Class:
+    for symbol in file_ir:
+        if isinstance(symbol, Class) and target.name == symbol.name:
+            return symbol
+
+    for _, import_ir in imports_ir.items():
+        for symbol in import_ir:
+            if isinstance(symbol, Class) and target.name == symbol.name:
+                return symbol
+
+    return target
