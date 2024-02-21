@@ -141,7 +141,7 @@ def derive_module_names_left(modulename: ModuleName) -> list[ModuleName]:
 
 def derive_absolute_module_name(
     base: ModuleName,
-    target: ModuleName,
+    target: ModuleName | None,
     level: ImportLevel,
 ) -> ModuleName:
     config = Config()
@@ -152,4 +152,4 @@ def derive_absolute_module_name(
     if level > 0:
         base = ".".join(base.split(".")[:-level])
 
-    return f"{base}.{target}"
+    return f"{base}.{target}" if target is not None else base

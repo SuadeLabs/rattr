@@ -165,9 +165,6 @@ class RootContextBuilder:
         if is_starred_import(node) and not self.context.is_init_file:
             error_starred_import_outside_init(node, node.module or node.names[0].name)
 
-        if node.module is None:
-            raise ValueError("node has no module")
-
         # Dispatch to specific import-type handler
         if is_relative_import(node) and is_starred_import(node):
             return self.visit_starred_relative_import(node)
@@ -230,6 +227,9 @@ class RootContextBuilder:
         )
 
     def visit_starred_import(self, node: ast.ImportFrom) -> None:
+        if node.module is None:
+            error.fatal("node has no module", culprit=node)
+
         self.context.add(
             make_import_symbol(
                 name="*",
@@ -240,6 +240,9 @@ class RootContextBuilder:
         )
 
     def visit_named_import(self, node: ast.ImportFrom) -> None:
+        if node.module is None:
+            error.fatal("node has no module", culprit=node)
+
         self.context.add(
             make_import_symbol(
                 name=target.asname or target.name,
