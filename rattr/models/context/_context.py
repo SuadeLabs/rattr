@@ -23,13 +23,13 @@ from rattr.models.context._util import (
     is_call_to_method_on_py_type,
     is_call_to_subscript_item,
 )
-from rattr.models.symbol._symbol import CallInterface, Symbol
+from rattr.models.symbol._symbol import AnyCallInterface, CallInterface, Symbol
 from rattr.models.symbol._symbols import Class, Func, Import, Name
 from rattr.models.symbol.util import (
     with_call_brackets,
     without_call_brackets,
 )
-from rattr.module_locator.util import derive_module_names_left
+from rattr.module_locator.util import derive_module_names_right
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Iterator
@@ -172,7 +172,7 @@ class Context(MutableMapping[Identifier, Symbol]):
 
         if is_call_to_literal(name):
             if warn:
-                error.error(
+                error.info(
                     _error.format(reason="target lhs is a literal"),
                     culprit=culprit,
                 )
@@ -180,10 +180,16 @@ class Context(MutableMapping[Identifier, Symbol]):
 
         if is_call_to_subscript_item(name):
             if warn:
-                error.error(
-                    _error.format(reason="target is run-time dependent"),
-                    culprit=culprit,
-                )
+                if "." in name:
+                    error.info(
+                        _error.format(reason="target lhs is run-time dependent"),
+                        culprit=culprit,
+                    )
+                else:
+                    error.error(
+                        _error.format(reason="target is run-time dependent"),
+                        culprit=culprit,
+                    )
             return None
 
         target = self.get(name)
@@ -191,7 +197,7 @@ class Context(MutableMapping[Identifier, Symbol]):
 
         if is_call_to_method(target, name, lhs_target, lhs_name):
             if warn and not is_call_to_method_on_py_type(name):
-                error.error(
+                error.info(
                     _error.format(reason="target is a method"),
                     culprit=culprit,
                 )
@@ -208,7 +214,7 @@ class Context(MutableMapping[Identifier, Symbol]):
         # Give warnings for unresolvable targets
         if target is None:
             if warn:
-                error.error(
+                error.warning(
                     _error.format(reason="target is undefined"),
                     culprit=culprit,
                 )
@@ -235,7 +241,7 @@ class Context(MutableMapping[Identifier, Symbol]):
                             culprit=culprit,
                         )
                     elif "." in target.name:
-                        error.error(
+                        error.info(
                             _error.format(reason="target is a method"),
                             culprit=culprit,
                         )
@@ -366,7 +372,7 @@ class Context(MutableMapping[Identifier, Symbol]):
     # ================================================================================ #
 
     def _get_target_in_imported_module(self, name: Identifier) -> Symbol | None:
-        modules = [self.get(m) for m in derive_module_names_left(name)]
+        modules = [self.get(m) for m in derive_module_names_right(name)]
         module = next((m for m in modules if m is not None), None)
 
         if not isinstance(module, Import):
@@ -378,7 +384,7 @@ class Context(MutableMapping[Identifier, Symbol]):
             name=local_name,
             qualified_name=f"{module.qualified_name}.{local_name}",
             token=module.token,
-            interface=None,
+            interface=AnyCallInterface(),
         )
 
     # ================================================================================ #
