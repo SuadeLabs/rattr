@@ -31,6 +31,7 @@ class FollowImports(IntFlag):
 
 class ShowWarnings(IntFlag):
     target = auto()
+    target_low_priority = auto()
     inherited_high_priority = auto()
     inherited_low_priority = auto()
 
@@ -118,6 +119,7 @@ class Arguments(argparse.Namespace):
         if self._warning_level == "all":
             return (
                 ShowWarnings.target
+                | ShowWarnings.target_low_priority
                 | ShowWarnings.inherited_high_priority
                 | ShowWarnings.inherited_low_priority
             )

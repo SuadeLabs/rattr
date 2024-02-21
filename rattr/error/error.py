@@ -49,7 +49,7 @@ def info(
         return
 
     if config.is_in_target_file:
-        warning_level = ShowWarnings.target
+        warning_level = ShowWarnings.target_low_priority
     else:
         warning_level = ShowWarnings.inherited_low_priority
 
