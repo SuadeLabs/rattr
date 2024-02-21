@@ -118,15 +118,9 @@ class FunctionAnalyser(NodeVisitor):
         """
         basename, fullname = self.get_and_verify_name(node, node.ctx)
 
-        # NOTE
-        #   Visit the operands in a BinOp, etc.
-        #   I.e.:
-        #       In `(a + b).thing`, the the names `a` and `b` should also be
-        #       visited
-        #       In `a.thing`, the expr should be visted once as a whole
-        #       (neither `a` nor `thing` should be visited directly)
+        # Visit the operands in a BinOp such as `(a + b).thing`, etc.
         if not isinstance(node.value, AstNodeWithName):
-            self.generic_visit(node.value)
+            self.visit(node.value)
 
         self.update_results(Name(fullname, basename, token=node), node.ctx)
 
