@@ -361,7 +361,7 @@ def construct_swap(func: Func, call: Call) -> dict[Identifier, Identifier]:
         swaps[target] = replacement
 
     if interface.vararg is not None:
-        swaps[interface.vararg] = f"{config.LOCAL_VALUE_PREFIX}{ast.Tuple.__name__}"
+        swaps[interface.vararg] = f"{config.LITERAL_VALUE_PREFIX}{ast.Tuple.__name__}"
         call_args = []
 
     # We can't be very specific here as we don't know if any of the positional arguments
@@ -394,7 +394,7 @@ def construct_swap(func: Func, call: Call) -> dict[Identifier, Identifier]:
             interface.kwonlyargs.remove(target)
             swaps[target] = replacement
         elif interface.kwarg is not None:
-            swaps[interface.kwarg] = f"{config.LOCAL_VALUE_PREFIX}{ast.Dict.__name__}"
+            swaps[interface.kwarg] = f"{config.LITERAL_VALUE_PREFIX}{ast.Dict.__name__}"
         elif target not in func.interface.all:
             unexpected_keyword_arguments.append(target)
 

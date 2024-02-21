@@ -78,9 +78,9 @@ class FunctionAnalyser(NodeVisitor):
 
         is_undeclared = base not in self.context
         is_assignment = isinstance(ctx, ast.Store)
-        is_local = base.startswith(config.LOCAL_VALUE_PREFIX)
+        is_literal = base.startswith(config.LITERAL_VALUE_PREFIX)
 
-        if is_undeclared and not is_assignment and not is_local:
+        if is_undeclared and not is_assignment and not is_literal:
             error.warning(f"{base!r} potentially undefined", node)
 
         return base, full
@@ -156,7 +156,7 @@ class FunctionAnalyser(NodeVisitor):
 
         if isinstance(target, Class):
             error.warning(f"{target.name!r} initialised but not stored", node)
-            self_name = config.LOCAL_VALUE_PREFIX + target.name
+            self_name = config.LITERAL_VALUE_PREFIX + target.name
         else:
             self_name = None
 

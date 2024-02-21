@@ -144,7 +144,7 @@ def __safe_name(node: ast.expr) -> Identifier:
     """Return a safe name for this unnameable expression."""
     config = Config()
 
-    _local_value_prefix = config.LOCAL_VALUE_PREFIX
+    _local_value_prefix = config.LITERAL_VALUE_PREFIX
     _node_class_name = node.__class__.__name__
 
     return f"{_local_value_prefix}{_node_class_name}"

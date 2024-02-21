@@ -760,7 +760,7 @@ def handler():
 def constant() -> str:
     config = Config()
 
-    _prefix = config.LOCAL_VALUE_PREFIX
+    _prefix = config.LITERAL_VALUE_PREFIX
     _constant = ast.Constant.__name__
 
     return f"{_prefix}{_constant}"
@@ -770,7 +770,7 @@ def constant() -> str:
 def literal():
     config = Config()
 
-    _prefix = config.LOCAL_VALUE_PREFIX
+    _prefix = config.LITERAL_VALUE_PREFIX
 
     def _inner(node: ast.AST | type[ast.AST]) -> str:
         if isinstance(node, ast.AST):

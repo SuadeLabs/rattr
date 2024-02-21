@@ -119,8 +119,8 @@ def get_basename_fullname_pair(
     # node ⊂ Nameable ^ node ⊄ StrictlyNameable
     if safe:
         return (
-            f"{config.LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
-            f"{config.LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
+            f"{config.LITERAL_VALUE_PREFIX}{node.__class__.__name__}",
+            f"{config.LITERAL_VALUE_PREFIX}{node.__class__.__name__}",
         )
 
     _error_class: Type[TypeError] = TypeError

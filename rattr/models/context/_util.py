@@ -67,7 +67,7 @@ def is_direct_call_to_method_on_constant(name: str) -> bool:
     """Return `True` if the name is a call to method on a constant."""
     config = Config()
 
-    _prefix = config.LOCAL_VALUE_PREFIX
+    _prefix = config.LITERAL_VALUE_PREFIX
     _constant = f"{_prefix}{ast.Constant.__name__}."
 
     return name.startswith(_constant)
@@ -77,7 +77,7 @@ def is_direct_call_to_method_on_literal(name: str) -> bool:
     """Return `True` if the name is a call to method on a constant."""
     config = Config()
 
-    _prefix = config.LOCAL_VALUE_PREFIX
+    _prefix = config.LITERAL_VALUE_PREFIX
     _literals = tuple(f"{_prefix}{literal.__name__}." for literal in AstLiterals)
 
     return name.startswith(_literals)

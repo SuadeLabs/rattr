@@ -182,7 +182,7 @@ class Config(metaclass=ConfigMetaclass):
     arguments: Arguments
     state: State
 
-    LOCAL_VALUE_PREFIX: Final = "@"
+    LITERAL_VALUE_PREFIX: Final = "@"
     """The prefix given to local constants, literals, etc to produce a name."""
 
     MODULE_BLACKLIST_PATTERNS: Final = frozenset(
