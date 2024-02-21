@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from rattr.analyser.base import NodeVisitor
 from rattr.analyser.function import FunctionAnalyser
 from rattr.analyser.types import ClassIr
-from rattr.analyser.util import has_annotation
+from rattr.analyser.util import has_annotation, parse_rattr_results_from_annotation
 from rattr.ast.util import assignment_targets, fullname_of, unravel_names
 from rattr.models.context import Context
 from rattr.models.symbol import CallInterface, Class, Func, Name
@@ -131,8 +131,18 @@ class ClassAnalyser(NodeVisitor):
     # ----------------------------------------------------------------------- #
 
     def visit_initialiser(self, init: ast.FunctionDef) -> None:
+        if has_annotation("rattr_ignore", self._ast):
+            return
+
         new_symbol = self.symbol.with_init(init)
         self.update_symbol(new_symbol)
+
+        if has_annotation("rattr_results", self._ast):
+            self.class_ir[new_symbol] = parse_rattr_results_from_annotation(
+                self._ast,
+                context=self.context,
+            )
+            return
 
         init_analyser = FunctionAnalyser(init, self.context)
         self.class_ir[new_symbol] = init_analyser.analyse()

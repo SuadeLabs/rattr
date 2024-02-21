@@ -347,10 +347,10 @@ def construct_swap(func: Func, call: Call) -> dict[Identifier, Identifier]:
 
     while True:
         if not interface.args:
-            break
+            break   # no error as the remaining args may be supplied by kw
 
         if not call_args:
-            break  # no error as the remaining args may be supplied by kw
+            break
 
         target = interface.args.pop(0)
         replacement = call_args.pop(0)
