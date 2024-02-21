@@ -12,7 +12,7 @@ from rattr.models.context import Context
 from rattr.models.symbol import UserDefinedCallableSymbol
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
     from rattr.models.symbol import Call, Name
 
@@ -25,6 +25,26 @@ class FunctionIr(TypedDict):
     sets: set[Name]
     dels: set[Name]
     calls: set[Call]
+
+    @classmethod
+    def the_empty_ir(cls) -> FunctionIr:
+        return {"gets": set(), "sets": set(), "dels": set(), "calls": set()}
+
+    @classmethod
+    def new(
+        cls,
+        *,
+        gets: Iterable[Name] = (),
+        sets: Iterable[Name] = (),
+        dels: Iterable[Name] = (),
+        calls: Iterable[Call] = (),
+    ) -> FunctionIr:
+        return {
+            "gets": set(gets),
+            "sets": set(sets),
+            "dels": set(dels),
+            "calls": set(calls),
+        }
 
 
 @attrs.mutable
