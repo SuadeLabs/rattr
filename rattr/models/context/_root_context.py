@@ -368,6 +368,9 @@ class RootContextBuilder:
         if isinstance(node.value, ast.Constant):
             return None
 
+        if isinstance(node.value, ast.Call):
+            return None
+
         if isinstance(node.value, ast.Lambda):
             return error.error("top-level lambdas must be named", culprit=node)
 
