@@ -258,6 +258,9 @@ class Config(metaclass=ConfigMetaclass):
 
         home = str(Path.home().resolve())
 
+        if path.is_relative_to(self.project_root):
+            path = path.relative_to(self.project_root)
+
         if self.arguments.collapse_home and path.is_relative_to(home):
             relative_path = str(path).replace(home, "")
 
