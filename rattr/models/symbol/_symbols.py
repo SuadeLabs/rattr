@@ -4,7 +4,7 @@ import ast
 import builtins
 from importlib.machinery import ModuleSpec
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import attrs
 from attrs import field
@@ -65,10 +65,15 @@ class Name(Symbol):
     name: str = field()
     basename: str = field()
 
-    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    token: Union[ast.AST, None] = field(
+        default=None,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
     location: Location = field(kw_only=True, hash=False, eq=False)
 
-    interface: CallInterface | None = field(default=None, kw_only=True)
+    interface: Union[CallInterface, None] = field(default=None, kw_only=True)
 
     @basename.default
     def _basename_default(self) -> str:
@@ -83,7 +88,12 @@ class Name(Symbol):
 class Builtin(Symbol):
     name: str = field()
 
-    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    token: Union[ast.AST, None] = field(
+        default=None,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
     location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: AnyCallInterface = field(factory=AnyCallInterface, kw_only=True)
@@ -102,7 +112,12 @@ class Import(Symbol):
     name: str = field()
     qualified_name: str = field()
 
-    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    token: Union[ast.AST, None] = field(
+        default=None,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
     location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: AnyCallInterface = field(factory=AnyCallInterface, kw_only=True)
@@ -161,7 +176,12 @@ class Import(Symbol):
 class Func(Symbol):
     name: str = field(converter=without_call_brackets)
 
-    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    token: Union[ast.AST, None] = field(
+        default=None,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
     location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: CallInterface = field(kw_only=True)
@@ -190,7 +210,12 @@ class Func(Symbol):
 class Class(Symbol):
     name: str = field(converter=without_call_brackets)
 
-    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    token: Union[ast.AST, None] = field(
+        default=None,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
     location: Location = field(kw_only=True, hash=False, eq=False)
 
     interface: CallInterface = field(factory=AnyCallInterface, kw_only=True)
@@ -206,10 +231,10 @@ class Class(Symbol):
     def with_init_arguments(
         self,
         *,
-        posonlyargs: tuple[str] = (),
-        args: tuple[str] = (),
+        posonlyargs: tuple[str, ...] = (),
+        args: tuple[str, ...] = (),
         vararg: str | None = None,
-        kwonlyargs: tuple[str] = (),
+        kwonlyargs: tuple[str, ...] = (),
         kwarg: str | None = None,
     ) -> Class:
         return attrs.evolve(
@@ -248,12 +273,21 @@ class Call(Symbol):
     name: str = field(converter=without_call_brackets)
 
     args: CallArguments = field(factory=CallArguments)
-    target: Builtin | Import | Func | Class | Name | None = field(default=None)
+    target: Union[Builtin, Import, Func, Class, Name, None] = field(default=None)
 
-    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
+    token: Union[ast.AST, None] = field(
+        default=None,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
     location: Location = field(kw_only=True, hash=False, eq=False)
 
-    interface: CallInterface | None = field(init=False, default=None, kw_only=True)
+    interface: Union[CallInterface, None] = field(
+        init=False,
+        default=None,
+        kw_only=True,
+    )
 
     @location.default
     def _location_default(self) -> Location:

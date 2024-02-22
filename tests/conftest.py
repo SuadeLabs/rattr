@@ -16,7 +16,7 @@ import pytest
 from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
-from rattr.ast.types import AstFunctionDef, Identifier
+from rattr.ast.types import Identifier
 from rattr.config import Arguments, Config, Output, State
 from rattr.models.context import Context, SymbolTable, compile_root_context
 from rattr.models.ir import FileIr, FunctionIr
@@ -39,6 +39,7 @@ if TYPE_CHECKING:
         MakeRootContextFn,
         MakeSymbolTableFn,
         ParseFn,
+        SetTestingConfigFn,
         StateFn,
     )
 
@@ -57,6 +58,10 @@ def pytest_configure(config):
         "update_expected_results: mark test that updates the expected test results for "
         "a benchmarking test, only run if the mark is explicitly given",
     )
+    config.addinivalue_line(
+        "markers",
+        "update_expected_irs: as with update_expected_results but for irs",
+    )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]):
@@ -73,6 +78,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     skip_test_items_with_mark_if_not_explicitly_given(
         items,
         "update_expected_results",
+        config=config,
+    )
+    skip_test_items_with_mark_if_not_explicitly_given(
+        items,
+        "update_expected_irs",
         config=config,
     )
 
@@ -146,7 +156,7 @@ def _init_testing_config():
 
 @pytest.fixture(scope="function")
 @mock.patch("rattr.config._types.validate_arguments", lambda args: args)
-def set_testing_config():
+def set_testing_config() -> SetTestingConfigFn:
     def _set_testing_config(arguments: Arguments, state: State = None) -> None:
         Config(arguments=arguments, state=state or State())
 
@@ -648,7 +658,12 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "print"
 
-    def on_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return {
             "sets": {
                 Name(name="set_in_print_def"),
@@ -703,7 +718,12 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "module.example"
 
-    def on_def(self, name: str, node: AstFunctionDef, ctx: Context) -> FunctionIr:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return {
             "sets": {
                 Name(name="set_in_example_def"),

@@ -146,7 +146,7 @@ class FunctionAnalyser(NodeVisitor):
         # Add the call to the IR and manually visit the arguments, but not `node.func`
         # as it will register an incorrect "gets"
 
-        target = self.context.get_call_target(fullname, node)
+        target = self.context.get_call_target(fullname, node, warn=True)
 
         if isinstance(target, Class):
             error.warning(f"{target.name!r} initialised but not stored", node)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
@@ -8,7 +7,7 @@ from unittest import mock
 
 import pytest
 
-from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
+from rattr.analyser.results import generate_results_from_ir
 from rattr.models.ir import FileIr
 from rattr.models.results.file import FileResults
 from rattr.models.symbol import (
@@ -19,6 +18,7 @@ from rattr.models.symbol import (
     Func,
     Name,
 )
+from rattr.models.util import serialise_results_for_output
 from tests.shared import Import_
 
 if TYPE_CHECKING:
@@ -714,6 +714,6 @@ class TestResultsEncoder:
         example_file_results_ordered_str,
     ):
         assert (
-            json.dumps(example_file_results_unordered, indent=4, cls=ResultsEncoder)
+            serialise_results_for_output(example_file_results_unordered)
             == example_file_results_ordered_str
         )

@@ -2,17 +2,21 @@
 """Rattr entry point."""
 from __future__ import annotations
 
-import json
 from math import log10
+from typing import TYPE_CHECKING
 
 from rattr import error
 from rattr.analyser.file import RattrStats, parse_and_analyse_file
-from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
+from rattr.analyser.results import generate_results_from_ir
 from rattr.analyser.types import ImportsIr
 from rattr.cli import parse_arguments
 from rattr.config import Config, Output, State
 from rattr.models.ir import FileIr
 from rattr.models.results import FileResults
+from rattr.models.util import serialise_irs, serialise_results_for_output
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _init_rattr_config() -> Config:
@@ -39,21 +43,19 @@ def main(config: Config) -> None:
         show_stats(stats)
 
 
-def show_ir(file: str, file_ir: FileIr, imports_ir: ImportsIr) -> None:
+def show_ir(file: Path, file_ir: FileIr, imports_ir: ImportsIr) -> None:
     """Prettily print the given file and imports IR."""
-    jsonable_ir = {}
-
-    for i, ir in imports_ir.items():
-        jsonable_ir[i] = {repr(c): r for c, r in ir.items()}
-
-    jsonable_ir[file] = {repr(c): r for c, r in file_ir.items()}
-
-    print(json.dumps(jsonable_ir, indent=4, cls=ResultsEncoder))
+    serialised = serialise_irs(
+        target_name=str(file),
+        target_ir=file_ir,
+        imports_ir=imports_ir,
+    )
+    print(serialised)
 
 
 def show_results(results: FileResults) -> None:
     """Prettily print the given file results."""
-    print(json.dumps(results, indent=4, cls=ResultsEncoder))
+    print(serialise_results_for_output(results))
 
 
 def show_stats(stats: RattrStats) -> None:

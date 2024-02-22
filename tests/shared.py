@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from typing import Any, Protocol
 
     from rattr.ast.types import Identifier
+    from rattr.config import Arguments, State
     from rattr.models.context import Context, SymbolTable
     from rattr.models.ir import FileIr, FunctionIr
     from rattr.models.symbol import Symbol, UserDefinedCallableSymbol
@@ -61,6 +62,10 @@ if TYPE_CHECKING:
             self,
             **kwargs: Mapping[str, Any],
         ) -> Iterator[None]:
+            ...
+
+    class SetTestingConfigFn(Protocol):
+        def __call__(self, arguments: Arguments, state: State = None) -> None:
             ...
 
     class ParseFn(Protocol):

@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import ast
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, Union
 
 import attrs
 from attrs import field
@@ -22,10 +22,10 @@ if TYPE_CHECKING:
 class Symbol(abc.ABC):
     name: str = field()
 
-    token: ast.AST | None = field(default=None, kw_only=True, hash=False, eq=False)
-    location: Location | None = field(default=None, kw_only=True, hash=False, eq=False)
+    token: Union[ast.AST, None] = field(default=None, kw_only=True, hash=False, eq=False)
+    location: Union[Location, None] = field(default=None, kw_only=True, hash=False, eq=False)
 
-    interface: CallInterface | None = field(default=None, kw_only=True)
+    interface: Union[CallInterface, None] = field(default=None, kw_only=True)
 
     def __attrs_pre_init__(self) -> None:
         if type(self) == Symbol:
@@ -53,6 +53,11 @@ class Symbol(abc.ABC):
     def is_import(self) -> Literal[False]:
         return False
 
+    def __lt__(self, other: Symbol | object) -> bool:
+        if not isinstance(other, Symbol):
+            raise TypeError
+        return self.name < other.name
+
 
 class ConsumableCallInterface(NamedTuple):
     posonlyargs: list[Identifier]
@@ -65,14 +70,14 @@ class ConsumableCallInterface(NamedTuple):
 @attrs.frozen
 class CallInterface:
     # Naming inherited from `ast.arguments`
-    posonlyargs: tuple[str] = field(default=(), converter=tuple)
-    args: tuple[str] = field(default=(), converter=tuple)
-    vararg: str | None = field(default=None)
-    kwonlyargs: tuple[str] = field(default=(), converter=tuple)
-    kwarg: str | None = field(default=None)
+    posonlyargs: tuple[str, ...] = field(default=(), converter=tuple)
+    args: tuple[str, ...] = field(default=(), converter=tuple)
+    vararg: Union[str, None] = field(default=None)
+    kwonlyargs: tuple[str, ...] = field(default=(), converter=tuple)
+    kwarg: Union[str, None] = field(default=None)
 
     @property
-    def all(self) -> tuple[str]:
+    def all(self) -> tuple[str, ...]:
         arguments: list[str] = []
 
         arguments += self.posonlyargs
@@ -158,7 +163,7 @@ class AnyCallInterface(CallInterface):
 
 @attrs.frozen
 class CallArguments:
-    args: tuple[str] = field(default=(), converter=tuple)
+    args: tuple[str, ...] = field(default=(), converter=tuple)
     kwargs: frozendict[str, str] = field(factory=frozendict, converter=frozendict)
 
     @classmethod
@@ -180,7 +185,7 @@ class CallArguments:
 
 @attrs.frozen
 class Location:
-    token: ast.AST | None = field(default=None)
+    token: Union[ast.AST, None] = field(default=None)
     _file: Path = field(alias="file", factory=get_current_file, kw_only=True)
 
     @property

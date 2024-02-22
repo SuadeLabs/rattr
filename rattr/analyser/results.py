@@ -1,29 +1,10 @@
 """Rattr functions for producing and displaying results."""
 from __future__ import annotations
 
-import json
-
 from rattr.analyser.ir_dag import IrDagNode
 from rattr.analyser.types import ImportsIr
 from rattr.models.ir import FileIr
 from rattr.models.results import FileResults
-from rattr.models.symbol import Symbol
-
-
-class ResultsEncoder(json.JSONEncoder):
-    """Return the results encoded as JSON."""
-
-    def default(self, obj):
-        if isinstance(obj, set):
-            return sorted(obj)
-
-        if isinstance(obj, list):
-            return sorted(obj)
-
-        if isinstance(obj, Symbol):
-            return repr(obj)
-
-        return super().default(obj)
 
 
 def generate_results_from_ir(file_ir: FileIr, imports_ir: ImportsIr) -> FileResults:

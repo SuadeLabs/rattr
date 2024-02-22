@@ -4,7 +4,7 @@ import ast
 from collections.abc import MutableMapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import attrs
 from attrs import field
@@ -54,7 +54,7 @@ def new_context(container: ContainerWithContext) -> Iterator[None]:
 
 @attrs.mutable
 class Context(MutableMapping[Identifier, Symbol]):
-    parent: Context | None
+    parent: Union[Context, None]
     symbol_table: SymbolTable = field(factory=SymbolTable, kw_only=True)
 
     _file: Path = field(

@@ -26,9 +26,8 @@ from tests.shared import match_output
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-    from rattr.models.ir import FileIr
     from rattr.models.results import FileResults
-    from tests.shared import MakeRootContextFn, ParseFn, StateFn
+    from tests.shared import ArgumentsFn, MakeRootContextFn, ParseFn, StateFn
 
 
 @pytest.fixture(autouse=True)
@@ -744,6 +743,7 @@ class TestRegression:
         self,
         parse: ParseFn,
         make_root_context: MakeRootContextFn,
+        arguments: ArgumentsFn,
         capfd: pytest.CaptureFixture[str],
     ):
         # ALWAYS WORKED
@@ -753,7 +753,9 @@ class TestRegression:
                 return arg.method()
             """
         )
-        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        with arguments(_warning_level="all"):
+            results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         fn_symbol = Func(name="fn", interface=CallInterface(args=("arg",)))
         expected = FileIr(
@@ -881,7 +883,7 @@ class TestNamedTupleFromCall:
     # simplification nonetheless.
 
     @pytest.fixture(autouse=True)
-    def _test_in_strict_mode(self, arguments) -> Iterator[None]:
+    def __test_in_strict_mode(self, arguments) -> Iterator[None]:
         with arguments(is_strict=True):
             yield
 
@@ -1236,7 +1238,7 @@ class TestNamedTupleFromInheritance:
     # This previously had a fatal error at simplification.
 
     @pytest.fixture(autouse=True)
-    def _test_in_strict_mode(self, arguments) -> Iterator[None]:
+    def __test_in_strict_mode(self, arguments) -> Iterator[None]:
         with arguments(is_strict=True):
             yield
 
@@ -1477,6 +1479,7 @@ class TestRattrConstantInNameableOnCheckForNamedTuple:
         parse: ParseFn,
         make_root_context: MakeRootContextFn,
         constant: str,
+        arguments: ArgumentsFn,
         capfd: pytest.CaptureFixture[str],
     ):
         _ast = parse(
@@ -1486,7 +1489,7 @@ class TestRattrConstantInNameableOnCheckForNamedTuple:
             """
         )
 
-        with mock.patch("sys.exit") as _exit:
+        with mock.patch("sys.exit") as _exit, arguments(_warning_level="all"):
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
             _ = generate_results_from_ir(file_ir, imports_ir={})
 

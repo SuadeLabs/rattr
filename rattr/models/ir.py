@@ -6,18 +6,15 @@ from typing import TYPE_CHECKING, TypedDict
 
 import attrs
 from attrs import field
-from cattr.preconf.json import make_converter
+from cattrs.preconf.json import make_converter
 
 from rattr.models.context import Context
-from rattr.models.symbol import UserDefinedCallableSymbol
+from rattr.models.symbol import Call, Name, UserDefinedCallableSymbol
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from rattr.models.symbol import Call, Name
-
-
-_ir_json_converter = make_converter()
+_json_converter = make_converter()
 
 
 class FunctionIr(TypedDict):
@@ -62,7 +59,7 @@ class FileIr(MutableMapping[UserDefinedCallableSymbol, FunctionIr]):
         return copy.deepcopy(self._file_ir)
 
     def __str__(self) -> str:
-        return _ir_json_converter.dumps(self._file_ir)
+        return _json_converter.dumps(self._file_ir)
 
     # ================================================================================ #
     # Mutable mapping abstract methods and mixin-overrides
