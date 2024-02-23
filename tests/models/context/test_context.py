@@ -283,10 +283,10 @@ def test_context_add_arguments_to_context(
     function: ast.FunctionDef = parse(source_code).body[0]
 
     root = Context(parent=None)
-    root.add_arguments_to_context(function.args)
+    root.add_arguments_to_context(function.args, token=None)
 
     assert root.symbol_table == make_symbol_table(
-        [Name(name, token=function.args) for name in expected_names]
+        [Name(name, token=function) for name in expected_names]
     )
 
 

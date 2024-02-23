@@ -136,19 +136,28 @@ class TestLocation:
     def file(self) -> Path:
         return Path("cwd/my_file.py")
 
-    def test_not_in_file(self, state):
+    @pytest.fixture
+    def required_kwargs(self) -> dict[str, int | None]:
+        return {
+            "lineno": 0,
+            "end_lineno": None,
+            "col_offset": 1,
+            "end_col_offset": None,
+        }
+
+    def test_not_in_file(self, state, required_kwargs):
         with state(current_file=None):
             with pytest.raises(ValueError):
-                Location()
+                Location(**required_kwargs)
 
-    def test_with_derived_location(self, state, file):
+    def test_with_derived_location(self, state, file, required_kwargs):
         with state(current_file=file):
-            assert Location().defined_in == file
+            assert Location(**required_kwargs).defined_in == file
 
-    def test_with_explicit_location(self, state, file):
+    def test_with_explicit_location(self, state, file, required_kwargs):
         # This is not the intended interface, but should no break
         with state(current_file=file):
-            assert Location(file=file).defined_in == file
+            assert Location(**required_kwargs, file=file).defined_in == file
 
-    def test_is_hashable(self):
-        assert isinstance(hash(Location()), int)
+    def test_is_hashable(self, required_kwargs):
+        assert isinstance(hash(Location(**required_kwargs)), int)

@@ -59,7 +59,7 @@ class FunctionAnalyser(NodeVisitor):
     def analyse(self) -> FunctionIr:
         """Entry point, return the results of analysis."""
         with new_context(self):
-            self.context.add_arguments_to_context(self.ast.args)
+            self.context.add_arguments_to_context(self.ast.args, token=self.ast)
 
             for stmt in get_function_body(self.ast):
                 self.visit(stmt)
@@ -387,7 +387,7 @@ class FunctionAnalyser(NodeVisitor):
 
         # TODO Allow nested -- FunctionAnalyser on name "outer.inner"
         with new_context(self):
-            self.context.add_arguments_to_context(node.args)
+            self.context.add_arguments_to_context(node.args, token=node)
 
             for stmt in get_function_body(node):
                 self.visit(stmt)

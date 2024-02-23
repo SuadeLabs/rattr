@@ -58,7 +58,7 @@ class Context(MutableMapping[Identifier, Symbol]):
     symbol_table: SymbolTable = field(factory=SymbolTable, kw_only=True)
 
     _file: Path = field(
-        init=False,
+        alias="file",
         factory=get_current_file,
         kw_only=True,
         hash=False,
@@ -296,9 +296,14 @@ class Context(MutableMapping[Identifier, Symbol]):
     def remove_identifiers_from_context(self, assignment: ast.expr) -> None:
         self.remove(unravel_names(assignment))
 
-    def add_arguments_to_context(self, arguments: ast.arguments) -> None:
+    def add_arguments_to_context(
+        self,
+        arguments: ast.arguments,
+        *,
+        token: ast.AST,
+    ) -> None:
         self.add(
-            Name(arg, token=arguments)
+            Name(arg, token=token)
             for arg in CallInterface.from_arguments(arguments).all
         )
 
@@ -322,7 +327,7 @@ class Context(MutableMapping[Identifier, Symbol]):
                 error.error(
                     f"unable to resolve import {starred.name!r} while expanding "
                     f"{starred.code()!r}",
-                    culprit=starred.token,
+                    culprit=starred,
                 )
                 continue
 
@@ -344,7 +349,7 @@ class Context(MutableMapping[Identifier, Symbol]):
                     Import(
                         name=symbol.name,
                         qualified_name=f"{starred.qualified_name}.{symbol.name}",
-                        token=starred.token,
+                        location=starred.location,
                         interface=symbol.interface,
                     )
                 )
@@ -383,7 +388,7 @@ class Context(MutableMapping[Identifier, Symbol]):
         return Import(
             name=local_name,
             qualified_name=f"{module.qualified_name}.{local_name}",
-            token=module.token,
+            location=module.location,
             interface=AnyCallInterface(),
         )
 

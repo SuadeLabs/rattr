@@ -136,8 +136,8 @@ def get_file_and_line_info(culprit: ast.AST | Symbol | None) -> tuple[str, str]:
         file_info = __file_info_from_config()
 
     if isinstance(culprit, Symbol):
-        if (token := culprit.token) is not None:
-            line_info = __LINE_INFO.format(token.lineno, token.col_offset)
+        if (location := culprit.location) is not None:
+            line_info = __LINE_INFO.format(location.lineno, location.col_offset)
         else:
             line_info = ""
     else:

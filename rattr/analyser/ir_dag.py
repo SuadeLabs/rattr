@@ -18,7 +18,7 @@ from rattr.analyser.util import (
 )
 from rattr.config import Config
 from rattr.models.ir import FileIr
-from rattr.models.symbol import Builtin, Call, Class, Func, Import, Location, Name
+from rattr.models.symbol import Builtin, Call, Class, Func, Import, Name
 from rattr.module_locator.util import derive_module_name_from_path
 
 if TYPE_CHECKING:
@@ -274,12 +274,7 @@ def partially_unbind_name(symbol: Name, new_basename: str) -> Name:
     """Return a new symbol bound to the new base name."""
 
     def as_name(name: Identifier, basename: Identifier | None = None) -> Name:
-        return Name(
-            name,
-            basename,
-            token=symbol.token,
-            location=Location(token=symbol.token, file=symbol.location.file),
-        )
+        return Name(name, basename, location=symbol.location)
 
     if symbol.basename == new_basename:
         return as_name(symbol.name, symbol.basename)

@@ -158,6 +158,9 @@ class RootContextBuilder:
 
         >>> # Relative starred import
         >>> from .relative.module import *
+
+        >>> # Relative starred import from local dir
+        >>> from . import module
         """
         # Warn when using starred imports outside of __init__.py
         # There is little good about starred imports (and no benefit over

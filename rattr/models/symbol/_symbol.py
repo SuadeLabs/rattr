@@ -22,8 +22,18 @@ if TYPE_CHECKING:
 class Symbol(abc.ABC):
     name: str = field()
 
-    token: Union[ast.AST, None] = field(default=None, kw_only=True, hash=False, eq=False)
-    location: Union[Location, None] = field(default=None, kw_only=True, hash=False, eq=False)
+    token: Union[ast.AST, None] = field(
+        default=None,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
+    location: Union[Location, None] = field(
+        default=None,
+        kw_only=True,
+        hash=False,
+        eq=False,
+    )
 
     interface: Union[CallInterface, None] = field(default=None, kw_only=True)
 
@@ -144,6 +154,9 @@ class CallInterface:
 class AnyCallInterface(CallInterface):
     """Denote that the interface is unknown/unknowable; thus all calls are accepted."""
 
+    def __init__(self) -> None:
+        super().__init__()
+
     @classmethod
     def from_fn_def(
         cls: type[CallInterface],
@@ -185,36 +198,31 @@ class CallArguments:
 
 @attrs.frozen
 class Location:
-    token: Union[ast.AST, None] = field(default=None)
+    lineno: int = field()
+    col_offset: int = field()
+
+    end_lineno: Union[int, None] = field(default=None)
+    end_col_offset: Union[int, None] = field(default=None)
+
     _file: Path = field(alias="file", factory=get_current_file, kw_only=True)
+
+    @classmethod
+    def from_ast_token(cls, token: ast.AST, *, file: Path | None = None) -> Location:
+        kwargs = {
+            "lineno": token.lineno,
+            "end_lineno": token.end_lineno,
+            "col_offset": token.col_offset,
+            "end_col_offset": token.end_col_offset,
+        }
+
+        if file is not None:
+            kwargs["file"] = file
+
+        return Location(**kwargs)
 
     @property
     def file(self) -> Path:
         return self._file
-
-    @property
-    def lineno(self) -> int | None:
-        if self.token is None:
-            return None
-        return self.token.lineno
-
-    @property
-    def end_lineno(self) -> int | None:
-        if self.token is None:
-            return None
-        return self.token.end_lineno
-
-    @property
-    def col_offset(self) -> int | None:
-        if self.token is None:
-            return None
-        return self.token.col_offset
-
-    @property
-    def end_col_offset(self) -> int | None:
-        if self.token is None:
-            return None
-        return self.token.end_col_offset
 
     @property
     def defined_in(self) -> Path:

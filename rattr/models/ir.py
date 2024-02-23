@@ -14,6 +14,7 @@ from rattr.models.symbol import Call, Name, UserDefinedCallableSymbol
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
+
 _json_converter = make_converter()
 
 

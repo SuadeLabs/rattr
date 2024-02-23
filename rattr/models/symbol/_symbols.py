@@ -81,7 +81,9 @@ class Name(Symbol):
 
     @location.default
     def _location_default(self) -> Location:
-        return Location(token=self.token)
+        if self.token is None:
+            return Location(lineno=1, col_offset=0)
+        return Location.from_ast_token(self.token)
 
 
 @attrs.frozen
@@ -100,7 +102,12 @@ class Builtin(Symbol):
 
     @location.default
     def _location_default(self) -> Location:
-        return Location(token=self.token, file=Path(PYTHON_BUILTINS_LOCATION))
+        file = Path(PYTHON_BUILTINS_LOCATION)
+
+        if self.token is None:
+            return Location(lineno=1, col_offset=0, file=file)
+
+        return Location.from_ast_token(self.token, file=file)
 
     @property
     def has_affect(self) -> bool:
@@ -128,7 +135,9 @@ class Import(Symbol):
 
     @location.default
     def _location_default(self) -> Location:
-        return Location(token=self.token)
+        if self.token is None:
+            return Location(lineno=1, col_offset=0)
+        return Location.from_ast_token(self.token)
 
     @property
     def id(self) -> str:
@@ -190,7 +199,9 @@ class Func(Symbol):
 
     @location.default
     def _location_default(self) -> Location:
-        return Location(token=self.token)
+        if self.token is None:
+            return Location(lineno=1, col_offset=0)
+        return Location.from_ast_token(self.token)
 
     @classmethod
     def from_fn_def(
@@ -222,7 +233,9 @@ class Class(Symbol):
 
     @location.default
     def _location_default(self) -> Location:
-        return Location(token=self.token)
+        if self.token is None:
+            return Location(lineno=1, col_offset=0)
+        return Location.from_ast_token(self.token)
 
     def with_init(self, init: ast.FunctionDef) -> Class:
         """Return a copy of the class with the initialiser set to the given function."""
@@ -291,7 +304,9 @@ class Call(Symbol):
 
     @location.default
     def _location_default(self) -> Location:
-        return Location(token=self.token)
+        if self.token is None:
+            return Location(lineno=1, col_offset=0)
+        return Location.from_ast_token(self.token)
 
     @classmethod
     def from_call(

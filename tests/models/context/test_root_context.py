@@ -62,7 +62,7 @@ def test_root_context_import(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Import(name="math", qualified_name="math", token=mock.ANY),
+            Import(name="math", qualified_name="math", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -83,7 +83,7 @@ def test_root_context_import_as(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Import(name="m", qualified_name="math", token=mock.ANY),
+            Import(name="m", qualified_name="math", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -109,8 +109,8 @@ def test_root_context_import_list(
 
     expected = make_symbol_table(
         [
-            Import(name="os", qualified_name="os", token=mock.ANY),
-            Import(name="math", qualified_name="math", token=mock.ANY),
+            Import(name="os", qualified_name="os", location=mock.ANY),
+            Import(name="math", qualified_name="math", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -135,9 +135,9 @@ def test_root_context_import_from(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Import(name="isfile", qualified_name="os.path.isfile", token=mock.ANY),
-            Import(name="sin", qualified_name="math.sin", token=mock.ANY),
-            Import(name="cos", qualified_name="math.cos", token=mock.ANY),
+            Import(name="isfile", qualified_name="os.path.isfile", location=mock.ANY),
+            Import(name="sin", qualified_name="math.sin", location=mock.ANY),
+            Import(name="cos", qualified_name="math.cos", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -159,9 +159,9 @@ def test_root_context_import_from_as(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Import(name="path_utils", qualified_name="os.path", token=mock.ANY),
-            Import(name="exp", qualified_name="math.power", token=mock.ANY),
-            Import(name="cos", qualified_name="math.cos", token=mock.ANY),
+            Import(name="path_utils", qualified_name="os.path", location=mock.ANY),
+            Import(name="exp", qualified_name="math.power", location=mock.ANY),
+            Import(name="cos", qualified_name="math.cos", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -183,7 +183,7 @@ def test_root_context_import_from_star(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Import(name="*", qualified_name="math", token=mock.ANY),
+            Import(name="*", qualified_name="math", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -210,7 +210,7 @@ def test_root_context_import_from_submodule(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Import(name="join", qualified_name="os.path.join", token=mock.ANY),
+            Import(name="join", qualified_name="os.path.join", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -232,8 +232,8 @@ def test_root_context_import_multiple_starred(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Import(name="*", qualified_name="os", token=mock.ANY),
-            Import(name="*", qualified_name="math", token=mock.ANY),
+            Import(name="*", qualified_name="os", location=mock.ANY),
+            Import(name="*", qualified_name="math", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -255,7 +255,7 @@ def test_root_context_import_inside_stmt_block(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Import(name="*", qualified_name="math", token=mock.ANY),
+            Import(name="*", qualified_name="math", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -277,7 +277,7 @@ def test_root_context_import_inside_function_block(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface()),
+            Func(name="fn", location=mock.ANY, interface=CallInterface()),
         ],
         include_root_symbols=True,
     )
@@ -303,10 +303,10 @@ def test_root_context_assignment(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Name("a", token=mock.ANY),
-            Name("b", token=mock.ANY),
-            Name("x", token=mock.ANY),
-            Name("y", token=mock.ANY),
+            Name("a", location=mock.ANY),
+            Name("b", location=mock.ANY),
+            Name("x", location=mock.ANY),
+            Name("y", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -328,8 +328,8 @@ def test_root_context_ann_assignment(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Name("a", token=mock.ANY),
-            Name("b", token=mock.ANY),
+            Name("a", location=mock.ANY),
+            Name("b", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -353,8 +353,8 @@ def test_root_context_aug_assignment(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Name("a", token=mock.ANY),
-            Name("b", token=mock.ANY),
+            Name("a", location=mock.ANY),
+            Name("b", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -376,10 +376,10 @@ def test_root_context_walrus(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Name("a", token=mock.ANY),
-            Name("b", token=mock.ANY),
-            Name("x", token=mock.ANY),
-            Name("z", token=mock.ANY),
+            Name("a", location=mock.ANY),
+            Name("b", location=mock.ANY),
+            Name("x", location=mock.ANY),
+            Name("z", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -402,12 +402,12 @@ def test_root_context_walrus_lambda(
         [
             Func(
                 name="inner_lambda",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(vararg="a", kwarg="k"),
             ),
             Func(
                 name="outer_lambda",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(vararg="a", kwarg="k"),
             ),
         ],
@@ -432,10 +432,10 @@ def test_root_context_faux_walrus_lambda(
         [
             Func(
                 name="inner_lambda",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(vararg="a", kwarg="k"),
             ),
-            Name(name="outer_lambda", token=mock.ANY),
+            Name(name="outer_lambda", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -462,12 +462,12 @@ def test_root_context_function_def(
         [
             Func(
                 name="fn_one",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(args=("a", "b")),
             ),
             Func(
                 name="fn_two",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(args=("c",)),
             ),
         ],
@@ -496,13 +496,13 @@ def test_root_context_async_function_def(
         [
             Func(
                 name="fn_one",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(args=("a", "b")),
                 is_async=True,
             ),
             Func(
                 name="fn_two",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(args=("c",)),
                 is_async=True,
             ),
@@ -553,7 +553,7 @@ def test_root_context_lambda_named(
         [
             Func(
                 "x",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(
                     args=(
                         "a",
@@ -561,8 +561,8 @@ def test_root_context_lambda_named(
                     )
                 ),
             ),
-            Func("y", token=mock.ANY, interface=CallInterface()),
-            Func("z", token=mock.ANY, interface=CallInterface(vararg="args")),
+            Func("y", location=mock.ANY, interface=CallInterface()),
+            Func("z", location=mock.ANY, interface=CallInterface(vararg="args")),
         ],
         include_root_symbols=True,
     )
@@ -656,8 +656,8 @@ def test_root_context_if(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -683,8 +683,8 @@ def test_root_context_nested_if(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -709,8 +709,8 @@ def test_root_context_for(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -736,8 +736,8 @@ def test_root_context_nested_for(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -762,8 +762,8 @@ def test_root_context_async_for(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -788,8 +788,8 @@ def test_root_context_while(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -815,8 +815,8 @@ def test_root_context_nested_while(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -846,11 +846,11 @@ def test_root_context_try(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Name("global_a", token=mock.ANY),
-            Name("global_b", token=mock.ANY),
-            Name("global_c", token=mock.ANY),
-            Name("global_d", token=mock.ANY),
-            Name("global_e", token=mock.ANY),
+            Name("global_a", location=mock.ANY),
+            Name("global_b", location=mock.ANY),
+            Name("global_c", location=mock.ANY),
+            Name("global_d", location=mock.ANY),
+            Name("global_e", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -883,12 +883,12 @@ def test_root_context_nested_try(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Name("global_a", token=mock.ANY),
-            Name("global_b", token=mock.ANY),
-            Name("global_c", token=mock.ANY),
-            Name("global_d", token=mock.ANY),
-            Name("global_e", token=mock.ANY),
-            Name("global_z", token=mock.ANY),
+            Name("global_a", location=mock.ANY),
+            Name("global_b", location=mock.ANY),
+            Name("global_c", location=mock.ANY),
+            Name("global_d", location=mock.ANY),
+            Name("global_e", location=mock.ANY),
+            Name("global_z", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -913,8 +913,8 @@ def test_root_context_with(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -940,8 +940,8 @@ def test_root_context_nested_with(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -966,8 +966,8 @@ def test_root_context_async_with(
     context = compile_root_context(module_ast)
     expected = make_symbol_table(
         [
-            Func(name="fn", token=mock.ANY, interface=CallInterface(args=("a",))),
-            Name(name="global_var", token=mock.ANY),
+            Func(name="fn", location=mock.ANY, interface=CallInterface(args=("a",))),
+            Name(name="global_var", location=mock.ANY),
         ],
         include_root_symbols=True,
     )
@@ -996,7 +996,7 @@ def test_root_context_class_def(
         [
             Class(
                 name="TopLevel",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(
                     args=(
                         "self",
@@ -1072,22 +1072,22 @@ def test_root_context_module(
             Import(
                 name="annotations",
                 qualified_name="__future__.annotations",
-                token=mock.ANY,
+                location=mock.ANY,
             ),
-            Import(name="a_module", token=mock.ANY),
+            Import(name="a_module", location=mock.ANY),
             Import(
                 name="some_function",
                 qualified_name="another_module.some_function",
-                token=mock.ANY,
+                location=mock.ANY,
             ),
             Func(
                 name="my_function",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(args=("a", "b")),
             ),
             Class(
                 name="MyClass",
-                token=mock.ANY,
+                location=mock.ANY,
                 interface=CallInterface(args=("self",)),
             ),
         ],
