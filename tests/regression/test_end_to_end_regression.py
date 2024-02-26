@@ -1,12 +1,4 @@
-"""End-to-end regression tests.
-
-NOTE
-====
-Dues to slight differences in the representation of constants the Python AST between
-Python 3.7 and Python 3.8, this test is limited to Python 3,8 plus (for example, it the
-output contains a local number this would be `@Num` in one version and `@Constant` in
-another, though there is no semantic difference).
-"""
+"""End-to-end regression tests."""
 
 from __future__ import annotations
 
@@ -17,159 +9,188 @@ from typing import TYPE_CHECKING
 import pytest
 
 from rattr.analyser.file import parse_and_analyse_file
-from rattr.analyser.results import ResultsEncoder, generate_results_from_ir
+from rattr.analyser.results import generate_results_from_ir
 from rattr.cli import parse_arguments
 from rattr.config import Config
-from rattr.models.results import FileResults, FunctionResults
+from rattr.models.util import OutputIrs, deserialise, serialise, serialise_irs
+from tests.regression.shared import (
+    assert_actual_and_expected_have_the_same_functions_irs,
+    assert_actual_and_expected_have_the_same_functions_results,
+    code_dir,
+    code_files,
+    ir_files,
+    results_files,
+    results_function_diffs,
+)
 
 if TYPE_CHECKING:
     from typing import Any
 
-here = Path(__file__).resolve().parent
 
-code_dir = here / "code"
-results_dir = here / "results"
+@pytest.mark.parametrize(
+    ("code_file,results_file"),
+    zip(code_files, results_files),
+    ids=[str(f.relative_to(code_dir)) for f in code_files],
+)
+def test_run_e2e_regression_tests_for_results(
+    code_file: Path,
+    results_file: Path,
+):
+    # TODO
+    #   Make this more end-to-end-y (that is, use `main(...))
+    #   This should suffice for now as `main(...)` is not particularly practical for
+    #   this test at present, but will be shortly, at which point we can make a
+    #   small refactor here.
 
-code_files = [f for f in code_dir.rglob("*.py")]
-results_files = [
-    (results_dir / code_file.relative_to(code_dir)).with_suffix(".json")
-    for code_file in code_files
-]
+    # Parse expected results
+    expected_results: dict[str, Any] = json.loads(results_file.read_text())
 
+    # Setup simulated cli arguments and state
+    config = Config()
+    config.arguments = parse_arguments(
+        sys_args=[
+            "--collapse-home",
+            *("--warning", "none"),
+            *("--threshold", "0"),
+            *("--stdout", "results"),
+            str(code_file),
+        ],
+    )
 
-def _assert_actual_and_expected_have_the_same_functions(
-    actual: FileResults,
-    expected: dict[str, Any],
-) -> None:
-    _actual_results_functions = set(actual.keys())
-    _expected_results_functions = set(expected.keys())
+    # Equivalent to main function
+    file_ir, imports_ir, _ = parse_and_analyse_file()
+    actual_results = generate_results_from_ir(file_ir, imports_ir)
 
-    _missing_actual = list(_expected_results_functions - _actual_results_functions)
-    _missing_expected = list(_actual_results_functions - _expected_results_functions)
+    if not actual_results:
+        pytest.skip(f"no results for {code_file}")
 
-    assert not _missing_actual, f"actual results missing functions: {_missing_actual}"
-    assert (
-        not _missing_expected
-    ), f"expected results missing functions: {_missing_expected}"
+    # Assert unordered (semantic) equality
+    assert_actual_and_expected_have_the_same_functions_results(
+        actual_results,
+        expected_results,
+    )
 
-
-def _get_diff(got: set[str], expected: set[str]) -> list[str]:
-    diff: set[str] = set()
-
-    for missing in expected - got:
-        diff.add(f"- {missing}")
-
-    for missing in got - expected:
-        diff.add(f"+ {missing}")
-
-    return list(diff)
-
-
-def _get_function_diffs(
-    fn_results: FunctionResults,
-    expected_fn_results: dict[str, list[str]],
-) -> dict[str, list[str]]:
-    return {
-        k: _get_diff(fn_results[k], set(expected_fn_results[k]))
-        for k in ("sets", "gets", "dels", "calls")
+    full_file_diff = {
+        fn: results_function_diffs(fn_results, expected_results[fn])
+        for fn, fn_results in actual_results.items()
     }
 
-
-class TestEndToEndRegressionTests:
-    def test_e2e_test_data_loaded_correctly(self):
-        assert len(code_files) >= 1
-
-        _missing_code_files = [f for f in code_files if not f.is_file()]
-        assert not _missing_code_files, "Missing " + ", ".join(
-            str(f) for f in _missing_code_files
-        )
-
-        assert len(results_files) >= 1
-
-        _missing_result_files = [f for f in results_files if not f.is_file()]
-        assert not _missing_result_files, "Missing " + ", ".join(
-            str(f) for f in _missing_result_files
-        )
-
-    @pytest.mark.py_3_8_plus()
-    @pytest.mark.parametrize(
-        ("code_file,results_file"),
-        zip(code_files, results_files),
-        ids=[str(f.relative_to(code_dir)) for f in code_files],
+    diff_is_empty = all(
+        diff == []
+        for _, fn_diffs in full_file_diff.items()
+        for _, diff in fn_diffs.items()
     )
-    def test_run_e2e_regression_tests(
-        self,
-        set_testing_config,
-        code_file: Path,
-        results_file: Path,
-    ):
-        # TODO
-        #   Make this more end-to-end-y (that is, use `main(...))
-        #   This should suffice for now as `main(...)` is not particularly practical for
-        #   this test at present, but will be shortly, at which point we can make a
-        #   small refactor here.
-
-        # Parse expected results
-        expected_results: dict[str, Any] = json.loads(results_file.read_text())
-
-        # Setup simulated cli arguments and state
-        config = Config()
-        config.arguments = parse_arguments(
-            sys_args=[
-                "-H",
-                "-w",
-                "none",
-                "--threshold",
-                "0",
-                "-o",
-                "results",
-                str(code_file),
-            ],
-        )
-
-        # Equivalent to main function
-        file_ir, imports_ir, _ = parse_and_analyse_file()
-        actual_results = generate_results_from_ir(file_ir, imports_ir)
-
-        if not actual_results:
-            pytest.skip(f"no results for {code_file}")
-
-        # Assert unordered (semantic) equality
-        _assert_actual_and_expected_have_the_same_functions(
-            actual_results, expected_results
-        )
-
-        full_file_diff = {
-            fn: _get_function_diffs(fn_results, expected_results[fn])
-            for fn, fn_results in actual_results.items()
-        }
-
-        diff_is_empty = all(
-            diff == []
-            for _, fn_diffs in full_file_diff.items()
-            for _, diff in fn_diffs.items()
-        )
-        diff_error = (
-            f"actual and expected results have the following diff:\n"
-            f"{json.dumps(full_file_diff, indent=4)}"
-        )
-
-        assert diff_is_empty, diff_error
-
-    @pytest.mark.update_expected_results
-    @pytest.mark.parametrize(
-        ("code_file,results_file"),
-        zip(code_files, results_files),
-        ids=[str(f.relative_to(code_dir)) for f in code_files],
+    diff_error = (
+        f"actual and expected results have the following diff:\n"
+        f"{json.dumps(full_file_diff, indent=4)}"
     )
-    def test_update_expected_results(self, code_file, results_file):
-        _cli_arguments = ["-w", "all", "--permissive", "0", "-r"]
 
-        # Setup simulated cli arguments and state
-        config = Config()
-        config.arguments = parse_arguments([*_cli_arguments, str(code_file)])
+    assert diff_is_empty, diff_error
 
-        file_ir, imports_ir, _ = parse_and_analyse_file()
-        results = generate_results_from_ir(file_ir, imports_ir)
 
-        results_file.write_text(json.dumps(results, indent=4, cls=ResultsEncoder))
+@pytest.mark.update_expected_results
+@pytest.mark.parametrize(
+    ("code_file,results_file"),
+    zip(code_files, results_files),
+    ids=[str(f.relative_to(code_dir)) for f in code_files],
+)
+def test_update_expected_results(code_file: Path, results_file: Path):
+    # Setup simulated cli arguments and state
+    config = Config()
+    config.arguments = parse_arguments(
+        sys_args=[
+            *("--warning", "all"),
+            *("--threshold", "0"),
+            *("--stdout", "results"),
+            str(code_file),
+        ]
+    )
+
+    file_ir, imports_ir, _ = parse_and_analyse_file()
+    results = generate_results_from_ir(file_ir, imports_ir)
+
+    results_file.write_text(serialise(results))
+
+
+@pytest.mark.parametrize(
+    ("code_file,ir_file"),
+    zip(code_files, ir_files),
+    ids=[str(f.relative_to(code_dir)) for f in code_files],
+)
+def test_run_e2e_regression_tests_for_ir(
+    code_file: Path,
+    ir_file: Path,
+):
+    # TODO See todo in test_run_e2e_regression_tests_for_results
+
+    # Parse expected results
+    expected_irs = deserialise(ir_file.read_text(), type=OutputIrs)
+
+    # Setup simulated cli arguments and state
+    config = Config()
+    config.arguments = parse_arguments(
+        sys_args=[
+            "--collapse-home",
+            *("--warning", "none"),
+            *("--threshold", "0"),
+            *("--stdout", "ir"),
+            str(code_file),
+        ],
+    )
+
+    # Equivalent to main function
+    file_ir, imports_ir, _ = parse_and_analyse_file()
+    _ = generate_results_from_ir(file_ir, imports_ir)
+
+    irs = OutputIrs(
+        import_irs=imports_ir,
+        target_ir={"filename": str(code_file), "ir": file_ir},
+    )
+
+    if not file_ir and not imports_ir:
+        pytest.skip(f"no irs for {code_file}")
+
+    # Assert unordered (semantic) equality
+    assert irs.import_irs.keys() == expected_irs.import_irs.keys()
+    for mod in irs.import_irs.keys():
+        assert_actual_and_expected_have_the_same_functions_irs(
+            irs.import_irs[mod],
+            expected_irs.import_irs[mod],
+        )
+    assert_actual_and_expected_have_the_same_functions_irs(
+        irs.target_ir["ir"],
+        expected_irs.target_ir["ir"],
+    )
+
+    assert irs.import_irs == expected_irs.import_irs
+    assert irs.target_ir["filename"] == expected_irs.target_ir["filename"]
+    assert irs.target_ir["ir"] == expected_irs.target_ir["ir"]
+
+
+@pytest.mark.update_expected_irs
+@pytest.mark.parametrize(
+    ("code_file,ir_files"),
+    zip(code_files, ir_files),
+    ids=[str(f.relative_to(code_dir)) for f in code_files],
+)
+def test_update_expected_ir(code_file: Path, ir_files: Path):
+    # Setup simulated cli arguments and state
+    config = Config()
+    config.arguments = parse_arguments(
+        sys_args=[
+            *("--warning", "all"),
+            *("--threshold", "0"),
+            *("--stdout", "ir"),
+            str(code_file),
+        ]
+    )
+
+    file_ir, imports_ir, _ = parse_and_analyse_file()
+    _ = generate_results_from_ir(file_ir, imports_ir)
+
+    serialised = serialise_irs(
+        target_name=str(code_file),
+        target_ir=file_ir,
+        imports_ir=imports_ir,
+    )
+    ir_files.write_text(serialised)

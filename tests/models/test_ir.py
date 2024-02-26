@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rattr.models.ir import FileIr, FunctionIr, UserDefinedCallableSymbol
-from rattr.models.symbol import CallInterface, Func, Name
+from rattr.models.ir import FileIr, FunctionIr
+from rattr.models.symbol import CallInterface, Func, Name, UserDefinedCallableSymbol
 
 if TYPE_CHECKING:
     from rattr.models.context import Context

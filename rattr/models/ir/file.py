@@ -2,47 +2,17 @@ from __future__ import annotations
 
 import copy
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
 
 import attrs
 from attrs import field
-from cattrs.preconf.json import make_converter
 
 from rattr.models.context import Context
-from rattr.models.symbol import Call, Name, UserDefinedCallableSymbol
+from rattr.models.ir.function import FunctionIr
+from rattr.models.symbol import UserDefinedCallableSymbol
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
-
-
-_json_converter = make_converter()
-
-
-class FunctionIr(TypedDict):
-    gets: set[Name]
-    sets: set[Name]
-    dels: set[Name]
-    calls: set[Call]
-
-    @classmethod
-    def the_empty_ir(cls) -> FunctionIr:
-        return {"gets": set(), "sets": set(), "dels": set(), "calls": set()}
-
-    @classmethod
-    def new(
-        cls,
-        *,
-        gets: Iterable[Name] = (),
-        sets: Iterable[Name] = (),
-        dels: Iterable[Name] = (),
-        calls: Iterable[Call] = (),
-    ) -> FunctionIr:
-        return {
-            "gets": set(gets),
-            "sets": set(sets),
-            "dels": set(dels),
-            "calls": set(calls),
-        }
+    from collections.abc import Iterator
 
 
 @attrs.mutable
@@ -58,9 +28,6 @@ class FileIr(MutableMapping[UserDefinedCallableSymbol, FunctionIr]):
     def ir_as_dict(self) -> dict[UserDefinedCallableSymbol, FunctionIr]:
         """Return a copy of the underlying IR dictionary."""
         return copy.deepcopy(self._file_ir)
-
-    def __str__(self) -> str:
-        return _json_converter.dumps(self._file_ir)
 
     # ================================================================================ #
     # Mutable mapping abstract methods and mixin-overrides
@@ -95,6 +62,6 @@ class FileIr(MutableMapping[UserDefinedCallableSymbol, FunctionIr]):
         If you do wish to clear the context as well, you must do so directly.
         """
         # NOTE
-        #   The default mixin clear iterates every key and pops, this is much slower
-        #   than deferring to the underlying dictionary clear.
+        # The default mixin clear iterates every key and pops, this is much slower than
+        # deferring to the underlying dictionary clear.
         return self._file_ir.clear()

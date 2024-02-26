@@ -13,7 +13,7 @@ from rattr.cli import parse_arguments
 from rattr.config import Config, Output, State
 from rattr.models.ir import FileIr
 from rattr.models.results import FileResults
-from rattr.models.util import serialise_irs, serialise_results_for_output
+from rattr.models.util import serialise, serialise_irs
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,7 +55,7 @@ def show_ir(file: Path, file_ir: FileIr, imports_ir: ImportsIr) -> None:
 
 def show_results(results: FileResults) -> None:
     """Prettily print the given file results."""
-    print(serialise_results_for_output(results))
+    print(serialise(results, indent=4))
 
 
 def show_stats(stats: RattrStats) -> None:

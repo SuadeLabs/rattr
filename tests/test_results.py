@@ -18,7 +18,7 @@ from rattr.models.symbol import (
     Func,
     Name,
 )
-from rattr.models.util import serialise_results_for_output
+from rattr.models.util import serialise
 from tests.shared import Import_
 
 if TYPE_CHECKING:
@@ -714,6 +714,6 @@ class TestResultsEncoder:
         example_file_results_ordered_str,
     ):
         assert (
-            serialise_results_for_output(example_file_results_unordered)
+            serialise(FileResults(example_file_results_unordered), indent=4)
             == example_file_results_ordered_str
         )
