@@ -423,13 +423,13 @@ class TestResults:
 
         assert generate_results_from_ir(file_ir, {}) == expected
 
-    def test_imports_ir(
+    def test_import_irs(
         self,
         file_ir_from_dict: FileIrFromDictFn,
         make_root_context: MakeRootContextFn,
     ):
         act = Func(name="act", interface=CallInterface(args=("arg",)))
-        imports_ir = {
+        import_irs = {
             "module": file_ir_from_dict(
                 {
                     act: {
@@ -473,9 +473,9 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, imports_ir) == expected
+        assert generate_results_from_ir(file_ir, import_irs) == expected
 
-    def test_imports_ir_chained_import(
+    def test_import_irs_chained_import(
         self,
         file_ir_from_dict: FileIrFromDictFn,
         make_root_context: MakeRootContextFn,
@@ -488,7 +488,7 @@ class TestResults:
 
         first = Func(name="first", interface=CallInterface(args=("arrg",)))
         second = Func(name="second", interface=CallInterface(args=("blarg",)))
-        imports_ir = {
+        import_irs = {
             "module": file_ir_from_dict(
                 {
                     first: {
@@ -552,7 +552,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, imports_ir) == expected
+        assert generate_results_from_ir(file_ir, import_irs) == expected
 
     def test_class(self, make_root_context: MakeRootContextFn):
         cls_inst = Class("SomeClass", interface=CallInterface(args=("self", "arg")))

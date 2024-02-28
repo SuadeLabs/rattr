@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 ClassIr: TypeAlias = dict[UserDefinedCallableSymbol, FunctionIr]
 
 _ModuleName: TypeAlias = str
-ImportsIr: TypeAlias = dict[_ModuleName, FileIr]
+ImportIrs: TypeAlias = dict[_ModuleName, FileIr]
 
 
 TargetName: TypeAlias = Identifier

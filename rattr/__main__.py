@@ -8,15 +8,17 @@ from typing import TYPE_CHECKING
 from rattr import error
 from rattr.analyser.file import RattrStats, parse_and_analyse_file
 from rattr.analyser.results import generate_results_from_ir
-from rattr.analyser.types import ImportsIr
+from rattr.analyser.types import ImportIrs
 from rattr.cli import parse_arguments
 from rattr.config import Config, Output, State
 from rattr.models.ir import FileIr
-from rattr.models.results import FileResults
+from rattr.models.results import FileResults, make_cacheable_results
 from rattr.models.util import serialise, serialise_irs
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from rattr.models.results import CacheableResults
 
 
 def _init_rattr_config() -> Config:
@@ -25,32 +27,40 @@ def _init_rattr_config() -> Config:
 
 def main(config: Config) -> None:
     """Rattr entry point."""
-    file_ir, imports_ir, stats = parse_and_analyse_file()
+    file_ir, import_irs, stats = parse_and_analyse_file()
 
-    results = generate_results_from_ir(file_ir, imports_ir)
+    results = generate_results_from_ir(file_ir, import_irs)
 
     if not config.is_within_badness_threshold:
         badness, threshold = config.state.badness, config.arguments.threshold
         error.fatal(f"exceeded allowed badness ({badness} > {threshold})")
 
     if config.arguments.stdout == Output.ir:
-        show_ir(config.arguments.target, file_ir, imports_ir)
+        show_ir(config.arguments.target, file_ir, import_irs)
 
     if config.arguments.stdout == Output.results:
         show_results(results)
+
+    if config.arguments.stdout == Output.cacheable:
+        show_cacheable_results(make_cacheable_results(results, file_ir, import_irs))
 
     if config.arguments.stdout == Output.stats:
         show_stats(stats)
 
 
-def show_ir(file: Path, file_ir: FileIr, imports_ir: ImportsIr) -> None:
+def show_ir(file: Path, file_ir: FileIr, import_irs: ImportIrs) -> None:
     """Prettily print the given file and imports IR."""
     serialised = serialise_irs(
         target_name=str(file),
         target_ir=file_ir,
-        imports_ir=imports_ir,
+        import_irs=import_irs,
     )
     print(serialised)
+
+
+def show_cacheable_results(results: CacheableResults) -> None:
+    """Prettily print the given file results."""
+    print(serialise(results, indent=4))
 
 
 def show_results(results: FileResults) -> None:

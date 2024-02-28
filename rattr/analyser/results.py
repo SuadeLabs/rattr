@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 from rattr.analyser.ir_dag import IrDagNode
-from rattr.analyser.types import ImportsIr
+from rattr.analyser.types import ImportIrs
 from rattr.models.ir import FileIr
 from rattr.models.results import FileResults
 
 
-def generate_results_from_ir(file_ir: FileIr, imports_ir: ImportsIr) -> FileResults:
+def generate_results_from_ir(file_ir: FileIr, import_irs: ImportIrs) -> FileResults:
     """Generate the final results from the given IR.
 
     Removing cycles:
@@ -40,7 +40,7 @@ def generate_results_from_ir(file_ir: FileIr, imports_ir: ImportsIr) -> FileResu
     simplified = FileResults()
 
     for foc, foc_ir in file_ir.items():
-        ir_dag = IrDagNode(None, foc, foc_ir, file_ir, imports_ir)
+        ir_dag = IrDagNode(None, foc, foc_ir, file_ir, import_irs)
         ir_dag.populate()
 
         composed_ir = ir_dag.simplify()

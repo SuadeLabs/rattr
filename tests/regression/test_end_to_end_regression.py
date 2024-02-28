@@ -58,8 +58,8 @@ def test_run_e2e_regression_tests_for_results(
     )
 
     # Equivalent to main function
-    file_ir, imports_ir, _ = parse_and_analyse_file()
-    actual_results = generate_results_from_ir(file_ir, imports_ir)
+    file_ir, import_irs, _ = parse_and_analyse_file()
+    actual_results = generate_results_from_ir(file_ir, import_irs)
 
     if not actual_results:
         pytest.skip(f"no results for {code_file}")
@@ -106,8 +106,8 @@ def test_update_expected_results(code_file: Path, results_file: Path):
         ]
     )
 
-    file_ir, imports_ir, _ = parse_and_analyse_file()
-    results = generate_results_from_ir(file_ir, imports_ir)
+    file_ir, import_irs, _ = parse_and_analyse_file()
+    results = generate_results_from_ir(file_ir, import_irs)
 
     results_file.write_text(serialise(results))
 
@@ -139,15 +139,15 @@ def test_run_e2e_regression_tests_for_ir(
     )
 
     # Equivalent to main function
-    file_ir, imports_ir, _ = parse_and_analyse_file()
-    _ = generate_results_from_ir(file_ir, imports_ir)
+    file_ir, import_irs, _ = parse_and_analyse_file()
+    _ = generate_results_from_ir(file_ir, import_irs)
 
     irs = OutputIrs(
-        import_irs=imports_ir,
+        import_irs=import_irs,
         target_ir={"filename": str(code_file), "ir": file_ir},
     )
 
-    if not file_ir and not imports_ir:
+    if not file_ir and not import_irs:
         pytest.skip(f"no irs for {code_file}")
 
     # Assert unordered (semantic) equality
@@ -185,12 +185,12 @@ def test_update_expected_ir(code_file: Path, ir_files: Path):
         ]
     )
 
-    file_ir, imports_ir, _ = parse_and_analyse_file()
-    _ = generate_results_from_ir(file_ir, imports_ir)
+    file_ir, import_irs, _ = parse_and_analyse_file()
+    _ = generate_results_from_ir(file_ir, import_irs)
 
     serialised = serialise_irs(
         target_name=str(code_file),
         target_ir=file_ir,
-        imports_ir=imports_ir,
+        import_irs=import_irs,
     )
     ir_files.write_text(serialised)

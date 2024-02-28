@@ -45,6 +45,7 @@ class Output(Enum):
     stats = "stats"
     ir = "ir"
     results = "results"
+    cacheable = "cacheable"
     silent = "silent"
 
     def __str__(self) -> str:

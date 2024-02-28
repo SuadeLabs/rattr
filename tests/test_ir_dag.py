@@ -149,7 +149,7 @@ class TestIrDag_Utils:
             "dels": set(),
             "calls": set(),
         }
-        imports_ir = {"module": file_ir_from_dict({fn: fn_ir})}
+        import_irs = {"module": file_ir_from_dict({fn: fn_ir})}
 
         import_symbol = Import_(
             "fn",
@@ -157,7 +157,7 @@ class TestIrDag_Utils:
             module_name_and_spec=("module", mock.Mock()),
         )
         call = Call(name="fn()", args=CallArguments(), target=import_symbol)
-        assert get_callee_target(call, {}, imports_ir) == (fn, fn_ir)
+        assert get_callee_target(call, {}, import_irs) == (fn, fn_ir)
 
     def test_get_callee_target_imported_function_undefined_in_module(
         self,
@@ -171,7 +171,7 @@ class TestIrDag_Utils:
             "dels": set(),
             "calls": set(),
         }
-        imports_ir = {"module": file_ir_from_dict({fn: fn_ir})}
+        import_irs = {"module": file_ir_from_dict({fn: fn_ir})}
 
         import_symbol = Import_(
             "nope",
@@ -179,7 +179,7 @@ class TestIrDag_Utils:
             module_name_and_spec=("module", mock.Mock()),
         )
         call = Call(name="nope()", args=CallArguments(), target=import_symbol)
-        assert get_callee_target(call, {}, imports_ir) == (None, None)
+        assert get_callee_target(call, {}, import_irs) == (None, None)
 
         _, stderr = capfd.readouterr()
         assert "unable to resolve call to 'nope' in import" in stderr
@@ -195,7 +195,7 @@ class TestIrDag_Utils:
             "dels": set(),
             "calls": set(),
         }
-        imports_ir = {"module": file_ir_from_dict({fn: fn_ir})}
+        import_irs = {"module": file_ir_from_dict({fn: fn_ir})}
 
         import_symbol = Import_(
             "nah",
@@ -204,7 +204,7 @@ class TestIrDag_Utils:
         )
         call = Call(name="nah()", args=CallArguments(), target=import_symbol)
         with pytest.raises(ImportError):
-            get_callee_target(call, {}, imports_ir)
+            get_callee_target(call, {}, import_irs)
 
     def test_partially_unbind_name(self):
         # On basic name

@@ -9,7 +9,7 @@ import attrs
 from attrs import field
 
 from rattr import error
-from rattr.analyser.types import FunctionIr, ImportsIr
+from rattr.analyser.types import FunctionIr, ImportIrs
 from rattr.analyser.util import (
     is_blacklisted_module,
     is_excluded_name,
@@ -37,7 +37,7 @@ class IrDagNode:
     func: Func
     func_ir: FunctionIr
     file_ir: FileIr
-    imports_ir: ImportsIr
+    import_irs: ImportIrs
 
     children: list[IrDagNode] = field(factory=list)
 
@@ -61,7 +61,7 @@ class IrDagNode:
             _foc, _foc_ir = get_callee_target(
                 callee,
                 self.file_ir,
-                self.imports_ir,
+                self.import_irs,
                 self.func,
             )
 
@@ -70,7 +70,7 @@ class IrDagNode:
                 continue
 
             self.children.append(
-                IrDagNode(callee, _foc, _foc_ir, self.file_ir, self.imports_ir)
+                IrDagNode(callee, _foc, _foc_ir, self.file_ir, self.import_irs)
             )
 
             seen.add(callee)
@@ -112,7 +112,7 @@ class IrDagNode:
 def get_callee_target(
     callee: Call,
     file_ir: FileIr,
-    imports_ir: ImportsIr,
+    import_irs: ImportIrs,
     caller: Func | None = None,
 ) -> tuple[None, None] | tuple[Func, FunctionIr]:
     """Return the func and IR of the called function."""
@@ -124,17 +124,17 @@ def get_callee_target(
         return None, None
 
     if isinstance(callee.target, Func):
-        return resolve_function(callee, file_ir, imports_ir, caller)
+        return resolve_function(callee, file_ir, import_irs, caller)
 
     # NOTE Procedural parameter, etc, can't be resolved
     if isinstance(callee.target, Name):
         return None, None
 
     if isinstance(callee.target, Class):
-        return resolve_class_init(callee, file_ir, imports_ir, caller)
+        return resolve_class_init(callee, file_ir, import_irs, caller)
 
     if isinstance(callee.target, Import):
-        return resolve_import(callee.name, callee.target, imports_ir, caller)
+        return resolve_import(callee.name, callee.target, import_irs, caller)
 
     raise TypeError("'callee' must be a CalleeTarget")
 
@@ -142,7 +142,7 @@ def get_callee_target(
 def resolve_function(
     callee: Call,
     file_ir: FileIr,
-    imports_ir: ImportsIr,
+    import_irs: ImportIrs,
     caller: Func | None = None,
 ) -> tuple[None, None] | tuple[Func, FunctionIr]:
     if callee.target is None:
@@ -154,7 +154,7 @@ def resolve_function(
         _msg = f"{_msg} in {caller.name!r}"
 
     try:
-        func, ir = __resolve_target_and_ir(callee, file_ir, imports_ir)
+        func, ir = __resolve_target_and_ir(callee, file_ir, import_irs)
     except ImportError:
         if is_excluded_name(callee.target.name):
             error.error(f"{_msg}, the call target matches an exclusion")
@@ -170,13 +170,13 @@ def resolve_function(
 def resolve_class_init(
     callee: Call,
     file_ir: FileIr,
-    imports_ir: ImportsIr,
+    import_irs: ImportIrs,
     caller: Func | None = None,
 ) -> tuple[None, None] | tuple[Func, FunctionIr]:
     _where = __prefix(caller)
 
     try:
-        cls, ir = __resolve_target_and_ir(callee, file_ir, imports_ir)
+        cls, ir = __resolve_target_and_ir(callee, file_ir, import_irs)
     except ImportError:
         error.error(f"{_where} unable to resolve initialiser for {callee.name!r}")
         return None, None
@@ -187,7 +187,7 @@ def resolve_class_init(
 def resolve_import(
     name: Identifier,
     target: Import,
-    imports_ir: ImportsIr,
+    import_irs: ImportIrs,
     caller: Func | None = None,
 ) -> tuple[None, None] | tuple[Func, FunctionIr]:
     """Return the `Func` and IR for the given import."""
@@ -197,7 +197,7 @@ def resolve_import(
     if target.module_name is None:
         raise ImportError
 
-    module_ir = imports_ir.get(target.module_name, None)
+    module_ir = import_irs.get(target.module_name, None)
 
     _follow_imports = config.arguments.follow_imports
     _follow_pip_imports = config.arguments.follow_pip_imports
@@ -251,7 +251,7 @@ def resolve_import(
         return new_target, ir
 
     if isinstance(new_target, Import):
-        return resolve_import(new_target.name, new_target, imports_ir, caller)
+        return resolve_import(new_target.name, new_target, import_irs, caller)
 
     # NOTE
     # When reaching here the target may be a call to a method on an imported instance
@@ -433,7 +433,7 @@ def __prefix(func: Func | None) -> str:
 def __resolve_target_and_ir(
     callee: Call,
     file_ir: FileIr,
-    imports_ir: ImportsIr,
+    import_irs: ImportIrs,
 ) -> tuple[Func, FunctionIr]:
     """Helper function for `resolve_function` and `resolve_class`."""
     # HACK
@@ -441,7 +441,7 @@ def __resolve_target_and_ir(
     # placeholder without the correct interface so we must discard the callee.target and
     # use the symbol from the module_ir
     if isinstance(callee.target, Class):
-        target = __resolve_real_class_target(callee.target, file_ir, imports_ir)
+        target = __resolve_real_class_target(callee.target, file_ir, import_irs)
     else:
         target = callee.target
 
@@ -458,7 +458,7 @@ def __resolve_target_and_ir(
     if module is None:
         raise ModuleNotFoundError(f"unable to find module for {str(filename)!r}")
 
-    module_ir = imports_ir.get(module)
+    module_ir = import_irs.get(module)
 
     if module_ir is None:
         raise ImportError
@@ -472,13 +472,13 @@ def __resolve_target_and_ir(
 def __resolve_real_class_target(
     target: Class,
     file_ir: FileIr,
-    imports_ir: ImportsIr,
+    import_irs: ImportIrs,
 ) -> Class:
     for symbol in file_ir:
         if isinstance(symbol, Class) and target.name == symbol.name:
             return symbol
 
-    for _, import_ir in imports_ir.items():
+    for _, import_ir in import_irs.items():
         for symbol in import_ir:
             if isinstance(symbol, Class) and target.name == symbol.name:
                 return symbol

@@ -27,11 +27,11 @@ def serialise_irs(
     *,
     target_name: FileName,
     target_ir: FileIr,
-    imports_ir: ImportIrs,
+    import_irs: ImportIrs,
 ) -> str:
     return serialise(
         OutputIrs(
-            import_irs=imports_ir,
+            import_irs=import_irs,
             target_ir={"filename": target_name, "ir": target_ir},
         ),
         indent=4,

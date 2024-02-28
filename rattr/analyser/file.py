@@ -11,7 +11,7 @@ from rattr import error
 from rattr.analyser.base import NodeVisitor
 from rattr.analyser.cls import ClassAnalyser
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import ImportsIr
+from rattr.analyser.types import ImportIrs
 from rattr.analyser.util import (
     has_annotation,
     is_blacklisted_module,
@@ -61,17 +61,17 @@ class RattrImportStats:
     number_of_unique_imports: int
 
 
-def parse_and_analyse_file() -> tuple[FileIr, ImportsIr, RattrStats]:
+def parse_and_analyse_file() -> tuple[FileIr, ImportIrs, RattrStats]:
     """Parse and analyse the target file from the config."""
     config = Config()
 
     with enter_file(config.arguments.target):
-        file_ir, imports_ir, stats = __parse_and_analyse_file_impl()
+        file_ir, import_irs, stats = __parse_and_analyse_file_impl()
 
-    return file_ir, imports_ir, stats
+    return file_ir, import_irs, stats
 
 
-def __parse_and_analyse_file_impl() -> tuple[FileIr, ImportsIr, RattrStats]:
+def __parse_and_analyse_file_impl() -> tuple[FileIr, ImportIrs, RattrStats]:
     """Parse and analyse the given file contents."""
     config = Config()
 
@@ -87,11 +87,10 @@ def __parse_and_analyse_file_impl() -> tuple[FileIr, ImportsIr, RattrStats]:
 
     with timer() as analyse_imports_timer:
         if config.arguments.follow_imports:
-            symbols = context.symbol_table.symbols
-            imports = [s for s in symbols if isinstance(s, Import)]
-            imports_ir, import_stats = parse_and_analyse_imports(imports)
+            imports = [s for s in context.symbol_table.symbols if isinstance(s, Import)]
+            import_irs, import_stats = parse_and_analyse_imports(imports)
         else:
-            imports_ir, import_stats = {}, RattrImportStats(0, 0, 0)
+            import_irs, import_stats = {}, RattrImportStats(0, 0, 0)
 
     with timer() as analyse_file_timer:
         file_ir = FileAnalyser(ast_module, context).analyse()
@@ -107,12 +106,12 @@ def __parse_and_analyse_file_impl() -> tuple[FileIr, ImportsIr, RattrStats]:
         number_of_imports=import_stats.number_of_imports,
         number_of_unique_imports=import_stats.number_of_unique_imports,
     )
-    return file_ir, imports_ir, stats
+    return file_ir, import_irs, stats
 
 
 def parse_and_analyse_imports(
     imports: list[Import],
-) -> tuple[ImportsIr, RattrImportStats]:
+) -> tuple[ImportIrs, RattrImportStats]:
     """Return the mapping from file name to IR for each import.
 
     Imports are a directed cyclic graph, however, previously analysed files can
@@ -122,7 +121,7 @@ def parse_and_analyse_imports(
     config = Config()
     queue = deque(imports)
 
-    import_irs: ImportsIr = {}
+    import_irs: ImportIrs = {}
     import_stats = RattrImportStats(
         import_lines=0,
         number_of_imports=0,

@@ -1140,7 +1140,7 @@ def test_the_empty_output_irs():
     serialised = serialise_irs(
         target_name="file.py",
         target_ir=FileIr(context=None, file_ir={}),
-        imports_ir={},
+        import_irs={},
     )
     assert json.loads(serialised) == {
         "import_irs": {},
@@ -1230,7 +1230,7 @@ def test_output_irs(
     serialised = serialise_irs(
         target_name=output_irs.target_ir["filename"],
         target_ir=output_irs.target_ir["ir"],
-        imports_ir=output_irs.import_irs,
+        import_irs=output_irs.import_irs,
     )
     print(serialised)
     assert json.loads(serialised) == {
