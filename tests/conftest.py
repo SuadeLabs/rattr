@@ -32,7 +32,7 @@ from rattr.models.symbol import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
-    from typing import TypeVar
+    from typing import Final, TypeVar
 
     from tests.shared import (
         ArgumentsFn,
@@ -48,15 +48,34 @@ if TYPE_CHECKING:
     StrOrPath = TypeVar("StrOrPath", str, Path)
 
 
+pytest_python_version_markers: Final = (
+    (3, 9),
+    (3, 10),
+    (3, 11),
+    (3, 12),
+)
+
+
+def __python_version_marker(major: int, minor: int) -> str:
+    return f"python_{major}_{minor}"
+
+
 def pytest_configure(config):
     config.addinivalue_line("addopts", "--strict-markers")
 
     config.addinivalue_line("markers", "pypy: mark test to run only under pypy")
-    config.addinivalue_line(
-        "markers",
-        "py_3_8_plus: mark test to run only under Python 3.8+",
-    )
+    config.addinivalue_line("markers", "cpython: mark test to run only under cpython")
+
+    for major, minor in pytest_python_version_markers:
+        marker = __python_version_marker(major, minor)
+        config.addinivalue_line(
+            "markers",
+            f"{marker}: mark test to run only under Python {major}.{minor}",
+        )
+
     config.addinivalue_line("markers", "windows: mark test to run only under Windows")
+    config.addinivalue_line("markers", "posix: mark test to run only under Posix")
+
     config.addinivalue_line(
         "markers",
         "update_expected_results: mark test that updates the expected test results for "
@@ -72,12 +91,17 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     """Alter the collected tests."""
     if not is_pypy():
         skip_test_items_with_mark(items, "pypy")
+    if not is_cpython():
+        skip_test_items_with_mark(items, "cpython")
 
-    if not is_python_3_8_plus():
-        skip_test_items_with_mark(items, "py_3_8_plus")
+    for major, minor in pytest_python_version_markers:
+        if not is_python_version(f"{major}.{minor}"):
+            skip_test_items_with_mark(items, __python_version_marker(major, minor))
 
     if not is_windows():
         skip_test_items_with_mark(items, "windows")
+    if not is_posix():
+        skip_test_items_with_mark(items, "posix")
 
     skip_test_items_with_mark_if_not_explicitly_given(
         items,
@@ -118,23 +142,27 @@ def skip_test_items_with_mark_if_not_explicitly_given(
 
 
 def is_pypy() -> bool:
-    """Return `True` if running under pypy."""
     return find_spec("__pypy__") is not None
 
 
-def is_python_3_8_plus() -> bool:
-    """Return `True` if running under Python 3.8 plus."""
-    if sys.version_info.major != 3:
-        raise NotImplementedError
+def is_cpython() -> bool:
+    return not is_pypy()
 
-    if sys.version_info.minor >= 8:
-        return True
-    else:
-        return False
+
+def is_python_version(version: str) -> bool:
+    return version == f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def is_windows() -> bool:
     return sys.platform == "win32"
+
+
+def is_posix() -> bool:
+    if sys.platform == "linux":
+        return True
+    if sys.platform == "darwin":
+        return True
+    return False
 
 
 @pytest.fixture(scope="session", autouse=True)

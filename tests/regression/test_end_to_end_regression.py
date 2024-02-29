@@ -114,6 +114,9 @@ def test_update_expected_results(code_file: Path, results_file: Path):
     results_file.write_text(serialise(results))
 
 
+@pytest.mark.posix
+@pytest.mark.cpython
+@pytest.mark.python_3_9
 @pytest.mark.parametrize(
     ("code_file,ir_file"),
     zip(code_files, ir_files),
