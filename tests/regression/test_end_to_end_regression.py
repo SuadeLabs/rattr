@@ -142,9 +142,17 @@ def test_run_e2e_regression_tests_for_ir(
     file_ir, import_irs, _ = parse_and_analyse_file()
     _ = generate_results_from_ir(file_ir, import_irs)
 
+    # Ensure filename is the same in CI
+    actual_tests_dir = Path(__file__).parents[1]
+    expected_tests_dir = Path("/home/suade/rattr/feature/tests")
+    filename = expected_tests_dir / code_file.relative_to(actual_tests_dir)
+
     irs = OutputIrs(
         import_irs=import_irs,
-        target_ir={"filename": str(code_file), "ir": file_ir},
+        target_ir={
+            "filename": str(filename),
+            "ir": file_ir,
+        },
     )
 
     if not file_ir and not import_irs:
