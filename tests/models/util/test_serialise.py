@@ -1232,425 +1232,10 @@ def test_output_irs(
         target_ir=output_irs.target_ir["ir"],
         import_irs=output_irs.import_irs,
     )
-    print(serialised)
     assert json.loads(serialised) == {
-    "import_irs": {
-        "some.module": {
-            "context": {
-                "parent": None,
-                "symbol_table": {
-                    "bob": {
-                        "type": "Name",
-                        "name": "bob",
-                        "basename": "bob",
-                        "location": {
-                            "lineno": 1,
-                            "col_offset": 0,
-                            "end_lineno": None,
-                            "end_col_offset": None,
-                            "file": "test.py"
-                        },
-                        "interface": None,
-                    },
-                    "my_func": {
-                        "type": "Func",
-                        "name": "my_func",
-                        "location": {
-                            "lineno": 1,
-                            "col_offset": 0,
-                            "end_lineno": None,
-                            "end_col_offset": None,
-                            "file": "test.py"
-                        },
-                        "interface": {
-                            "posonlyargs": [
-                                "a",
-                                "b"
-                            ],
-                            "args": [],
-                            "vararg": None,
-                            "kwonlyargs": [],
-                            "kwarg": None
-                        },
-                        "is_async": False,
-                    },
-                    "foo.bar.baz": {
-                        "type": "Name",
-                        "name": "foo.bar.baz",
-                        "basename": "foo",
-                        "location": {
-                            "lineno": 1,
-                            "col_offset": 0,
-                            "end_lineno": None,
-                            "end_col_offset": None,
-                            "file": "test.py"
-                        },
-                        "interface": None,
-                    }
-                },
-                "file": "test.py"
-            },
-            "symbols": {
-                "my_func": {
-                    "type": "Func",
-                    "name": "my_func",
-                    "location": {
-                        "lineno": 1,
-                        "col_offset": 0,
-                        "end_lineno": None,
-                        "end_col_offset": None,
-                        "file": "test.py"
-                    },
-                    "interface": {
-                        "posonlyargs": [
-                            "a",
-                            "b"
-                        ],
-                        "args": [],
-                        "vararg": None,
-                        "kwonlyargs": [],
-                        "kwarg": None
-                    },
-                    "is_async": False,
-                },
-                "my_func_two": {
-                    "type": "Func",
-                    "name": "my_func_two",
-                    "location": {
-                        "lineno": 1,
-                        "col_offset": 0,
-                        "end_lineno": None,
-                        "end_col_offset": None,
-                        "file": "test.py"
-                    },
-                    "interface": {
-                        "posonlyargs": [
-                            "arg"
-                        ],
-                        "args": [],
-                        "vararg": None,
-                        "kwonlyargs": [],
-                        "kwarg": None
-                    },
-                    "is_async": False,
-                }
-            },
-            "function_irs": {
-                "my_func": {
-                    "gets": [
-                        {
-                            "type": "Name",
-                            "name": "a",
-                            "basename": "a",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "a.attr",
-                            "basename": "a",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "a.thing",
-                            "basename": "a",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "b.another_attr",
-                            "basename": "b",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "sets": [
-                        {
-                            "type": "Name",
-                            "name": "local",
-                            "basename": "local",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "dels": [],
-                    "calls": []
-                },
-                "my_func_two": {
-                    "gets": [
-                        {
-                            "type": "Name",
-                            "name": "arg",
-                            "basename": "arg",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "arg.another_attr",
-                            "basename": "arg",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "arg.attr",
-                            "basename": "arg",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "arg.thing",
-                            "basename": "arg",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "sets": [
-                        {
-                            "type": "Name",
-                            "name": "local",
-                            "basename": "local",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "dels": [],
-                    "calls": [
-                        {
-                            "type": "Call",
-                            "name": "my_func",
-                            "args": {
-                                "args": [
-                                    "arg",
-                                    "arg"
-                                ],
-                                "kwargs": {}
-                            },
-                            "target": {
-                                "type": "Func",
-                                "name": "my_func",
-                                "location": {
-                                    "lineno": 1,
-                                    "col_offset": 0,
-                                    "end_lineno": None,
-                                    "end_col_offset": None,
-                                    "file": "test.py"
-                                },
-                                "interface": {
-                                    "posonlyargs": [
-                                        "a",
-                                        "b"
-                                    ],
-                                    "args": [],
-                                    "vararg": None,
-                                    "kwonlyargs": [],
-                                    "kwarg": None
-                                },
-                                "is_async": False,
-                            },
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                        }
-                    ]
-                }
-            }
-        },
-        "another.module.here": {
-            "context": {
-                "parent": None,
-                "symbol_table": {
-                    "i.am.in.the.child.context": {
-                        "type": "Name",
-                        "name": "i.am.in.the.child.context",
-                        "basename": "i",
-                        "location": {
-                            "lineno": 1,
-                            "col_offset": 0,
-                            "end_lineno": None,
-                            "end_col_offset": None,
-                            "file": "test.py"
-                        },
-                        "interface": None,
-                    },
-                    "a_function_here": {
-                        "type": "Func",
-                        "name": "a_function_here",
-                        "location": {
-                            "lineno": 1,
-                            "col_offset": 0,
-                            "end_lineno": None,
-                            "end_col_offset": None,
-                            "file": "test.py"
-                        },
-                        "interface": {
-                            "posonlyargs": [],
-                            "args": [
-                                "x",
-                                "y"
-                            ],
-                            "vararg": "extras",
-                            "kwonlyargs": [],
-                            "kwarg": None
-                        },
-                        "is_async": False,
-                    }
-                },
-                "file": "test.py"
-            },
-            "symbols": {
-                "a_function_here": {
-                    "type": "Func",
-                    "name": "a_function_here",
-                    "location": {
-                        "lineno": 1,
-                        "col_offset": 0,
-                        "end_lineno": None,
-                        "end_col_offset": None,
-                        "file": "test.py"
-                    },
-                    "interface": {
-                        "posonlyargs": [],
-                        "args": [
-                            "x",
-                            "y"
-                        ],
-                        "vararg": "extras",
-                        "kwonlyargs": [],
-                        "kwarg": None
-                    },
-                    "is_async": False,
-                }
-            },
-            "function_irs": {
-                "a_function_here": {
-                    "gets": [
-                        {
-                            "type": "Name",
-                            "name": "x",
-                            "basename": "x",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "x.a.b.c.d",
-                            "basename": "x",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "y",
-                            "basename": "y",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "sets": [],
-                    "dels": [],
-                    "calls": []
-                }
-            }
-        },
-        "an_empty_module": {
-            "context": None,
-            "symbols": {},
-            "function_irs": {}
-        }
-    },
-    "target_ir": {
-        "filename": "file.py",
-        "ir": {
-            "context": {
-                "parent": {
+        "import_irs": {
+            "some.module": {
+                "context": {
                     "parent": None,
                     "symbol_table": {
                         "bob": {
@@ -1662,7 +1247,7 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py"
+                                "file": "test.py",
                             },
                             "interface": None,
                         },
@@ -1674,17 +1259,14 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py"
+                                "file": "test.py",
                             },
                             "interface": {
-                                "posonlyargs": [
-                                    "a",
-                                    "b"
-                                ],
+                                "posonlyargs": ["a", "b"],
                                 "args": [],
                                 "vararg": None,
                                 "kwonlyargs": [],
-                                "kwarg": None
+                                "kwarg": None,
                             },
                             "is_async": False,
                         },
@@ -1697,26 +1279,454 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py"
+                                "file": "test.py",
                             },
                             "interface": None,
-                        }
+                        },
                     },
-                    "file": "test.py"
+                    "file": "test.py",
                 },
-                "symbol_table": {
-                    "i.am.in.the.child.context": {
-                        "type": "Name",
-                        "name": "i.am.in.the.child.context",
-                        "basename": "i",
+                "symbols": {
+                    "my_func": {
+                        "type": "Func",
+                        "name": "my_func",
                         "location": {
                             "lineno": 1,
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py"
+                            "file": "test.py",
                         },
-                        "interface": None,
+                        "interface": {
+                            "posonlyargs": ["a", "b"],
+                            "args": [],
+                            "vararg": None,
+                            "kwonlyargs": [],
+                            "kwarg": None,
+                        },
+                        "is_async": False,
+                    },
+                    "my_func_two": {
+                        "type": "Func",
+                        "name": "my_func_two",
+                        "location": {
+                            "lineno": 1,
+                            "col_offset": 0,
+                            "end_lineno": None,
+                            "end_col_offset": None,
+                            "file": "test.py",
+                        },
+                        "interface": {
+                            "posonlyargs": ["arg"],
+                            "args": [],
+                            "vararg": None,
+                            "kwonlyargs": [],
+                            "kwarg": None,
+                        },
+                        "is_async": False,
+                    },
+                },
+                "function_irs": {
+                    "my_func": {
+                        "gets": [
+                            {
+                                "type": "Name",
+                                "name": "a",
+                                "basename": "a",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "a.attr",
+                                "basename": "a",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "a.thing",
+                                "basename": "a",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "b.another_attr",
+                                "basename": "b",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                        ],
+                        "sets": [
+                            {
+                                "type": "Name",
+                                "name": "local",
+                                "basename": "local",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            }
+                        ],
+                        "dels": [],
+                        "calls": [],
+                    },
+                    "my_func_two": {
+                        "gets": [
+                            {
+                                "type": "Name",
+                                "name": "arg",
+                                "basename": "arg",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "arg.another_attr",
+                                "basename": "arg",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "arg.attr",
+                                "basename": "arg",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "arg.thing",
+                                "basename": "arg",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                        ],
+                        "sets": [
+                            {
+                                "type": "Name",
+                                "name": "local",
+                                "basename": "local",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            }
+                        ],
+                        "dels": [],
+                        "calls": [
+                            {
+                                "type": "Call",
+                                "name": "my_func",
+                                "args": {"args": ["arg", "arg"], "kwargs": {}},
+                                "target": {
+                                    "type": "Func",
+                                    "name": "my_func",
+                                    "location": {
+                                        "lineno": 1,
+                                        "col_offset": 0,
+                                        "end_lineno": None,
+                                        "end_col_offset": None,
+                                        "file": "test.py",
+                                    },
+                                    "interface": {
+                                        "posonlyargs": ["a", "b"],
+                                        "args": [],
+                                        "vararg": None,
+                                        "kwonlyargs": [],
+                                        "kwarg": None,
+                                    },
+                                    "is_async": False,
+                                },
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                            }
+                        ],
+                    },
+                },
+            },
+            "another.module.here": {
+                "context": {
+                    "parent": None,
+                    "symbol_table": {
+                        "i.am.in.the.child.context": {
+                            "type": "Name",
+                            "name": "i.am.in.the.child.context",
+                            "basename": "i",
+                            "location": {
+                                "lineno": 1,
+                                "col_offset": 0,
+                                "end_lineno": None,
+                                "end_col_offset": None,
+                                "file": "test.py",
+                            },
+                            "interface": None,
+                        },
+                        "a_function_here": {
+                            "type": "Func",
+                            "name": "a_function_here",
+                            "location": {
+                                "lineno": 1,
+                                "col_offset": 0,
+                                "end_lineno": None,
+                                "end_col_offset": None,
+                                "file": "test.py",
+                            },
+                            "interface": {
+                                "posonlyargs": [],
+                                "args": ["x", "y"],
+                                "vararg": "extras",
+                                "kwonlyargs": [],
+                                "kwarg": None,
+                            },
+                            "is_async": False,
+                        },
+                    },
+                    "file": "test.py",
+                },
+                "symbols": {
+                    "a_function_here": {
+                        "type": "Func",
+                        "name": "a_function_here",
+                        "location": {
+                            "lineno": 1,
+                            "col_offset": 0,
+                            "end_lineno": None,
+                            "end_col_offset": None,
+                            "file": "test.py",
+                        },
+                        "interface": {
+                            "posonlyargs": [],
+                            "args": ["x", "y"],
+                            "vararg": "extras",
+                            "kwonlyargs": [],
+                            "kwarg": None,
+                        },
+                        "is_async": False,
+                    }
+                },
+                "function_irs": {
+                    "a_function_here": {
+                        "gets": [
+                            {
+                                "type": "Name",
+                                "name": "x",
+                                "basename": "x",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "x.a.b.c.d",
+                                "basename": "x",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "y",
+                                "basename": "y",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                        ],
+                        "sets": [],
+                        "dels": [],
+                        "calls": [],
+                    }
+                },
+            },
+            "an_empty_module": {"context": None, "symbols": {}, "function_irs": {}},
+        },
+        "target_ir": {
+            "filename": "file.py",
+            "ir": {
+                "context": {
+                    "parent": {
+                        "parent": None,
+                        "symbol_table": {
+                            "bob": {
+                                "type": "Name",
+                                "name": "bob",
+                                "basename": "bob",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            "my_func": {
+                                "type": "Func",
+                                "name": "my_func",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": {
+                                    "posonlyargs": ["a", "b"],
+                                    "args": [],
+                                    "vararg": None,
+                                    "kwonlyargs": [],
+                                    "kwarg": None,
+                                },
+                                "is_async": False,
+                            },
+                            "foo.bar.baz": {
+                                "type": "Name",
+                                "name": "foo.bar.baz",
+                                "basename": "foo",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                        },
+                        "file": "test.py",
+                    },
+                    "symbol_table": {
+                        "i.am.in.the.child.context": {
+                            "type": "Name",
+                            "name": "i.am.in.the.child.context",
+                            "basename": "i",
+                            "location": {
+                                "lineno": 1,
+                                "col_offset": 0,
+                                "end_lineno": None,
+                                "end_col_offset": None,
+                                "file": "test.py",
+                            },
+                            "interface": None,
+                        },
+                        "a_function_here": {
+                            "type": "Func",
+                            "name": "a_function_here",
+                            "location": {
+                                "lineno": 1,
+                                "col_offset": 0,
+                                "end_lineno": None,
+                                "end_col_offset": None,
+                                "file": "test.py",
+                            },
+                            "interface": {
+                                "posonlyargs": [],
+                                "args": ["x", "y"],
+                                "vararg": "extras",
+                                "kwonlyargs": [],
+                                "kwarg": None,
+                            },
+                            "is_async": False,
+                        },
+                    },
+                    "file": "/some/other/file.py",
+                },
+                "symbols": {
+                    "MyClass": {
+                        "type": "Class",
+                        "name": "MyClass",
+                        "location": {
+                            "lineno": 1,
+                            "col_offset": 0,
+                            "end_lineno": None,
+                            "end_col_offset": None,
+                            "file": "test.py",
+                        },
+                        "interface": {
+                            "posonlyargs": [],
+                            "args": ["self", "data"],
+                            "vararg": None,
+                            "kwonlyargs": ["kwarg_a", "kwarg_b"],
+                            "kwarg": None,
+                        },
                     },
                     "a_function_here": {
                         "type": "Func",
@@ -1726,304 +1736,239 @@ def test_output_irs(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py"
+                            "file": "test.py",
                         },
                         "interface": {
                             "posonlyargs": [],
-                            "args": [
-                                "x",
-                                "y"
-                            ],
+                            "args": ["x", "y"],
                             "vararg": "extras",
                             "kwonlyargs": [],
-                            "kwarg": None
+                            "kwarg": None,
                         },
                         "is_async": False,
-                    }
-                },
-                "file": "/some/other/file.py"
-            },
-            "symbols": {
-                "MyClass": {
-                    "type": "Class",
-                    "name": "MyClass",
-                    "location": {
-                        "lineno": 1,
-                        "col_offset": 0,
-                        "end_lineno": None,
-                        "end_col_offset": None,
-                        "file": "test.py"
                     },
-                    "interface": {
-                        "posonlyargs": [],
-                        "args": [
-                            "self",
-                            "data"
-                        ],
-                        "vararg": None,
-                        "kwonlyargs": [
-                            "kwarg_a",
-                            "kwarg_b"
-                        ],
-                        "kwarg": None
+                    "my_func": {
+                        "type": "Func",
+                        "name": "my_func",
+                        "location": {
+                            "lineno": 1,
+                            "col_offset": 0,
+                            "end_lineno": None,
+                            "end_col_offset": None,
+                            "file": "test.py",
+                        },
+                        "interface": {
+                            "posonlyargs": ["a", "b"],
+                            "args": [],
+                            "vararg": None,
+                            "kwonlyargs": [],
+                            "kwarg": None,
+                        },
+                        "is_async": False,
                     },
                 },
-                "a_function_here": {
-                    "type": "Func",
-                    "name": "a_function_here",
-                    "location": {
-                        "lineno": 1,
-                        "col_offset": 0,
-                        "end_lineno": None,
-                        "end_col_offset": None,
-                        "file": "test.py"
-                    },
-                    "interface": {
-                        "posonlyargs": [],
-                        "args": [
-                            "x",
-                            "y"
-                        ],
-                        "vararg": "extras",
-                        "kwonlyargs": [],
-                        "kwarg": None
-                    },
-                    "is_async": False,
-                },
-                "my_func": {
-                    "type": "Func",
-                    "name": "my_func",
-                    "location": {
-                        "lineno": 1,
-                        "col_offset": 0,
-                        "end_lineno": None,
-                        "end_col_offset": None,
-                        "file": "test.py"
-                    },
-                    "interface": {
-                        "posonlyargs": [
-                            "a",
-                            "b"
-                        ],
-                        "args": [],
-                        "vararg": None,
-                        "kwonlyargs": [],
-                        "kwarg": None
-                    },
-                    "is_async": False,
-                }
-            },
-            "function_irs": {
-                "MyClass": {
-                    "gets": [
-                        {
-                            "type": "Name",
-                            "name": "data",
-                            "basename": "data",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "kwarg_a",
-                            "basename": "kwarg_a",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "kwarg_b",
-                            "basename": "kwarg_b",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "self",
-                            "basename": "self",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "sets": [
-                        {
-                            "type": "Name",
-                            "name": "self._a",
-                            "basename": "self",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "self._b",
-                            "basename": "self",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "self.data",
-                            "basename": "self",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "dels": [],
-                    "calls": []
-                },
-                "a_function_here": {
-                    "gets": [
-                        {
-                            "type": "Name",
-                            "name": "foo",
-                            "basename": "foo",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "foo.bar.baz",
-                            "basename": "foo",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "sets": [],
-                    "dels": [],
-                    "calls": [
-                        {
-                            "type": "Call",
-                            "name": "my_func",
-                            "args": {
-                                "args": [
-                                    "foo",
-                                    "foo"
-                                ],
-                                "kwargs": {}
-                            },
-                            "target": {
-                                "type": "Func",
-                                "name": "my_func",
+                "function_irs": {
+                    "MyClass": {
+                        "gets": [
+                            {
+                                "type": "Name",
+                                "name": "data",
+                                "basename": "data",
                                 "location": {
                                     "lineno": 1,
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py"
+                                    "file": "test.py",
                                 },
-                                "interface": {
-                                    "posonlyargs": [
-                                        "a",
-                                        "b"
-                                    ],
-                                    "args": [],
-                                    "vararg": None,
-                                    "kwonlyargs": [],
-                                    "kwarg": None
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "kwarg_a",
+                                "basename": "kwarg_a",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
                                 },
-                                "is_async": False,
+                                "interface": None,
                             },
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
+                            {
+                                "type": "Name",
+                                "name": "kwarg_b",
+                                "basename": "kwarg_b",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
                             },
-                        }
-                    ]
+                            {
+                                "type": "Name",
+                                "name": "self",
+                                "basename": "self",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                        ],
+                        "sets": [
+                            {
+                                "type": "Name",
+                                "name": "self._a",
+                                "basename": "self",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "self._b",
+                                "basename": "self",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "self.data",
+                                "basename": "self",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                        ],
+                        "dels": [],
+                        "calls": [],
+                    },
+                    "a_function_here": {
+                        "gets": [
+                            {
+                                "type": "Name",
+                                "name": "foo",
+                                "basename": "foo",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "foo.bar.baz",
+                                "basename": "foo",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                        ],
+                        "sets": [],
+                        "dels": [],
+                        "calls": [
+                            {
+                                "type": "Call",
+                                "name": "my_func",
+                                "args": {"args": ["foo", "foo"], "kwargs": {}},
+                                "target": {
+                                    "type": "Func",
+                                    "name": "my_func",
+                                    "location": {
+                                        "lineno": 1,
+                                        "col_offset": 0,
+                                        "end_lineno": None,
+                                        "end_col_offset": None,
+                                        "file": "test.py",
+                                    },
+                                    "interface": {
+                                        "posonlyargs": ["a", "b"],
+                                        "args": [],
+                                        "vararg": None,
+                                        "kwonlyargs": [],
+                                        "kwarg": None,
+                                    },
+                                    "is_async": False,
+                                },
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                            }
+                        ],
+                    },
+                    "my_func": {
+                        "gets": [
+                            {
+                                "type": "Name",
+                                "name": "a",
+                                "basename": "a",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                            {
+                                "type": "Name",
+                                "name": "b.bar.baz",
+                                "basename": "b",
+                                "location": {
+                                    "lineno": 1,
+                                    "col_offset": 0,
+                                    "end_lineno": None,
+                                    "end_col_offset": None,
+                                    "file": "test.py",
+                                },
+                                "interface": None,
+                            },
+                        ],
+                        "sets": [],
+                        "dels": [],
+                        "calls": [],
+                    },
                 },
-                "my_func": {
-                    "gets": [
-                        {
-                            "type": "Name",
-                            "name": "a",
-                            "basename": "a",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        },
-                        {
-                            "type": "Name",
-                            "name": "b.bar.baz",
-                            "basename": "b",
-                            "location": {
-                                "lineno": 1,
-                                "col_offset": 0,
-                                "end_lineno": None,
-                                "end_col_offset": None,
-                                "file": "test.py"
-                            },
-                            "interface": None,
-                        }
-                    ],
-                    "sets": [],
-                    "dels": [],
-                    "calls": []
-                }
-            }
-        }
+            },
+        },
     }
-}
 
     deserialised = deserialise(serialised, type=OutputIrs)
     assert deserialised == output_irs
