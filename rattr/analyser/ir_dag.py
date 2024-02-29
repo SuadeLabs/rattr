@@ -48,32 +48,36 @@ class IrDagNode:
         (i.e. direct or indirect recursion), however these can be ignored if
         the same function is called with the same arguments -- thus eliminating
         cycles; producing a DAG.
-
         """
         if seen is None:
             seen = set()
 
         # Find children
-        for callee in self.func_ir["calls"]:
-            if callee in seen:
+        for call in self.func_ir["calls"]:
+            if call in seen:
                 continue
 
-            _foc, _foc_ir = get_callee_target(
-                callee,
+            target, target_ir = find_call_target(
+                call,
                 self.file_ir,
                 self.import_irs,
-                self.func,
+                caller=self.func,
             )
 
-            # NOTE Could not find func/init (undef'd, <str>.join(), etc)
-            if _foc is None or _foc_ir is None:
+            if target is None or target_ir is None:
                 continue
 
             self.children.append(
-                IrDagNode(callee, _foc, _foc_ir, self.file_ir, self.import_irs)
+                IrDagNode(
+                    call,
+                    target,
+                    target_ir,
+                    self.file_ir,
+                    self.import_irs,
+                )
             )
 
-            seen.add(callee)
+            seen.add(call)
 
         # Populate children
         for child in self.children:
@@ -85,16 +89,15 @@ class IrDagNode:
         """Return the IR modified to include dependent calls.
 
         NOTE
-            Assumes that the root IrDagNode has been populated via `populate`!
-
+        Assumes that the root IrDagNode has been populated via `populate`!
         """
         # Leafs are already simplified
         if len(self.children) == 0:
             return copy.deepcopy(self.func_ir)
 
-        # Simplified non-terminal nodes are the combination of themselves
-        # and their children partially unbound
-        child_irs = [(c.simplify(), c) for c in self.children]
+        # Simplified non-terminal nodes are the combination of themselves and their
+        # children partially unbound
+        child_irs = [(child.simplify(), child) for child in self.children]
 
         simplified: FunctionIr = copy.deepcopy(self.func_ir)
 
@@ -109,118 +112,118 @@ class IrDagNode:
         return simplified
 
 
-def get_callee_target(
-    callee: Call,
+def find_call_target(
+    call: Call,
     file_ir: FileIr,
     import_irs: ImportIrs,
+    *,
     caller: Func | None = None,
 ) -> tuple[None, None] | tuple[Func, FunctionIr]:
     """Return the func and IR of the called function."""
     # TODO Should this trigger a warning?
-    if callee.target is None:
+    if call.target is None:
         return None, None
 
-    if isinstance(callee.target, Builtin):
+    if isinstance(call.target, Builtin):
         return None, None
 
-    if isinstance(callee.target, Func):
-        return resolve_function(callee, file_ir, import_irs, caller)
+    if isinstance(call.target, Func):
+        return resolve_function(call, file_ir, import_irs, caller=caller)
 
     # NOTE Procedural parameter, etc, can't be resolved
-    if isinstance(callee.target, Name):
+    if isinstance(call.target, Name):
         return None, None
 
-    if isinstance(callee.target, Class):
-        return resolve_class_init(callee, file_ir, import_irs, caller)
+    if isinstance(call.target, Class):
+        return resolve_class_init(call, file_ir, import_irs)
 
-    if isinstance(callee.target, Import):
-        return resolve_import(callee.name, callee.target, import_irs, caller)
+    if isinstance(call.target, Import):
+        return resolve_import(call.target, import_irs)
 
     raise TypeError("'callee' must be a CalleeTarget")
 
 
 def resolve_function(
-    callee: Call,
+    call: Call,
     file_ir: FileIr,
     import_irs: ImportIrs,
+    *,
     caller: Func | None = None,
 ) -> tuple[None, None] | tuple[Func, FunctionIr]:
-    if callee.target is None:
+    if call.target is None:
         raise ImportError
 
-    _msg = f"{__prefix(caller)} unable to resolve call to {callee.target.name!r}"
+    error_ = f"unable to resolve call to {call.target.name!r}"
 
     if caller is not None:
-        _msg = f"{_msg} in {caller.name!r}"
+        error_ = f"{error_} in {caller.name!r}"
 
     try:
-        func, ir = __resolve_target_and_ir(callee, file_ir, import_irs)
+        func, ir = __resolve_target_and_ir(call, file_ir, import_irs)
     except ImportError:
-        if is_excluded_name(callee.target.name):
-            error.error(f"{_msg}, the call target matches an exclusion")
-        elif "." not in callee.name:
-            error.error(f"{_msg}, likely a nested function or ignored")
+        if is_excluded_name(call.target.name):
+            error.error(f"{error_}, the call target matches an exclusion", culprit=call)
+        elif "." not in call.name:
+            error.error(f"{error_}, likely a nested function or ignored", culprit=call)
         else:
-            error.info(f"{_msg}'")
+            error.info(f"{error_}'", culprit=call)
         return None, None
 
     return func, ir
 
 
 def resolve_class_init(
-    callee: Call,
+    call: Call,
     file_ir: FileIr,
     import_irs: ImportIrs,
-    caller: Func | None = None,
 ) -> tuple[None, None] | tuple[Func, FunctionIr]:
-    _where = __prefix(caller)
+    error_ = f"unable to resolve initialiser for {call.name!r}"
 
     try:
-        cls, ir = __resolve_target_and_ir(callee, file_ir, import_irs)
+        cls, ir = __resolve_target_and_ir(call, file_ir, import_irs)
     except ImportError:
-        error.error(f"{_where} unable to resolve initialiser for {callee.name!r}")
+        error.error(error_, culprit=call)
         return None, None
 
     return cls, ir
 
 
 def resolve_import(
-    name: Identifier,
     target: Import,
     import_irs: ImportIrs,
-    caller: Func | None = None,
 ) -> tuple[None, None] | tuple[Func, FunctionIr]:
     """Return the `Func` and IR for the given import."""
-    _where = __prefix(caller)
     config = Config()
+    arguments = config.arguments
 
     if target.module_name is None:
         raise ImportError
 
     module_ir = import_irs.get(target.module_name, None)
 
-    _follow_imports = config.arguments.follow_imports
-    _follow_pip_imports = config.arguments.follow_pip_imports
-    _follow_stdlib_imports = config.arguments.follow_stdlib_imports
-
     if is_blacklisted_module(target.module_name):
         return None, None
 
-    if not _follow_imports:
-        error.info(f"{_where} ignoring call to imported function {target.name!r}")
-        return None, None
-
-    if not _follow_pip_imports and is_pip_module(target.module_name):
+    if not arguments.follow_local_imports:
         error.info(
-            f"{_where} ignoring call to function {target.name!r} imported from pip "
-            f"installed module {target.module_name!r}"
+            f"ignoring call to imported function {target.name!r}",
+            culprit=target,
         )
         return None, None
 
-    if not _follow_stdlib_imports and is_stdlib_module(target.module_name):
+    if not arguments.follow_pip_imports and is_pip_module(target.module_name):
         error.info(
-            f"{_where} ignoring call to function {target.name!r} imported from stdlib "
-            f"module {target.module_name!r}"
+            f"ignoring call to function {target.name!r} imported from pip installed "
+            f"module {target.module_name!r}",
+            culprit=target,
+        )
+        return None, None
+
+    if not arguments.follow_stdlib_imports and is_stdlib_module(target.module_name):
+        error.info(
+            f"ignoring call to function {target.name!r} imported from stdlib module "
+            f"{target.module_name!r}",
+            culprit=target,
         )
         return None, None
 
@@ -230,11 +233,7 @@ def resolve_import(
     if module_ir is None:
         raise ImportError(f"Import {target.module_name!r} not found")
 
-    local_name = (
-        name.replace(target.name, target.qualified_name)
-        .replace(f"{target.module_name}.", "")
-        .removesuffix("()")
-    )
+    local_name = target.name.replace(f"{target.module_name}.", "").removesuffix("()")
     new_target = module_ir.context.get(local_name)
 
     if isinstance(new_target, (Func, Class)):
@@ -243,29 +242,31 @@ def resolve_import(
         # NOTE If the imported function is ignored then it will have no IR
         if ir is None:
             error.error(
-                f"{_where} unable to resolve imported callable {local_name!r}"
-                f" in {target.module_name!r}, it is likely ignored"
+                f"unable to resolve imported callable {local_name!r} in "
+                f"{target.module_name!r}, it is likely ignored",
+                culprit=target,
             )
             return None, None
 
         return new_target, ir
 
     if isinstance(new_target, Import):
-        return resolve_import(new_target.name, new_target, import_irs, caller)
+        return resolve_import(new_target, import_irs)
 
     # NOTE
     # When reaching here the target may be a call to a method on an imported instance
 
     if new_target is None and "." in local_name:
         error.info(
-            f"{__prefix(caller)} unable to resolve call to method "
-            f"{local_name!r} in import {target.module_name!r}"
+            f"unable to resolve call to method {local_name!r} in import "
+            f"{target.module_name!r}",
+            culprit=target,
         )
         return None, None
 
     error.error(
-        f"{__prefix(caller)} unable to resolve call to {local_name!r} in "
-        f"import {target.module_name!r}"
+        f"unable to resolve call to {local_name!r} in import {target.module_name!r}",
+        culprit=target,
     )
     return None, None
 
@@ -412,22 +413,6 @@ def construct_swap(func: Func, call: Call) -> dict[Identifier, Identifier]:
     # There could also be interface.kwonlyargs but, likewise, they could have defaults
 
     return swaps
-
-
-def __prefix(func: Func | None) -> str:
-    """HACK We no longer have `culprit` so manually construct prefix."""
-    config = Config()
-
-    if func is None:
-        return ""
-
-    file_location = func.location.defined_in
-    formatted_file_location = config.get_formatted_path(file_location)
-
-    if formatted_file_location is None:
-        return ""
-
-    return "\033[1m{}:\033[0m".format(formatted_file_location)
 
 
 def __resolve_target_and_ir(

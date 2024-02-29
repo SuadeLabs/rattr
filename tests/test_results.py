@@ -481,7 +481,7 @@ class TestResults:
         make_root_context: MakeRootContextFn,
     ):
         import_second = Import_(
-            name="chained",
+            name="second",
             qualified_name="chained.second",
             module_name_and_spec=("chained", mock.Mock()),
         )

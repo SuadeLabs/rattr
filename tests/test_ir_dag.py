@@ -9,7 +9,7 @@ import pytest
 from rattr.analyser.ir_dag import (
     IrDagNode,
     construct_swap,
-    get_callee_target,
+    find_call_target,
     partially_unbind,
     partially_unbind_name,
 )
@@ -69,19 +69,19 @@ class TestIrDag_Utils:
 
         # No callee target
         broken_call = Call(name="some_func()", args=CallArguments(), target=None)
-        assert get_callee_target(broken_call, file_ir, {}) == (None, None)
+        assert find_call_target(broken_call, file_ir, {}) == (None, None)
 
         # Callee is a builtin
         builtin = Call(name="max()", args=CallArguments(), target=Builtin("max"))
-        assert get_callee_target(builtin, file_ir, {}) == (None, None)
+        assert find_call_target(builtin, file_ir, {}) == (None, None)
 
         # Normal -- `fn_a`
         fn_a_call = Call(name="fn_a()", args=CallArguments(), target=fn_a)
-        assert get_callee_target(fn_a_call, file_ir, {}) == (fn_a, fn_a_ir)
+        assert find_call_target(fn_a_call, file_ir, {}) == (fn_a, fn_a_ir)
 
         # Normal -- `fn_b`
         fn_b_call = Call(name="fn_b()", args=CallArguments(), target=fn_b)
-        assert get_callee_target(fn_b_call, file_ir, {}) == (fn_b, fn_b_ir)
+        assert find_call_target(fn_b_call, file_ir, {}) == (fn_b, fn_b_ir)
 
         # Normal -- class initialiser
         cls_a_call = Call(
@@ -89,7 +89,7 @@ class TestIrDag_Utils:
             args=CallArguments(args=("a",)),
             target=cls_a,
         )
-        assert get_callee_target(cls_a_call, file_ir, {}) == (cls_a, cls_a_ir)
+        assert find_call_target(cls_a_call, file_ir, {}) == (cls_a, cls_a_ir)
 
         # Non-existent
         fake_call = Call(
@@ -97,7 +97,7 @@ class TestIrDag_Utils:
             args=CallArguments(),
             target=None,
         )
-        assert get_callee_target(fake_call, file_ir, {}) == (None, None)
+        assert find_call_target(fake_call, file_ir, {}) == (None, None)
 
     @pytest.mark.pypy()
     def test_get_callee_target_callee_in_stdlib(self):
@@ -136,7 +136,7 @@ class TestIrDag_Utils:
             target=Import("sin", "math.sin"),
         )
         assert stdlib.target.module_name == "math"
-        assert get_callee_target(stdlib, file_ir, {}) == (None, None)
+        assert find_call_target(stdlib, file_ir, {}) == (None, None)
 
     def test_get_callee_target_imported_function(
         self,
@@ -157,7 +157,7 @@ class TestIrDag_Utils:
             module_name_and_spec=("module", mock.Mock()),
         )
         call = Call(name="fn()", args=CallArguments(), target=import_symbol)
-        assert get_callee_target(call, {}, import_irs) == (fn, fn_ir)
+        assert find_call_target(call, {}, import_irs) == (fn, fn_ir)
 
     def test_get_callee_target_imported_function_undefined_in_module(
         self,
@@ -179,10 +179,10 @@ class TestIrDag_Utils:
             module_name_and_spec=("module", mock.Mock()),
         )
         call = Call(name="nope()", args=CallArguments(), target=import_symbol)
-        assert get_callee_target(call, {}, import_irs) == (None, None)
+        assert find_call_target(call, {}, import_irs) == (None, None)
 
         _, stderr = capfd.readouterr()
-        assert "unable to resolve call to 'nope' in import" in stderr
+        assert "unable to resolve call to 'nope' in import 'module'" in stderr
 
     def test_get_callee_target_imported_function_from_undefined_module(
         self,
@@ -204,7 +204,7 @@ class TestIrDag_Utils:
         )
         call = Call(name="nah()", args=CallArguments(), target=import_symbol)
         with pytest.raises(ImportError):
-            get_callee_target(call, {}, import_irs)
+            find_call_target(call, {}, import_irs)
 
     def test_partially_unbind_name(self):
         # On basic name
