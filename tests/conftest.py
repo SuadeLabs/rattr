@@ -32,16 +32,20 @@ from rattr.models.symbol import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
+    from typing import TypeVar
 
     from tests.shared import (
         ArgumentsFn,
         FileIrFromDictFn,
         MakeRootContextFn,
         MakeSymbolTableFn,
+        OsDependentPathFn,
         ParseFn,
         SetTestingConfigFn,
         StateFn,
     )
+
+    StrOrPath = TypeVar("StrOrPath", str, Path)
 
 
 def pytest_configure(config):
@@ -113,12 +117,12 @@ def skip_test_items_with_mark_if_not_explicitly_given(
     skip_test_items_with_mark(items, mark)
 
 
-def is_pypy():
+def is_pypy() -> bool:
     """Return `True` if running under pypy."""
     return find_spec("__pypy__") is not None
 
 
-def is_python_3_8_plus():
+def is_python_3_8_plus() -> bool:
     """Return `True` if running under Python 3.8 plus."""
     if sys.version_info.major != 3:
         raise NotImplementedError
@@ -129,13 +133,13 @@ def is_python_3_8_plus():
         return False
 
 
-def is_windows():
+def is_windows() -> bool:
     return sys.platform == "win32"
 
 
 @pytest.fixture(scope="session", autouse=True)
 @mock.patch("rattr.config._types.validate_arguments", lambda args: args)
-def _init_testing_config():
+def _init_testing_config() -> None:
     Config(
         arguments=Arguments(
             pyproject_toml_override=None,
@@ -248,20 +252,6 @@ def builtin() -> Callable[[str], Builtin]:
     return _inner
 
 
-@pytest.fixture
-def RootSymbolTable():
-    def _inner(*args: Symbol):
-        """Create a context with the Python builtins and the given symbols.
-
-        NOTE Deprecated, use make_symbol_table
-        """
-        context = compile_root_context(ast.Module(body=[]))
-        context.add(args)
-        return context.symbol_table
-
-    return _inner
-
-
 @pytest.fixture()
 def run_in_strict_mode(arguments: ArgumentsFn) -> Iterator[None]:
     with arguments(is_strict=True):
@@ -360,12 +350,12 @@ def state() -> StateFn:
 
 
 @pytest.fixture
-def config():
+def config() -> Config:
     return Config()
 
 
 @pytest.fixture
-def stdlib_modules():
+def stdlib_modules() -> set[str]:
     # Scraped from python.org
     scraped = {
         "string",
@@ -552,7 +542,7 @@ def stdlib_modules():
 
 
 @pytest.fixture
-def builtins():
+def builtins() -> set[str]:
     generated = {
         "abs",
         "all",
@@ -826,3 +816,20 @@ def stringify_nodes():
         return [ast.dump(n) for n in nodes]
 
     return _inner
+
+
+@pytest.fixture
+def os_dependent_path() -> OsDependentPathFn:
+    def _make_path_os_independent(posix_style_path: StrOrPath) -> StrOrPath:
+        if sys.platform != "win32":
+            if isinstance(posix_style_path, str):
+                return posix_style_path.replace("\\", "/")
+            else:
+                return Path(str(posix_style_path).replace("\\", "/"))
+        else:
+            if isinstance(posix_style_path, str):
+                return posix_style_path.replace("/", "\\")
+            else:
+                return Path(str(posix_style_path).replace("/", "\\"))
+
+    return _make_path_os_independent

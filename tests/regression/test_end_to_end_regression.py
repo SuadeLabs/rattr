@@ -26,6 +26,8 @@ from tests.regression.shared import (
 if TYPE_CHECKING:
     from typing import Any
 
+    from tests.shared import OsDependentPathFn
+
 
 @pytest.mark.parametrize(
     ("code_file,results_file"),
@@ -120,6 +122,7 @@ def test_update_expected_results(code_file: Path, results_file: Path):
 def test_run_e2e_regression_tests_for_ir(
     code_file: Path,
     ir_file: Path,
+    os_dependent_path: OsDependentPathFn,
 ):
     # TODO See todo in test_run_e2e_regression_tests_for_results
 
@@ -150,7 +153,7 @@ def test_run_e2e_regression_tests_for_ir(
     irs = OutputIrs(
         import_irs=import_irs,
         target_ir={
-            "filename": str(filename),
+            "filename": os_dependent_path(str(filename)),
             "ir": file_ir,
         },
     )

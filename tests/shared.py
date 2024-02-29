@@ -16,7 +16,8 @@ if TYPE_CHECKING:
     import ast
     from collections.abc import Iterable, Iterator, Mapping
     from importlib.machinery import ModuleSpec
-    from typing import Any, Protocol
+    from pathlib import Path
+    from typing import Any, Protocol, TypeVar
 
     from rattr.ast.types import Identifier
     from rattr.config import Arguments, State
@@ -70,6 +71,12 @@ if TYPE_CHECKING:
 
     class ParseFn(Protocol):
         def __call__(self, source: str) -> ast.Module:
+            ...
+
+    StrOrPath = TypeVar("StrOrPath", str, Path)
+
+    class OsDependentPathFn(Protocol):
+        def __call__(self, target: StrOrPath) -> StrOrPath:
             ...
 
 

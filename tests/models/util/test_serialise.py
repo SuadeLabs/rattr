@@ -29,7 +29,12 @@ from rattr.models.util import OutputIrs, deserialise, serialise, serialise_irs
 from tests.models.util.shared import CallInterfaceArgs
 
 if TYPE_CHECKING:
-    from tests.shared import MakeRootContextFn, MakeSymbolTableFn, ParseFn
+    from tests.shared import (
+        MakeRootContextFn,
+        MakeSymbolTableFn,
+        OsDependentPathFn,
+        ParseFn,
+    )
 
 
 @pytest.fixture
@@ -132,7 +137,7 @@ def full_file_ir() -> dict[UserDefinedCallableSymbol, FunctionIr]:
     }
 
 
-def test_name(parse: ParseFn):
+def test_name(parse: ParseFn, os_dependent_path: OsDependentPathFn):
     ast_module = parse(
         """
         def _():
@@ -155,7 +160,7 @@ def test_name(parse: ParseFn):
             "end_lineno": 2,
             "col_offset": 4,
             "end_col_offset": 5,
-            "file": "test.py",
+            "file": os_dependent_path("test.py"),
         },
         "interface": None,
     }
@@ -186,7 +191,7 @@ def test_builtin(builtin_name: str):
     assert deserialised == builtin
 
 
-def test_import(parse: ParseFn):
+def test_import(parse: ParseFn, os_dependent_path: OsDependentPathFn):
     ast_module = parse(
         """
         from math import pi
@@ -205,7 +210,7 @@ def test_import(parse: ParseFn):
             "col_offset": 0,
             "end_lineno": 1,
             "end_col_offset": 19,
-            "file": "test.py",
+            "file": os_dependent_path("test.py"),
         },
         "interface": "any",
     }
@@ -214,7 +219,7 @@ def test_import(parse: ParseFn):
     assert deserialised == import_
 
 
-def test_import_multiple(parse: ParseFn):
+def test_import_multiple(parse: ParseFn, os_dependent_path: OsDependentPathFn):
     ast_module = parse(
         """
         '''Blah.'''
@@ -238,7 +243,7 @@ def test_import_multiple(parse: ParseFn):
                 "col_offset": 0,
                 "end_lineno": 2,
                 "end_col_offset": 24,
-                "file": "test.py",
+                "file": os_dependent_path("test.py"),
             },
             "interface": "any",
         },
@@ -251,7 +256,7 @@ def test_import_multiple(parse: ParseFn):
                 "col_offset": 0,
                 "end_lineno": 2,
                 "end_col_offset": 24,
-                "file": "test.py",
+                "file": os_dependent_path("test.py"),
             },
             "interface": "any",
         },
@@ -261,7 +266,7 @@ def test_import_multiple(parse: ParseFn):
     assert deserialised == imports_
 
 
-def test_func(parse: ParseFn):
+def test_func(parse: ParseFn, os_dependent_path: OsDependentPathFn):
     ast_module = parse(
         """
         def func(a, /, b, c, *args, d = None, e = None, **kwargs):
@@ -280,7 +285,7 @@ def test_func(parse: ParseFn):
             "col_offset": 0,
             "end_lineno": 2,
             "end_col_offset": 7,
-            "file": "test.py",
+            "file": os_dependent_path("test.py"),
         },
         "interface": {
             "posonlyargs": ["a"],
@@ -296,7 +301,7 @@ def test_func(parse: ParseFn):
     assert deserialised == func
 
 
-def test_class(parse: ParseFn):
+def test_class(parse: ParseFn, os_dependent_path: OsDependentPathFn):
     ast_module = parse(
         """
         class ParentClass:
@@ -318,7 +323,7 @@ def test_class(parse: ParseFn):
             "col_offset": 0,
             "end_lineno": 5,
             "end_col_offset": 7,
-            "file": "test.py",
+            "file": os_dependent_path("test.py"),
         },
         "interface": "any",
     }
@@ -327,7 +332,7 @@ def test_class(parse: ParseFn):
     assert deserialised == cls
 
 
-def test_call(parse: ParseFn):
+def test_call(parse: ParseFn, os_dependent_path: OsDependentPathFn):
     ast_module = parse(
         """
         def some_func(a: int, b: int, **kwargs):
@@ -358,7 +363,7 @@ def test_call(parse: ParseFn):
                 "col_offset": 0,
                 "end_lineno": 2,
                 "end_col_offset": 7,
-                "file": "test.py",
+                "file": os_dependent_path("test.py"),
             },
             "interface": {
                 "posonlyargs": [],
@@ -374,7 +379,7 @@ def test_call(parse: ParseFn):
             "col_offset": 0,
             "end_lineno": None,
             "end_col_offset": None,
-            "file": "test.py",
+            "file": os_dependent_path("test.py"),
         },
     }
 
@@ -477,7 +482,7 @@ def test_call_arguments(args: tuple[str, ...], kwargs: dict[str, str]):
     assert isinstance(deserialised.kwargs, frozendict)
 
 
-def test_location():
+def test_location(os_dependent_path: OsDependentPathFn):
     location = Location(
         lineno=123,
         col_offset=50,
@@ -492,7 +497,7 @@ def test_location():
         "end_lineno": 128,
         "col_offset": 50,
         "end_col_offset": 1,
-        "file": "/path/to/the/file.py",
+        "file": os_dependent_path("/path/to/the/file.py"),
     }
 
     deserialised = deserialise(serialised, type=Location)
@@ -500,7 +505,7 @@ def test_location():
     assert isinstance(deserialised.file, Path)
 
 
-def test_location_ast_from_token():
+def test_location_ast_from_token(os_dependent_path: OsDependentPathFn):
     token = ast.parse("x = 123").body[0]
     location = Location.from_ast_token(token, file=Path("/path/to/the/file.py"))
 
@@ -510,7 +515,7 @@ def test_location_ast_from_token():
         "end_lineno": 1,
         "col_offset": 0,
         "end_col_offset": 7,
-        "file": "/path/to/the/file.py",
+        "file": os_dependent_path("/path/to/the/file.py"),
     }
 
     deserialised = deserialise(serialised, type=Location)
@@ -531,6 +536,7 @@ def test_the_empty_symbol_table(make_symbol_table: MakeSymbolTableFn):
 def test_symbol_table(
     make_symbol_table: MakeSymbolTableFn,
     symbol_group_one: list[Symbol],
+    os_dependent_path: OsDependentPathFn,
 ):
     symbol_table = make_symbol_table(symbol_group_one, include_root_symbols=False)
     assert symbol_table._symbols != {}
@@ -546,7 +552,7 @@ def test_symbol_table(
                 "col_offset": 0,
                 "end_lineno": None,
                 "end_col_offset": None,
-                "file": "test.py",
+                "file": os_dependent_path("test.py"),
             },
             "interface": None,
         },
@@ -558,7 +564,7 @@ def test_symbol_table(
                 "col_offset": 0,
                 "end_lineno": None,
                 "end_col_offset": None,
-                "file": "test.py",
+                "file": os_dependent_path("test.py"),
             },
             "interface": {
                 "posonlyargs": ["a", "b"],
@@ -578,7 +584,7 @@ def test_symbol_table(
                 "col_offset": 0,
                 "end_lineno": None,
                 "end_col_offset": None,
-                "file": "test.py",
+                "file": os_dependent_path("test.py"),
             },
             "interface": None,
         },
@@ -588,7 +594,10 @@ def test_symbol_table(
     assert deserialised == symbol_table
 
 
-def test_the_empty_context(make_root_context: MakeRootContextFn):
+def test_the_empty_context(
+    make_root_context: MakeRootContextFn,
+    os_dependent_path: OsDependentPathFn,
+):
     context = make_root_context([], include_root_symbols=False)
     assert context.symbol_table._symbols == {}
 
@@ -596,14 +605,17 @@ def test_the_empty_context(make_root_context: MakeRootContextFn):
     assert json.loads(serialised) == {
         "parent": None,
         "symbol_table": {},
-        "file": "test.py",
+        "file": os_dependent_path("test.py"),
     }
 
     deserialised = deserialise(serialised, type=Context)
     assert deserialised == context
 
 
-def test_context(simple_context_one: Context):
+def test_context(
+    simple_context_one: Context,
+    os_dependent_path: OsDependentPathFn,
+):
     assert simple_context_one.symbol_table._symbols != {}
 
     serialised = serialise(simple_context_one)
@@ -619,7 +631,7 @@ def test_context(simple_context_one: Context):
                     "col_offset": 0,
                     "end_lineno": None,
                     "end_col_offset": None,
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "interface": None,
             },
@@ -631,7 +643,7 @@ def test_context(simple_context_one: Context):
                     "col_offset": 0,
                     "end_lineno": None,
                     "end_col_offset": None,
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "interface": {
                     "posonlyargs": ["a", "b"],
@@ -651,19 +663,22 @@ def test_context(simple_context_one: Context):
                     "col_offset": 0,
                     "end_lineno": None,
                     "end_col_offset": None,
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "interface": None,
             },
         },
-        "file": "test.py",
+        "file": os_dependent_path("test.py"),
     }
 
     deserialised = deserialise(serialised, type=Context)
     assert deserialised == simple_context_one
 
 
-def test_context_with_parent(nested_context: Context):
+def test_context_with_parent(
+    nested_context: Context,
+    os_dependent_path: OsDependentPathFn,
+):
     serialised = serialise(nested_context)
     assert json.loads(serialised) == {
         "parent": {
@@ -678,7 +693,7 @@ def test_context_with_parent(nested_context: Context):
                         "col_offset": 0,
                         "end_lineno": None,
                         "end_col_offset": None,
-                        "file": "test.py",
+                        "file": os_dependent_path("test.py"),
                     },
                     "interface": None,
                 },
@@ -690,7 +705,7 @@ def test_context_with_parent(nested_context: Context):
                         "col_offset": 0,
                         "end_lineno": None,
                         "end_col_offset": None,
-                        "file": "test.py",
+                        "file": os_dependent_path("test.py"),
                     },
                     "interface": {
                         "posonlyargs": ["a", "b"],
@@ -710,12 +725,12 @@ def test_context_with_parent(nested_context: Context):
                         "col_offset": 0,
                         "end_lineno": None,
                         "end_col_offset": None,
-                        "file": "test.py",
+                        "file": os_dependent_path("test.py"),
                     },
                     "interface": None,
                 },
             },
-            "file": "test.py",
+            "file": os_dependent_path("test.py"),
         },
         "symbol_table": {
             "i.am.in.the.child.context": {
@@ -727,7 +742,7 @@ def test_context_with_parent(nested_context: Context):
                     "col_offset": 0,
                     "end_lineno": None,
                     "end_col_offset": None,
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "interface": None,
             },
@@ -739,7 +754,7 @@ def test_context_with_parent(nested_context: Context):
                     "col_offset": 0,
                     "end_lineno": None,
                     "end_col_offset": None,
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "interface": {
                     "posonlyargs": [],
@@ -751,7 +766,7 @@ def test_context_with_parent(nested_context: Context):
                 "is_async": False,
             },
         },
-        "file": "/some/other/file.py",
+        "file": os_dependent_path("/some/other/file.py"),
     }
 
     deserialised = deserialise(serialised, type=Context)
@@ -775,6 +790,7 @@ def test_the_empty_file_ir():
 def test_file_ir(
     nested_context: Context,
     full_file_ir: dict[UserDefinedCallableSymbol, FunctionIr],
+    os_dependent_path: OsDependentPathFn,
 ):
     file_ir = FileIr(context=nested_context, file_ir=full_file_ir)
 
@@ -793,7 +809,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -805,7 +821,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": {
                             "posonlyargs": ["a", "b"],
@@ -825,12 +841,12 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
                 },
-                "file": "test.py",
+                "file": os_dependent_path("test.py"),
             },
             "symbol_table": {
                 "i.am.in.the.child.context": {
@@ -842,7 +858,7 @@ def test_file_ir(
                         "col_offset": 0,
                         "end_lineno": None,
                         "end_col_offset": None,
-                        "file": "test.py",
+                        "file": os_dependent_path("test.py"),
                     },
                     "interface": None,
                 },
@@ -854,7 +870,7 @@ def test_file_ir(
                         "col_offset": 0,
                         "end_lineno": None,
                         "end_col_offset": None,
-                        "file": "test.py",
+                        "file": os_dependent_path("test.py"),
                     },
                     "interface": {
                         "posonlyargs": [],
@@ -866,7 +882,7 @@ def test_file_ir(
                     "is_async": False,
                 },
             },
-            "file": "/some/other/file.py",
+            "file": os_dependent_path("/some/other/file.py"),
         },
         "symbols": {
             "my_func": {
@@ -877,7 +893,7 @@ def test_file_ir(
                     "col_offset": 0,
                     "end_lineno": None,
                     "end_col_offset": None,
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "interface": {
                     "posonlyargs": ["a", "b"],
@@ -896,7 +912,7 @@ def test_file_ir(
                     "col_offset": 0,
                     "end_lineno": None,
                     "end_col_offset": None,
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "interface": {
                     "posonlyargs": [],
@@ -915,7 +931,7 @@ def test_file_ir(
                     "col_offset": 0,
                     "end_lineno": None,
                     "end_col_offset": None,
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "interface": {
                     "posonlyargs": [],
@@ -938,7 +954,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -951,7 +967,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -964,7 +980,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -977,7 +993,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -992,7 +1008,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -1005,7 +1021,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -1018,7 +1034,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -1037,7 +1053,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -1050,7 +1066,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -1070,7 +1086,7 @@ def test_file_ir(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py",
+                                "file": os_dependent_path("test.py"),
                             },
                             "interface": {
                                 "posonlyargs": ["a", "b"],
@@ -1086,7 +1102,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                     }
                 ],
@@ -1102,7 +1118,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -1115,7 +1131,7 @@ def test_file_ir(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": None,
                     },
@@ -1159,6 +1175,7 @@ def test_output_irs(
     nested_context: Context,
     simple_context_one: Context,
     simple_context_two: Context,
+    os_dependent_path: OsDependentPathFn,
 ):
     output_irs = OutputIrs(
         import_irs={
@@ -1247,7 +1264,7 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py",
+                                "file": os_dependent_path("test.py"),
                             },
                             "interface": None,
                         },
@@ -1259,7 +1276,7 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py",
+                                "file": os_dependent_path("test.py"),
                             },
                             "interface": {
                                 "posonlyargs": ["a", "b"],
@@ -1279,12 +1296,12 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py",
+                                "file": os_dependent_path("test.py"),
                             },
                             "interface": None,
                         },
                     },
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "symbols": {
                     "my_func": {
@@ -1295,7 +1312,7 @@ def test_output_irs(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": {
                             "posonlyargs": ["a", "b"],
@@ -1314,7 +1331,7 @@ def test_output_irs(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": {
                             "posonlyargs": ["arg"],
@@ -1338,7 +1355,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1351,7 +1368,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1364,7 +1381,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1377,7 +1394,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1392,7 +1409,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             }
@@ -1411,7 +1428,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1424,7 +1441,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1437,7 +1454,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1450,7 +1467,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1465,7 +1482,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             }
@@ -1484,7 +1501,7 @@ def test_output_irs(
                                         "col_offset": 0,
                                         "end_lineno": None,
                                         "end_col_offset": None,
-                                        "file": "test.py",
+                                        "file": os_dependent_path("test.py"),
                                     },
                                     "interface": {
                                         "posonlyargs": ["a", "b"],
@@ -1500,7 +1517,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                             }
                         ],
@@ -1520,7 +1537,7 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py",
+                                "file": os_dependent_path("test.py"),
                             },
                             "interface": None,
                         },
@@ -1532,7 +1549,7 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py",
+                                "file": os_dependent_path("test.py"),
                             },
                             "interface": {
                                 "posonlyargs": [],
@@ -1544,7 +1561,7 @@ def test_output_irs(
                             "is_async": False,
                         },
                     },
-                    "file": "test.py",
+                    "file": os_dependent_path("test.py"),
                 },
                 "symbols": {
                     "a_function_here": {
@@ -1555,7 +1572,7 @@ def test_output_irs(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": {
                             "posonlyargs": [],
@@ -1579,7 +1596,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1592,7 +1609,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1605,7 +1622,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1634,7 +1651,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1646,7 +1663,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": {
                                     "posonlyargs": ["a", "b"],
@@ -1666,12 +1683,12 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
                         },
-                        "file": "test.py",
+                        "file": os_dependent_path("test.py"),
                     },
                     "symbol_table": {
                         "i.am.in.the.child.context": {
@@ -1683,7 +1700,7 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py",
+                                "file": os_dependent_path("test.py"),
                             },
                             "interface": None,
                         },
@@ -1695,7 +1712,7 @@ def test_output_irs(
                                 "col_offset": 0,
                                 "end_lineno": None,
                                 "end_col_offset": None,
-                                "file": "test.py",
+                                "file": os_dependent_path("test.py"),
                             },
                             "interface": {
                                 "posonlyargs": [],
@@ -1707,7 +1724,7 @@ def test_output_irs(
                             "is_async": False,
                         },
                     },
-                    "file": "/some/other/file.py",
+                    "file": os_dependent_path("/some/other/file.py"),
                 },
                 "symbols": {
                     "MyClass": {
@@ -1718,7 +1735,7 @@ def test_output_irs(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": {
                             "posonlyargs": [],
@@ -1736,7 +1753,7 @@ def test_output_irs(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": {
                             "posonlyargs": [],
@@ -1755,7 +1772,7 @@ def test_output_irs(
                             "col_offset": 0,
                             "end_lineno": None,
                             "end_col_offset": None,
-                            "file": "test.py",
+                            "file": os_dependent_path("test.py"),
                         },
                         "interface": {
                             "posonlyargs": ["a", "b"],
@@ -1779,7 +1796,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1792,7 +1809,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1805,7 +1822,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1818,7 +1835,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1833,7 +1850,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1846,7 +1863,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1859,7 +1876,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1878,7 +1895,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1891,7 +1908,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1911,7 +1928,7 @@ def test_output_irs(
                                         "col_offset": 0,
                                         "end_lineno": None,
                                         "end_col_offset": None,
-                                        "file": "test.py",
+                                        "file": os_dependent_path("test.py"),
                                     },
                                     "interface": {
                                         "posonlyargs": ["a", "b"],
@@ -1927,7 +1944,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                             }
                         ],
@@ -1943,7 +1960,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
@@ -1956,7 +1973,7 @@ def test_output_irs(
                                     "col_offset": 0,
                                     "end_lineno": None,
                                     "end_col_offset": None,
-                                    "file": "test.py",
+                                    "file": os_dependent_path("test.py"),
                                 },
                                 "interface": None,
                             },
