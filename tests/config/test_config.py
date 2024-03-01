@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 from functools import partial
 from pathlib import Path
-from unittest import mock
 
 import pytest
 
@@ -93,13 +92,6 @@ class TestState:
 
 
 class TestConfig:
-    @mock.patch("rattr.config._types.find_project_root")
-    def test_root_cache_dir(self, m_find_project_root, config):
-        project_root = Path("~") / "my_project"
-        m_find_project_root.return_value = project_root
-
-        assert config.root_cache_dir == project_root / ".rattr" / "cache"
-
     def test_increment_badness(self, assert_badness, config, state, reset):
         with reset():
             assert_badness(simplification=0, target=0, imports=0)

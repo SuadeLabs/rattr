@@ -111,7 +111,7 @@ def test_update_expected_results(code_file: Path, results_file: Path):
     file_ir, import_irs, _ = parse_and_analyse_file()
     results = generate_results_from_ir(file_ir, import_irs)
 
-    results_file.write_text(serialise(results))
+    results_file.write_text(serialise(results, indent=4))
 
 
 @pytest.mark.posix

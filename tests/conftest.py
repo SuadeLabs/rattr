@@ -288,7 +288,7 @@ def run_in_strict_mode(arguments: ArgumentsFn) -> Iterator[None]:
 
 @pytest.fixture()
 def run_in_permissive_mode(arguments: ArgumentsFn) -> Iterator[None]:
-    with arguments(is_strict=True):
+    with arguments(is_strict=False):
         yield
 
 

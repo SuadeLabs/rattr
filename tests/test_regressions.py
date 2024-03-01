@@ -11,6 +11,7 @@ from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
 from rattr.models.context import compile_root_context
 from rattr.models.ir import FileIr
+from rattr.models.results import FileResults
 from rattr.models.symbol import (
     Builtin,
     Call,
@@ -26,13 +27,12 @@ from tests.shared import match_output
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-    from rattr.models.results import FileResults
     from tests.shared import ArgumentsFn, MakeRootContextFn, ParseFn, StateFn
 
 
 @pytest.fixture(autouse=True)
 def __set_current_file(state: StateFn) -> Iterator[None]:
-    with state(current_file=Path(__file__)):
+    with state(current_file=Path("target.py")):
         yield
 
 
@@ -1238,7 +1238,7 @@ class TestNamedTupleFromInheritance:
     # This previously had a fatal error at simplification.
 
     @pytest.fixture(autouse=True)
-    def __test_in_strict_mode(self, arguments) -> Iterator[None]:
+    def __test_in_strict_mode(self, arguments: ArgumentsFn) -> Iterator[None]:
         with arguments(is_strict=True):
             yield
 
@@ -1556,41 +1556,54 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
             """
         )
 
-        stdout, _ = capfd.readouterr()
-        assert helpers.stdout_matches(stdout, [])
+        _, stderr = capfd.readouterr()
+        assert helpers.stderr_matches(stderr, [])
 
         symbols = {
             "fn": Func("fn", interface=CallInterface(args=("xss",))),
         }
+        expected_file_ir = FileIr(
+            context=make_root_context(symbols.values(), include_root_symbols=True),
+            file_ir={
+                symbols["fn"]: {
+                    "gets": {
+                        Name("x.attr", "x"),
+                        Name("xss"),
+                        Name("_x"),
+                        Name("xs"),
+                        Name("_x.is_usable", "_x"),
+                        Name("x.other_attr", "x"),
+                    },
+                    "sets": {
+                        Name("xs"),
+                        Name("x"),
+                        Name("_x"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
+        expected_file_results = FileResults(
+            {
+                "fn": {
+                    "gets": {
+                        "_x",
+                        "_x.is_usable",
+                        "xs",
+                        "xss",
+                        "x.other_attr",
+                        "x.attr",
+                    },
+                    "sets": {"_x", "xs", "x"},
+                    "dels": set(),
+                    "calls": set(),
+                }
+            }
+        )
 
-        assert file_ir.context == make_root_context(symbols.values())
-        assert file_ir._file_ir == {
-            symbols["fn"]: {
-                "gets": {
-                    Name("x.attr", "x"),
-                    Name("xss"),
-                    Name("_x"),
-                    Name("xs"),
-                    Name("_x.is_usable", "_x"),
-                    Name("x.other_attr", "x"),
-                },
-                "sets": {
-                    Name("xs"),
-                    Name("x"),
-                    Name("_x"),
-                },
-                "dels": set(),
-                "calls": set(),
-            }
-        }
-        assert file_results == {
-            "fn": {
-                "gets": {"_x", "_x.is_usable", "xs", "xss", "x.other_attr", "x.attr"},
-                "sets": {"_x", "xs", "x"},
-                "dels": set(),
-                "calls": set(),
-            }
-        }
+        assert file_ir == expected_file_ir
+        assert file_results == expected_file_results
 
     def test_simple_ternary_in_generator_expression(
         self,
@@ -1606,42 +1619,48 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
             """
         )
 
-        stdout, _ = capfd.readouterr()
-        assert helpers.stdout_matches(stdout, [])
+        _, stderr = capfd.readouterr()
+        assert helpers.stderr_matches(stderr, [])
 
         symbols = {
             "fn": Func("fn", interface=CallInterface(args=("foos",))),
         }
+        expected_file_ir = FileIr(
+            context=make_root_context(symbols.values(), include_root_symbols=True),
+            file_ir={
+                symbols["fn"]: {
+                    "gets": {
+                        Name("foo.bar", "foo"),
+                        Name("foo.baz", "foo"),
+                        Name("foos"),
+                    },
+                    "sets": {
+                        Name("foo"),
+                    },
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            "any()",
+                            args=CallArguments(args=("@GeneratorExp",)),
+                            target=builtin("any"),
+                        ),
+                    },
+                }
+            },
+        )
+        expected_file_results = FileResults(
+            {
+                "fn": {
+                    "gets": {"foo.bar", "foo.baz", "foos"},
+                    "sets": {"foo"},
+                    "dels": set(),
+                    "calls": {"any()"},
+                }
+            }
+        )
 
-        assert file_ir.context == make_root_context(symbols.values())
-        assert file_ir._file_ir == {
-            symbols["fn"]: {
-                "gets": {
-                    Name("foo.bar", "foo"),
-                    Name("foo.baz", "foo"),
-                    Name("foos"),
-                },
-                "sets": {
-                    Name("foo"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        "any()",
-                        args=CallArguments(args=("@GeneratorExp",)),
-                        target=builtin("any"),
-                    ),
-                },
-            }
-        }
-        assert file_results == {
-            "fn": {
-                "gets": {"foo.bar", "foo.baz", "foos"},
-                "sets": {"foo"},
-                "dels": set(),
-                "calls": {"any()"},
-            }
-        }
+        assert file_ir == expected_file_ir
+        assert file_results == expected_file_results
 
     def test_simple_walrus_in_generator_expression(
         self,
@@ -1657,48 +1676,54 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
             """
         )
 
-        stdout, _ = capfd.readouterr()
-        assert helpers.stdout_matches(stdout, [])
+        _, stderr = capfd.readouterr()
+        assert helpers.stderr_matches(stderr, [])
 
         symbols = {
             "fn": Func("fn", interface=CallInterface(args=("foos",))),
         }
+        expected_file_ir = FileIr(
+            context=make_root_context(symbols.values(), include_root_symbols=True),
+            file_ir={
+                symbols["fn"]: {
+                    "gets": {
+                        Name("foo.bars", "foo"),
+                        Name("foos"),
+                        Name("baz"),
+                    },
+                    "sets": {
+                        Name("foo"),
+                        Name("baz"),
+                    },
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            "any",
+                            args=CallArguments(args=("@GeneratorExp",)),
+                            target=builtin("any"),
+                        ),
+                        Call(
+                            "sum",
+                            args=CallArguments(args=("baz",)),
+                            target=builtin("sum"),
+                        ),
+                    },
+                }
+            },
+        )
+        expected_file_results = FileResults(
+            {
+                "fn": {
+                    "gets": {"foo.bars", "foos", "baz"},
+                    "sets": {"foo", "baz"},
+                    "dels": set(),
+                    "calls": {"any()", "sum()"},
+                }
+            }
+        )
 
-        assert file_ir.context == make_root_context(symbols.values())
-        assert file_ir._file_ir == {
-            symbols["fn"]: {
-                "gets": {
-                    Name("foo.bars", "foo"),
-                    Name("foos"),
-                    Name("baz"),
-                },
-                "sets": {
-                    Name("foo"),
-                    Name("baz"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        "any()",
-                        args=CallArguments(args=("@GeneratorExp",)),
-                        target=builtin("any"),
-                    ),
-                    Call(
-                        "sum()",
-                        args=CallInterface(args=("baz",)),
-                        target=builtin("sum"),
-                    ),
-                },
-            }
-        }
-        assert file_results == {
-            "fn": {
-                "gets": {"foo.bars", "foos", "baz"},
-                "sets": {"foo", "baz"},
-                "dels": set(),
-                "calls": {"any()", "sum()"},
-            }
-        }
+        assert file_ir == expected_file_ir
+        assert file_results == expected_file_results
 
     def test_nested_ternary_in_generator_expression(
         self,
@@ -1714,44 +1739,50 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
             """
         )
 
-        stdout, _ = capfd.readouterr()
-        assert helpers.stdout_matches(stdout, [])
+        _, stderr = capfd.readouterr()
+        assert helpers.stderr_matches(stderr, [])
 
         symbols = {
             "fn": Func("fn", interface=CallInterface(args=("foos",))),
         }
+        expected_file_ir = FileIr(
+            context=make_root_context(symbols.values(), include_root_symbols=True),
+            file_ir={
+                symbols["fn"]: {
+                    "gets": {
+                        Name("foo.bar", "foo"),
+                        Name("foo.baz", "foo"),
+                        Name("foos"),
+                        Name("f"),
+                    },
+                    "sets": {
+                        Name("foo"),
+                        Name("f"),
+                    },
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            "any()",
+                            args=CallArguments(args=("@GeneratorExp",)),
+                            target=builtin("any"),
+                        ),
+                    },
+                }
+            },
+        )
+        expected_file_results = FileResults(
+            {
+                "fn": {
+                    "gets": {"foo.bar", "foo.baz", "foos", "f"},
+                    "sets": {"foo", "f"},
+                    "dels": set(),
+                    "calls": {"any()"},
+                }
+            }
+        )
 
-        assert file_ir.context == make_root_context(symbols.values())
-        assert file_ir._file_ir == {
-            symbols["fn"]: {
-                "gets": {
-                    Name("foo.bar", "foo"),
-                    Name("foo.baz", "foo"),
-                    Name("foos"),
-                    Name("f"),
-                },
-                "sets": {
-                    Name("foo"),
-                    Name("f"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        "any()",
-                        args=CallArguments(args=("@GeneratorExp",)),
-                        target=builtin("any"),
-                    ),
-                },
-            }
-        }
-        assert file_results == {
-            "fn": {
-                "gets": {"foo.bar", "foo.baz", "foos", "f"},
-                "sets": {"foo", "f"},
-                "dels": set(),
-                "calls": {"any()"},
-            }
-        }
+        assert file_ir == expected_file_ir
+        assert file_results == expected_file_results
 
     def test_nested_walrus_in_generator_expression(
         self,
@@ -1767,50 +1798,56 @@ class TestGeneratorAndComprehensionsAreDeeplyVisited:
             """
         )
 
-        stdout, _ = capfd.readouterr()
-        assert helpers.stdout_matches(stdout, [])
+        _, stderr = capfd.readouterr()
+        assert helpers.stderr_matches(stderr, [])
 
         symbols = {
             "fn": Func("fn", interface=CallInterface(args=("foos",))),
         }
+        expected_file_ir = FileIr(
+            context=make_root_context(symbols.values(), include_root_symbols=True),
+            file_ir={
+                symbols["fn"]: {
+                    "gets": {
+                        Name("foo.bars", "foo"),
+                        Name("foos"),
+                        Name("baz"),
+                        Name("b"),
+                    },
+                    "sets": {
+                        Name("foo"),
+                        Name("baz"),
+                        Name("b"),
+                    },
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            "any()",
+                            args=CallArguments(args=("@GeneratorExp",)),
+                            target=builtin("any"),
+                        ),
+                        Call(
+                            "sum()",
+                            args=CallArguments(args=("b",)),
+                            target=builtin("sum"),
+                        ),
+                    },
+                }
+            },
+        )
+        expected_file_results = FileResults(
+            {
+                "fn": {
+                    "gets": {"foo.bars", "foos", "baz", "b"},
+                    "sets": {"foo", "baz", "b"},
+                    "dels": set(),
+                    "calls": {"any()", "sum()"},
+                }
+            }
+        )
 
-        assert file_ir.context == make_root_context(symbols.values())
-        assert file_ir._file_ir == {
-            symbols["fn"]: {
-                "gets": {
-                    Name("foo.bars", "foo"),
-                    Name("foos"),
-                    Name("baz"),
-                    Name("b"),
-                },
-                "sets": {
-                    Name("foo"),
-                    Name("baz"),
-                    Name("b"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        "any()",
-                        args=CallArguments(args=("@GeneratorExp",)),
-                        target=builtin("any"),
-                    ),
-                    Call(
-                        "sum()",
-                        args=CallArguments(args=("b",)),
-                        target=builtin("sum"),
-                    ),
-                },
-            }
-        }
-        assert file_results == {
-            "fn": {
-                "gets": {"foo.bars", "foos", "baz", "b"},
-                "sets": {"foo", "baz", "b"},
-                "dels": set(),
-                "calls": {"any()", "sum()"},
-            }
-        }
+        assert file_ir == expected_file_ir
+        assert file_results == expected_file_results
 
 
 @pytest.mark.usefixtures("run_in_permissive_mode")
@@ -1819,7 +1856,6 @@ class TestGeneratorAndComprehensionsAreDeeplyVisitedPermissive:
         self,
         analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
         make_root_context: MakeRootContextFn,
-        builtin: Callable[[str], Builtin],
         capfd: pytest.CaptureFixture[str],
     ):
         file_ir, file_results = analyse_single_file(
@@ -1857,90 +1893,93 @@ class TestGeneratorAndComprehensionsAreDeeplyVisitedPermissive:
             """
         )
 
-        stdout, _ = capfd.readouterr()
-        assert helpers.stdout_matches(
-            stdout,
-            [
-                helpers.as_error(
-                    "unable to resolve call to 'p', likely a procedural parameter"
-                ),
-            ],
+        _, stderr = capfd.readouterr()
+        assert (
+            "unable to resolve call to 'p()', target is likely a procedural parameter"
+            in stderr
         )
 
         symbols = {
+            "callable": Import(name="Callable", qualified_name="typing.Callable"),
             "fn": Func("fn", interface=CallInterface(args=("data",))),
         }
+        expected_file_ir = FileIr(
+            context=make_root_context(symbols.values(), include_root_symbols=True),
+            file_ir={
+                symbols["fn"]: {
+                    "gets": {
+                        Name("datum.id", "datum"),
+                        Name("datum.foos", "datum"),
+                        Name("foo.is_usable", "foo"),
+                        Name("foo.id", "foo"),
+                        Name("row.bar", "row"),
+                        Name("datum.grid", "datum"),
+                        Name("col"),
+                        Name("row.bar.attr", "row"),
+                        Name("nested_s"),
+                        Name("ss"),
+                        Name("datum.ss", "datum"),
+                        Name("p"),
+                        Name("ss.predicates", "ss"),
+                        Name("Callable"),
+                        Name("s"),
+                        Name("data"),
+                    },
+                    "sets": {
+                        Name("foo"),
+                        Name("col"),
+                        Name("row"),
+                        Name("s"),
+                        Name("ss"),
+                        Name("p"),
+                        Name("nested_s"),
+                        Name("datum"),
+                    },
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            "any",
+                            args=CallArguments(args=("@GeneratorExp",)),
+                            target=Builtin("any"),
+                        ),
+                        Call("foo.as_dict", args=CallArguments(), target=None),
+                        Call(
+                            "isinstance",
+                            args=CallArguments(args=("p", "Callable")),
+                            target=Builtin("isinstance"),
+                        ),
+                        Call("p", args=CallArguments(), target=Name("p")),
+                    },
+                }
+            },
+        )
+        expected_file_results = FileResults(
+            {
+                "fn": {
+                    "gets": {
+                        "data",
+                        "s",
+                        "nested_s",
+                        "row.bar.attr",
+                        "foo.id",
+                        "Callable",
+                        "datum.ss",
+                        "datum.grid",
+                        "p",
+                        "foo.is_usable",
+                        "ss",
+                        "ss.predicates",
+                        "row.bar",
+                        "datum.id",
+                        "datum.foos",
+                        "col",
+                    },
+                    "sets": {"foo", "s", "nested_s", "datum", "row", "p", "ss", "col"},
+                    "dels": set(),
+                    "calls": {"p()", "isinstance()", "foo.as_dict()", "any()"},
+                }
+            }
+        )
 
-        assert file_ir.context == make_root_context(symbols.values())
-        assert file_ir._file_ir == {
-            symbols["fn"]: {
-                "gets": {
-                    Name("datum.id", "datum"),
-                    Name("datum.foos", "datum"),
-                    Name("foo.is_usable", "foo"),
-                    Name("foo.id", "foo"),
-                    Name("row.bar", "row"),
-                    Name("datum.grid", "datum"),
-                    Name("col"),
-                    Name("row.bar.attr", "row"),
-                    Name("nested_s"),
-                    Name("ss"),
-                    Name("datum.ss", "datum"),
-                    Name("p"),
-                    Name("ss.predicates", "ss"),
-                    Name("Callable"),
-                    Name("s"),
-                    Name("data"),
-                },
-                "sets": {
-                    Name("foo"),
-                    Name("col"),
-                    Name("row"),
-                    Name("s"),
-                    Name("ss"),
-                    Name("p"),
-                    Name("nested_s"),
-                    Name("datum"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        "any()",
-                        args=CallArguments(args=("@GeneratorExp",)),
-                        target=Builtin("any"),
-                    ),
-                    Call("p()", args=CallArguments(), target=Name("p")),
-                    Call(
-                        "isinstance()",
-                        args=CallArguments(args=("p", "Callable")),
-                        target=Builtin("isinstance"),
-                    ),
-                    Call("foo.as_dict()", args=CallArguments(), target=Name("foo")),
-                },
-            }
-        }
-        assert file_results == {
-            "fn": {
-                "gets": {
-                    "data",
-                    "s",
-                    "nested_s",
-                    "row.bar.attr",
-                    "foo.id",
-                    "Callable",
-                    "datum.ss",
-                    "datum.grid",
-                    "p",
-                    "foo.is_usable",
-                    "ss",
-                    "ss.predicates",
-                    "row.bar",
-                    "datum.id",
-                    "datum.foos",
-                    "col",
-                },
-                "sets": {"foo", "s", "nested_s", "datum", "row", "p", "ss", "col"},
-                "dels": set(),
-                "calls": {"p()", "isinstance()", "foo.as_dict()", "any()"},
-            }
-        }
+        assert file_ir == expected_file_ir
+        assert file_results == expected_file_results
