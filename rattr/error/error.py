@@ -122,39 +122,39 @@ def fatal(
 
 def get_file_and_line_info(culprit: ast.AST | Symbol | None) -> tuple[str, str]:
     """Return the formatted line and line and file info as strings."""
+    return __file_info(culprit), __line_info(culprit)
+
+
+def __file_info(culprit: ast.AST | Symbol | None) -> str:
     config = Config()
 
-    if culprit is None:
-        return "", ""
+    current_file = config.formatted_current_file_path
 
-    if isinstance(culprit, Symbol):
-        if (location := culprit.location) is not None:
-            file_info = __FILE_INFO.format(config.get_formatted_path(location.file))
-        else:
-            file_info = __file_info_from_config()
+    if isinstance(culprit, Symbol) and (location := culprit.location) is not None:
+        file = config.get_formatted_path(location.file)
+    elif current_file:
+        file = current_file
     else:
-        file_info = __file_info_from_config()
+        file = config.formatted_target_path
 
+    if file is None:
+        file = ""  # never
+
+    return __FILE_INFO.format(file)
+
+
+def __line_info(culprit: ast.AST | Symbol | None) -> str:
     if isinstance(culprit, Symbol):
         if (location := culprit.location) is not None:
             line_info = __LINE_INFO.format(location.lineno, location.col_offset)
         else:
             line_info = ""
+    elif culprit is None:
+        line_info = ""
     else:
         line_info = __LINE_INFO.format(culprit.lineno, culprit.col_offset)
 
-    return file_info, line_info
-
-
-def __file_info_from_config() -> str:
-    config = Config()
-
-    if config.formatted_current_file_path:
-        file_info = __FILE_INFO.format(config.formatted_current_file_path)
-    else:
-        file_info = ""
-
-    return file_info
+    return line_info
 
 
 def __log(
