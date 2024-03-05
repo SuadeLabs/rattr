@@ -29,6 +29,12 @@ def find_module_in_path(
     modulename: ModuleName,
 ) -> Path | None:
     """Return the module's definition file in the given path, if extant."""
+    # NOTE
+    # Handle explicitly because in PyPy the empty module will match the always present
+    # file: .../pypy3.X/__init__.py
+    if modulename == "":
+        return None
+
     module_parts = modulename.split(".")
     install_location = python_path.resolve()
 
