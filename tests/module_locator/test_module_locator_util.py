@@ -175,23 +175,24 @@ def test_find_module_spec_fast(modulename: str):
     "modulename, expected",
     testcases := [
         # stdlib
-        ("math", "built-in"),
-        ("os.path", "/usr/lib/python3.9/posixpath.py"),
+        ("sys", importlib.util.find_spec("sys").origin),
+        ("math", importlib.util.find_spec("math").origin),
+        ("os.path", importlib.util.find_spec("os.path").origin),
         # local (rattr)
-        ("rattr.ast", "/home/suade/rattr/feature/rattr/ast/__init__.py"),
-        ("rattr.ast.util", "/home/suade/rattr/feature/rattr/ast/util.py"),
+        ("rattr.ast", importlib.util.find_spec("rattr.ast").origin),
+        ("rattr.ast.util", importlib.util.find_spec("rattr.ast.util").origin),
         # pip installed
         (
             "isort",
-            "/home/suade/rattr/feature/.venv/lib/python3.9/site-packages/isort/__init__.py",
+            importlib.util.find_spec("isort").origin,
         ),
         (
             "isort.place",
-            "/home/suade/rattr/feature/.venv/lib/python3.9/site-packages/isort/place.py",
+            importlib.util.find_spec("isort.place").origin,
         ),
         (
             "attrs",
-            "/home/suade/rattr/feature/.venv/lib/python3.9/site-packages/attrs/__init__.py",
+            importlib.util.find_spec("attrs").origin,
         ),
     ],
     ids=[t[0] for t in testcases],
