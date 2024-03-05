@@ -11,7 +11,11 @@ from isort import sections
 from isort.api import place_module
 
 from rattr.config import Config
-from rattr.module_locator._locate import locate_module_in_python_path
+from rattr.module_locator._locate import (  # noqa: F401
+    find_module_in_path,
+    iter_python_path_dirs,
+    locate_module_in_python_path,
+)
 from rattr.module_locator.models import ModuleSpec
 
 if TYPE_CHECKING:
@@ -251,4 +255,3 @@ def __safe_origin(module: Identifier) -> str | None:
 
     # No backslashes, bad windows!
     return spec.origin.replace("\\", "/")
-
