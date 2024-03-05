@@ -589,7 +589,7 @@ def parse_rattr_results_from_annotation(
 def is_blacklisted_module(module: str) -> bool:
     """Return `True` if the given module matches a blacklisted pattern.
 
-    NOTE Deprecated, see rattr.ast.place.is_in_import_blacklist
+    NOTE Deprecated, see rattr.module_locator.util.is_in_import_blacklist
     """
     config = Config()
 

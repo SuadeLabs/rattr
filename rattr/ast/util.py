@@ -9,11 +9,6 @@ from rattr.ast._util import (  # noqa: F401
     is_string_literal,
     names_of,
 )
-from rattr.ast.place import (  # noqa: F401
-    is_in_import_blacklist,
-    is_in_pip,
-    is_in_stdlib,
-)
 from rattr.ast.types import AstNodeWithName
 
 if TYPE_CHECKING:

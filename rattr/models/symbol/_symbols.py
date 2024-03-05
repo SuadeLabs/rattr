@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import builtins
-from importlib.machinery import ModuleSpec
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
@@ -22,6 +21,7 @@ from rattr.models.symbol.util import (
     get_basename_from_name,
     without_call_brackets,
 )
+from rattr.module_locator.models import ModuleSpec
 from rattr.module_locator.util import find_module_name_and_spec
 
 if TYPE_CHECKING:
