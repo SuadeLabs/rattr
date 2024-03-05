@@ -24,9 +24,6 @@ def module_exists(modulename: ModuleName) -> bool:
 
 @lru_cache(maxsize=None)
 def find_module_spec_fast(modulename: ModuleName) -> ModuleSpec | None:
-    # TODO
-    # In a future branch create a custom implementation which does not execute module
-    # level statements in the target's parent files.
     try:
         return find_spec(modulename)
     except (AttributeError, ModuleNotFoundError, ValueError):
