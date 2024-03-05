@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from functools import cache
 from importlib.util import find_spec as stdlib_find_spec
 from itertools import product
@@ -47,7 +48,7 @@ def find_module_spec_fast(modulename: ModuleName) -> ModuleSpec | None:
     if not locations:
         return None
 
-    return ModuleSpec(name=modulename, origin=str(locations[0]))
+    return ModuleSpec(name=modulename, origin=format_origin_for_os(locations[0]))
 
 
 def __find_stdlib_module_spec_impl(modulename: ModuleName) -> ModuleSpec | None:
@@ -59,7 +60,25 @@ def __find_stdlib_module_spec_impl(modulename: ModuleName) -> ModuleSpec | None:
     if stdlib_spec is None:
         return None
 
-    return ModuleSpec(name=stdlib_spec.name, origin=stdlib_spec.origin)
+    return ModuleSpec(
+        name=stdlib_spec.name,
+        origin=format_origin_for_os(stdlib_spec.origin),
+    )
+
+
+def format_origin_for_os(origin: str | Path | None) -> str | None:
+    if origin is None:
+        return origin
+
+    if isinstance(origin, Path):
+        origin = str(origin)
+
+    if sys.platform != "win32":
+        return origin
+
+    # HACK
+    # Windows paths are case-insensitive so force lower case for comparisons etc
+    return origin[:2] + origin[2:].lower()
 
 
 @cache

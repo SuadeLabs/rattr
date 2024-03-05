@@ -64,7 +64,7 @@ def iter_python_path_dirs() -> Iterator[Path]:
     if not sys.path:
         raise RattrSysPathNotPopulated
 
-    # When the sys_paths[0] is the empty string then the interpreter uses the current
+    # When the sys.paths[0] is the empty string then the interpreter uses the current
     # directory (see `sys.path` docs)
     if sys.path[0] == "":
         first = os.getcwd()
