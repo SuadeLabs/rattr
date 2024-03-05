@@ -284,48 +284,48 @@ class TestGeneratorExpession:
         expected_file_ir = FileIr(
             context=make_root_context(symbols.values(), include_root_symbols=True),
             file_ir={
-            symbols["sum_attrs"]: {
-                "gets": {
-                    Name("x.a", "x"),
-                    Name("wrapper.xss", "wrapper"),
-                    Name("wrapper.xs", "wrapper"),
-                    Name("wrapper.xs_threshold", "wrapper"),
-                    Name("inner.xs", "inner"),
-                    Name("inner.x_value", "inner"),
-                    Name("inner.x_threshold", "inner"),
-                },
-                "sets": {
-                    Name("inner"),
-                    Name("x"),
-                },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        "sum()",
-                        args=CallArguments(args=("@GeneratorExp",)),
-                        target=builtin("sum"),
-                    ),
-                },
-            }
+                symbols["sum_attrs"]: {
+                    "gets": {
+                        Name("x.a", "x"),
+                        Name("wrapper.xss", "wrapper"),
+                        Name("wrapper.xs", "wrapper"),
+                        Name("wrapper.xs_threshold", "wrapper"),
+                        Name("inner.xs", "inner"),
+                        Name("inner.x_value", "inner"),
+                        Name("inner.x_threshold", "inner"),
+                    },
+                    "sets": {
+                        Name("inner"),
+                        Name("x"),
+                    },
+                    "dels": set(),
+                    "calls": {
+                        Call(
+                            "sum()",
+                            args=CallArguments(args=("@GeneratorExp",)),
+                            target=builtin("sum"),
+                        ),
+                    },
+                }
             },
         )
         expected_file_results = FileResults(
             {
-            "sum_attrs": {
-                "gets": {
-                    "inner.x_value",
-                    "inner.x_threshold",
-                    "wrapper.xs_threshold",
-                    "inner.xs",
-                    "x.a",
-                    "wrapper.xss",
-                    "wrapper.xs",
-                },
-                "sets": {"x", "inner"},
-                "dels": set(),
-                "calls": {"sum()"},
+                "sum_attrs": {
+                    "gets": {
+                        "inner.x_value",
+                        "inner.x_threshold",
+                        "wrapper.xs_threshold",
+                        "inner.xs",
+                        "x.a",
+                        "wrapper.xss",
+                        "wrapper.xs",
+                    },
+                    "sets": {"x", "inner"},
+                    "dels": set(),
+                    "calls": {"sum()"},
+                }
             }
-        }
         )
 
         assert file_ir == expected_file_ir
