@@ -15,7 +15,6 @@ from rattr.models.symbol import Import
 if TYPE_CHECKING:
     import ast
     from collections.abc import Iterable, Iterator, Mapping
-    from importlib.machinery import ModuleSpec
     from pathlib import Path
     from typing import Any, Protocol, TypeVar
 
@@ -24,6 +23,7 @@ if TYPE_CHECKING:
     from rattr.models.context import Context, SymbolTable
     from rattr.models.ir import FileIr, FunctionIr
     from rattr.models.symbol import Symbol, UserDefinedCallableSymbol
+    from rattr.module_locator.models import ModuleSpec
     from rattr.module_locator.util import ModuleName
 
     class FileIrFromDictFn(Protocol):

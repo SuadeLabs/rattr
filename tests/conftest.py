@@ -74,6 +74,7 @@ def pytest_configure(config):
         )
 
     config.addinivalue_line("markers", "windows: mark test to run only under Windows")
+    config.addinivalue_line("markers", "linux: mark test to run only under Linux")
     config.addinivalue_line("markers", "posix: mark test to run only under Posix")
 
     config.addinivalue_line(
@@ -100,6 +101,8 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
     if not is_windows():
         skip_test_items_with_mark(items, "windows")
+    if not is_linux():
+        skip_test_items_with_mark(items, "linux")
     if not is_posix():
         skip_test_items_with_mark(items, "posix")
 
@@ -155,6 +158,10 @@ def is_python_version(version: str) -> bool:
 
 def is_windows() -> bool:
     return sys.platform == "win32"
+
+
+def is_linux() -> bool:
+    return sys.platform == "linux"
 
 
 def is_posix() -> bool:
