@@ -21,6 +21,7 @@ from rattr.models.symbol import (
     Symbol,
 )
 from rattr.module_locator.models import ModuleSpec
+from rattr.module_locator.util import format_origin_for_os
 
 
 class TestAttrsDerivedProperties:
@@ -187,7 +188,10 @@ class TestImport:
         # the correctness of the latter's impl.
         stdlib_spec = find_spec(module_name)
         rattr_spec = (
-            ModuleSpec(name=stdlib_spec.name, origin=stdlib_spec.origin)
+            ModuleSpec(
+                name=stdlib_spec.name,
+                origin=format_origin_for_os(stdlib_spec.origin),
+            )
             if stdlib_spec is not None
             else None
         )

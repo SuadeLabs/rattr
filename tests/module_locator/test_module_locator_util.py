@@ -11,6 +11,7 @@ from rattr.module_locator.util import (
     derive_module_names_right,
     find_module_name_and_spec,
     find_module_spec_fast,
+    format_origin_for_os,
     is_in_import_blacklist,
     is_in_pip,
     is_in_stdlib,
@@ -126,7 +127,10 @@ def test_find_module_name_and_spec_real_world(target: str, module_name: str):
     # of the latter's impl.
     stdlib_spec = importlib.util.find_spec(module_name)
     rattr_spec = (
-        ModuleSpec(name=stdlib_spec.name, origin=stdlib_spec.origin)
+        ModuleSpec(
+            name=stdlib_spec.name,
+            origin=format_origin_for_os(stdlib_spec.origin),
+        )
         if stdlib_spec is not None
         else None
     )
@@ -162,7 +166,10 @@ def test_find_module_spec_fast(modulename: str):
         stdlib_spec = None
 
     expected = (
-        ModuleSpec(name=stdlib_spec.name, origin=stdlib_spec.origin)
+        ModuleSpec(
+            name=stdlib_spec.name,
+            origin=format_origin_for_os(stdlib_spec.origin),
+        )
         if stdlib_spec is not None
         else None
     )
