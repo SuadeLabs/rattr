@@ -1,0 +1,11 @@
+[tool.rattr]
+follow-imports=3
+exclude-imports=[
+    'a\.b\.c',
+    'a\.b.*',
+    'a\.b\.c\.e',
+    'a\.b\.c.*',
+]
+exclude=['a_.*', 'b_.*', '_.*']
+warning-level="all"
+threshold=1

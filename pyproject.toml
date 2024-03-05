@@ -4,8 +4,17 @@ line-length = 88
 
 [tool.ruff]
 line-length = 88
+target-version = "py39"
 
-# Rules
+force-exclude = true
+extend-exclude = [
+  'venv',
+  'rattr/_version.py',
+  'tests/snippets/*',
+  'tests/regression/code/**/*.py',
+]
+
+[tool.ruff.lint]
 select = [
   'E',      # pycodestyle: E
   'W',      # pycodestyle: W
@@ -15,6 +24,9 @@ select = [
   'I',      # isort: I
 ]
 ignore = [
+  'ANN101', # Missing annotation for `self`:  https://docs.astral.sh/ruff/rules/missing-type-self/
+  'ANN102', # Missing annotation for `cls`:   https://docs.astral.sh/ruff/rules/missing-type-cls/
+  'ANN401', # Annotated with `Any`: https://beta.ruff.rs/docs/rules/any-type/
   'E501',  # Line to long: https://beta.ruff.rs/docs/rules/line-too-long/
   'E741',  # Ambiguous variable name: https://beta.ruff.rs/docs/rules/ambiguous-variable-name/
   'B905',  # Zip without strict flag
@@ -26,19 +38,11 @@ ignore = [
   'N818',  # Error suffix in exception names
 ]
 
-# Files
-force-exclude = true
-extend-exclude = [
-  'venv',
-  'rattr/_version.py',
-  'tests/snippets/*',
-  'tests/regression/code/**/*.py',
-]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 required-imports = [
   "from __future__ import annotations",
 ]
@@ -53,9 +57,3 @@ section-order = [
   "first-party",
   "local-folder",
 ]
-
-
-[tool.isort]
-src_paths = ["rattr"]
-multi_line_output = 3
-include_trailing_comma = true

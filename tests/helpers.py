@@ -11,7 +11,7 @@ import pytest
 from rattr.error.error import Level
 
 if TYPE_CHECKING:
-    from typing import Final
+    from typing import Final, Literal
 
 
 ERROR_MESSAGE_TEMPLATE: Final = "{level}: {file_info}{line_info}: {message}"
@@ -118,8 +118,31 @@ def stdout_matches(
 ) -> bool:
     if isinstance(stdout, pytest.CaptureFixture):
         (stdout, _) = stdout.readouterr()
+    return output_matches(stdout, expected, output_type="stdout", silent=silent)
 
-    lines = stdout.splitlines()
+
+def stderr_matches(
+    stderr: str | pytest.CaptureFixture[str],
+    expected: list[ExpectedError],
+    *,
+    silent: bool = False,
+) -> bool:
+    if isinstance(stderr, pytest.CaptureFixture):
+        (_, stderr) = stderr.readouterr()
+    return output_matches(stderr, expected, output_type="stderr", silent=silent)
+
+
+def output_matches(
+    output: str | pytest.CaptureFixture[str],
+    expected: list[ExpectedError],
+    *,
+    output_type: Literal["stdout", "stderr"],
+    silent: bool = False,
+) -> bool:
+    if isinstance(output, pytest.CaptureFixture):
+        (output, _) = output.readouterr()
+
+    lines = output.splitlines()
 
     _has_expected_length = len(lines) == len(expected)
     _all_lines_match_expected = all(e.matches(l) for e, l in zip(expected, lines))
@@ -130,9 +153,12 @@ def stdout_matches(
     # Display expected output for debugging
     # Pytest will already display the actual captured output
     if not silent:
-        _pretty_print_output_lines("actual stdout to match:", lines)
         _pretty_print_output_lines(
-            "expected stdout as re patterns:",
+            f"actual {output_type} to match:",
+            lines,
+        )
+        _pretty_print_output_lines(
+            f"expected {output_type} as re patterns:",
             [e.as_debug_output() for e in expected],
         )
 

@@ -1,36 +1,66 @@
 """Annotations to be imported for use by Rattr analysed code."""
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING
 
-# A set of names, e.g.: "@BinOp", "x.attr", "var_one"
-Names = Set[str]
+from rattr.analyser.types import (
+    KeywordArgumentName,
+    LocalIdentifier,
+    PositionalArgumentName,
+    TargetName,
+)
+from rattr.ast.types import Identifier
 
-# LHS: positional args, RHS: named args
-CalleeArgs = Tuple[List[str], Dict[str, str]]
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import TypeVar
 
-# LHS: callee name, RHS: callee args
-Calls = List[Tuple[str, CalleeArgs]]
+    from rattr.versioning.typing import ParamSpec
+
+    P = ParamSpec("P")
+    R = TypeVar("R")
 
 
-def rattr_ignore():
-    """Do not parse the decorated function, thus omitted from the results."""
+def rattr_ignore(*optional_target: Callable[P, R]) -> Callable[P, R]:
+    """Mark the given function as ignored by rattr."""
+    if optional_target:
+        if len(optional_target) != 1:
+            raise ValueError("rattr_ignore expects exactly one target")
 
-    def _inner(f, *args, **kwargs):
-        return f
+        return optional_target[0]
+
+    def _inner(target: Callable[P, R]) -> Callable[P, R]:
+        return target
 
     return _inner
 
 
 def rattr_results(
-    gets: Optional[Names] = None,
-    sets: Optional[Names] = None,
-    dels: Optional[Names] = None,
-    calls: Optional[Calls] = None,
-):
-    """Explicitly provide results for a function which will then be ignored."""
+    *,
+    gets: set[Identifier] | None = None,
+    sets: set[Identifier] | None = None,
+    dels: set[Identifier] | None = None,
+    calls: list[
+        tuple[
+            TargetName,
+            tuple[
+                list[PositionalArgumentName],
+                dict[KeywordArgumentName, LocalIdentifier],
+            ],
+        ]
+    ]
+    | None = None,
+) -> Callable[P, R]:
+    """Explicitly provide the expected rattr results for a function.
 
-    def _inner(f, *args, **kwargs):
+    Note that when results are explicitly given rattr will take these as true and will
+    not analyse the function body in any way.
+
+    Note also that `Identifier`, `TargetName`, `PositionalArgumentName`,
+    `KeywordArgumentName`, and `LocalIdentifier` are all type aliases for `str`.
+    """
+
+    def _inner(f: Callable[P, R]) -> Callable[P, R]:
         return f
 
     return _inner

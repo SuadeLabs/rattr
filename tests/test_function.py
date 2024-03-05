@@ -1,42 +1,72 @@
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 import pytest
 
-from rattr.analyser.context import (
+from rattr.analyser.file import FileAnalyser
+from rattr.models.context import compile_root_context
+from rattr.models.ir import FileIr
+from rattr.models.symbol import (
     Builtin,
     Call,
+    CallArguments,
+    CallInterface,
     Class,
     Func,
     Name,
-    RootContext,
 )
-from rattr.analyser.file import FileAnalyser
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from tests.shared import MakeRootContextFn, ParseFn, StateFn
+
+
+@pytest.fixture(autouse=True)
+def __set_current_file(state: StateFn) -> Iterator[None]:
+    with state(current_file=Path(__file__)):
+        yield
 
 
 class TestFunctionAnalyser:
-    def test_basic_function(self, parse):
-        _ast = parse(
+    def test_basic_function(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 arg.sets_me = "value"
                 return arg.gets_me
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {Name("arg.gets_me", "arg")},
-                "sets": {Name("arg.sets_me", "arg")},
-            }
-        }
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
+        expected = FileIr(
+            context=make_root_context([a_func], include_root_symbols=True),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.gets_me", "arg")},
+                    "sets": {Name("arg.sets_me", "arg")},
+                    "dels": set(),
+                    "calls": set(),
+                }
+            },
+        )
 
         assert results == expected
 
-    def test_multiple_functions(self, parse):
-        _ast = parse(
+    def test_multiple_functions(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 arg.sets_me = "value"
@@ -45,408 +75,577 @@ class TestFunctionAnalyser:
             def another_func(arg):
                 arg.attr = "this function only sets"
                 arg.attr_two = "see!"
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {Name("arg.gets_me", "arg")},
-                "sets": {Name("arg.sets_me", "arg")},
-            },
-            Func("another_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": set(),
-                "sets": {
-                    Name("arg.attr", "arg"),
-                    Name("arg.attr_two", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        another_func = Func(name="another_func", interface=CallInterface(args=("arg",)))
+
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    a_func,
+                    another_func,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.gets_me", "arg")},
+                    "sets": {Name("arg.sets_me", "arg")},
+                    "dels": set(),
+                    "calls": set(),
+                },
+                another_func: {
+                    "gets": set(),
+                    "sets": {
+                        Name("arg.attr", "arg"),
+                        Name("arg.attr_two", "arg"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
             },
-        }
+        )
 
         assert results == expected
 
-    def test_conditional(self, parse):
-        _ast = parse(
+    def test_conditional(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 if debug:
                     return False
                 return arg.attr == "target value"
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("debug"),
-                    Name("arg.attr", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("debug"),
+                        Name("arg.attr", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-    def test_nested_conditional(self, parse):
-        _ast = parse(
+    def test_nested_conditional(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 if c1:
                     if c2:
                         return arg.foo
                 return arg.bar
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("c1"),
-                    Name("c2"),
-                    Name("arg.foo", "arg"),
-                    Name("arg.bar", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("c1"),
+                        Name("c2"),
+                        Name("arg.foo", "arg"),
+                        Name("arg.bar", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-    def test_nested_function(self, parse):
+    def test_nested_function(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
         # NOTE Does not test function following, `arg` always named such
-        _ast = parse(
+        ast_ = parse(
             """
             def a_func(arg):
                 def inner(arg):
                     return arg.foo
                 return inner(arg)
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        inner_symbol = Func("inner", ["arg"], None, None)
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": {
-                    Call("inner()", ["arg"], {}, inner_symbol),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        inner_symbol = Func(name="inner", interface=CallInterface(args=("arg",)))
+        inner_symbol_call = Call(
+            name="inner",
+            args=CallArguments(args=("arg",), kwargs={}),
+            target=inner_symbol,
+        )
+
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.foo", "arg"),
+                    },
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {inner_symbol_call},
                 },
-                "dels": set(),
-                "gets": {
-                    Name("arg"),
-                    Name("arg.foo", "arg"),
-                },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-    # def test_comprehensions(self, parse):
-    #     _ast = parse("""
+    # def test_comprehensions(self, parse: ParseFn):
+    #     ast_ = parse("""
     #         def list_comp(arg):
     #             return [a.prop for a in arg.iter]
     #     """)
-    #     results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+    #     results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
     #     expected = {
     #         Func("list_comp", ["arg"], None, None): {
-    #             "calls": set(),
-    #             "dels": set(),
     #             "gets": {
     #                 # ...
     #             },
     #             "sets": set()
+    #             "dels": set(),
+    #             "calls": set(),
     #         },
     #     }
 
     #     assert results == expected
 
-    def test_getattr(self, parse):
-        # Simple
-        _ast = parse(
+    def test_getattr_simple(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return getattr(arg, "attr")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("arg.attr", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.attr", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-        # Nested
-        _ast = parse(
+    def test_getattr_nested(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return getattr(getattr(arg, "inner"), "outer")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("arg.inner.outer", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.inner.outer", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-        # Nested
-        _ast = parse(
+    def test_getattr_nested_complex(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return getattr(getattr(arg.b[0], "inner"), "outer")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("arg.b[].inner.outer", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.b[].inner.outer", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-    def test_hasattr(self, parse):
-        # Simple
-        _ast = parse(
+    def test_hasattr_simple(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return hasattr(arg, "attr")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("arg.attr", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.attr", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-        # Nested
-        _ast = parse(
+    def test_hasattr_nested(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return hasattr(hasattr(arg, "inner"), "outer")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("arg.inner.outer", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.inner.outer", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-        # Complex
-        _ast = parse(
+    def test_hasattr_nested_complex(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return hasattr(hasattr(arg.b[0], "inner"), "outer")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": {
-                    Name("arg.b[].inner.outer", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.b[].inner.outer", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-    def test_setattr(self, parse):
-        # Simple
-        _ast = parse(
+    def test_setattr_simple(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 setattr(arg, "attr", "value")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": set(),
-                "sets": {
-                    Name("arg.attr", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": set(),
+                    "sets": {Name("arg.attr", "arg")},
+                    "dels": set(),
+                    "calls": set(),
                 },
             },
-        }
+        )
 
         assert results == expected
 
-        # Complex
-        _ast = parse(
+    def test_setattr_complex(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return setattr(arg.b[0], "attr", "value")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": set(),
-                "dels": set(),
-                "gets": set(),
-                "sets": {
-                    Name("arg.b[].attr", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": set(),
+                    "sets": {Name("arg.b[].attr", "arg")},
+                    "dels": set(),
+                    "calls": set(),
                 },
             },
-        }
+        )
 
         assert results == expected
 
-    def test_delattr(self, parse):
-        # Simple
-        _ast = parse(
+    def test_delattr_simple(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 delattr(arg, "attr")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "gets": set(),
-                "sets": set(),
-                "dels": {
-                    Name("arg.attr", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": {Name("arg.attr", "arg")},
+                    "calls": set(),
                 },
-                "calls": set(),
             },
-        }
+        )
 
         assert results == expected
 
-        # Complex
-        _ast = parse(
+    def test_delattr_complex(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return delattr(arg.b[0], "attr")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "gets": set(),
-                "sets": set(),
-                "dels": {
-                    Name("arg.b[].attr", "arg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": set(),
+                    "sets": set(),
+                    "dels": {Name("arg.b[].attr", "arg")},
+                    "calls": set(),
                 },
-                "calls": set(),
             },
-        }
+        )
 
         assert results == expected
 
-    def test_format(self, parse, constant):
-        as_func = Builtin("format", has_affect=False)
-
-        # Simple
-        _ast = parse(
+    def test_format_simple(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return format(arg, "b")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": {
-                    Call("format()", ["arg", constant("Str")], {}, target=as_func)
+        format_builtin = Builtin(name="format")
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        format_call = Call(
+            name="format()",
+            args=CallArguments(args=("arg", constant)),
+            target=format_builtin,
+        )
+
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {format_call},
                 },
-                "dels": set(),
-                "gets": {Name("arg")},
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-        # Complex
-        _ast = parse(
+    def test_format_complex(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
+        ast_ = parse(
             """
             def a_func(arg):
                 return format(getattr(arg, "attr"), "b")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        expected = {
-            Func("a_func", ["arg"], None, None): {
-                "calls": {
-                    Call("format()", ["arg.attr", constant("Str")], {}, target=as_func)
+        format_builtin = Builtin(name="format")
+        a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+        format_call = Call(
+            name="format()",
+            args=CallArguments(args=("arg.attr", constant)),
+            target=format_builtin,
+        )
+
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "gets": {Name("arg.attr", "arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {format_call},
                 },
-                "dels": set(),
-                "gets": {
-                    Name("arg.attr", "arg"),
-                },
-                "sets": set(),
             },
-        }
+        )
 
         assert results == expected
 
-    def test_lambda(self, parse, capfd):
-        # The Good
-        _ast = parse(
+    def test_lambda(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             global_lamb = lambda x: x.attr
 
@@ -455,46 +654,64 @@ class TestFunctionAnalyser:
 
             def func_two(arg):
                 return map(lambda x: x*x, [1, 2, 3])
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        global_lamb = Func("global_lamb", ["x"], None, None)
-        func_one = Func("func_one", ["arg"], None, None)
-        func_two = Func("func_two", ["arg"], None, None)
-        _map = Builtin("map", has_affect=False)
-        expected = {
-            global_lamb: {
-                "gets": {
-                    Name("x.attr", "x"),
-                },
-                "sets": set(),
-                "dels": set(),
-                "calls": set(),
-            },
-            func_one: {
-                "gets": {Name("arg")},
-                "sets": set(),
-                "dels": set(),
-                "calls": {Call("global_lamb()", ["arg"], {}, target=global_lamb)},
-            },
-            func_two: {
-                "gets": {
-                    Name("x"),
-                },
-                "sets": set(),
-                "dels": set(),
-                "calls": {
-                    Call("map()", ["@Lambda", "@List"], {}, target=_map),
-                },
-            },
-        }
+        func_one = Func(name="func_one", interface=CallInterface(args=("arg",)))
+        func_two = Func(name="func_two", interface=CallInterface(args=("arg",)))
+        global_lamb = Func(name="global_lamb", interface=CallInterface(args=("x",)))
+        global_lamb_call = Call(
+            name="global_lamb()",
+            args=CallArguments(args=("arg",)),
+            target=global_lamb,
+        )
+        map_symbol = Builtin("map")
+        map_symbol_call = Call(
+            name="map()",
+            args=CallArguments(args=("@Lambda", "@List")),
+            target=map_symbol,
+        )
 
-        print(results)
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    global_lamb,
+                    func_one,
+                    func_two,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                global_lamb: {
+                    "gets": {Name("x.attr", "x")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
+                func_one: {
+                    "gets": {Name("arg")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {global_lamb_call},
+                },
+                func_two: {
+                    "gets": {Name("x")},
+                    "sets": set(),
+                    "dels": set(),
+                    "calls": {map_symbol_call},
+                },
+            },
+        )
+
         assert results == expected
 
-    def test_class_init(self, parse, capfd):
-        _ast = parse(
+    def test_class_init(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             class ClassName:
                 def __init__(self, arg):
@@ -502,123 +719,184 @@ class TestFunctionAnalyser:
 
             def a_func(blarg):
                 thing = ClassName(blarg)
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        cls = Class("ClassName", ["self", "arg"], None, None)
-        a_func = Func("a_func", ["blarg"], None, None)
-        expected = {
-            cls: {
-                "sets": {
-                    Name("self.attr", "self"),
+        cls = Class(name="ClassName", interface=CallInterface(args=("self", "arg")))
+        cls_call = Call(
+            "ClassName()",
+            args=CallArguments(args=("thing", "blarg")),
+            target=cls,
+        )
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    cls,
+                    a_func,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                cls: {
+                    "sets": {Name("self.attr", "self")},
+                    "gets": {Name("arg")},
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "gets": {Name("arg")},
-                "dels": set(),
-                "calls": set(),
+                a_func: {
+                    "sets": {Name("thing")},
+                    "gets": {Name("blarg")},
+                    "dels": set(),
+                    "calls": {cls_call},
+                },
             },
-            a_func: {
-                "sets": {Name("thing")},
-                "gets": {Name("blarg")},
-                "dels": set(),
-                "calls": {Call("ClassName()", ["thing", "blarg"], {}, target=cls)},
-            },
-        }
+        )
 
         assert results == expected
 
-    def test_return_value(self, parse, constant):
-        # No return value
-        _ast = parse(
+    def test_return_implicit_none(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(blarg):
                 return
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
-        expected = {
-            a_func: {
-                "sets": set(),
-                "gets": set(),
-                "dels": set(),
-                "calls": set(),
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "sets": set(),
+                    "gets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
             },
-        }
+        )
 
         assert results == expected
 
-        # Literal
-        _ast = parse(
+    def test_return_literal(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(blarg):
                 return 4
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
-        expected = {
-            a_func: {
-                "sets": set(),
-                "gets": set(),
-                "dels": set(),
-                "calls": set(),
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "sets": set(),
+                    "gets": set(),
+                    "dels": set(),
+                    "calls": set(),
+                },
             },
-        }
+        )
 
         assert results == expected
 
-        # Local var
-        _ast = parse(
+    def test_return_local_variable(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(blarg):
                 return blarg.attr
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
-        expected = {
-            a_func: {
-                "sets": set(),
-                "gets": {
-                    Name("blarg.attr", "blarg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "sets": set(),
+                    "gets": {Name("blarg.attr", "blarg")},
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "dels": set(),
-                "calls": set(),
             },
-        }
+        )
 
         assert results == expected
 
-        # Tuple (w/o class)
-        _ast = parse(
+    def test_return_tuple_without_class_call(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def a_func(blarg):
                 return blarg.attr, 1, a_call(blarg.another_attr)
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
-        expected = {
-            a_func: {
-                "sets": set(),
-                "gets": {
-                    Name("blarg.attr", "blarg"),
-                    Name("blarg.another_attr", "blarg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+        a_call = Call(
+            name="a_call",
+            args=CallArguments(args=("blarg.another_attr",)),
+            target=None,
+        )
+
+        expected = FileIr(
+            context=make_root_context(
+                [a_func],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "sets": set(),
+                    "gets": {
+                        Name("blarg.attr", "blarg"),
+                        Name("blarg.another_attr", "blarg"),
+                    },
+                    "dels": set(),
+                    "calls": {a_call},
                 },
-                "dels": set(),
-                "calls": {Call("a_call()", ["blarg.another_attr"], {}, target=None)},
             },
-        }
+        )
 
         assert results == expected
 
-        # Class
-        _ast = parse(
+    def test_return_class_call(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
+        ast_ = parse(
             """
             class MyEnum(Enum):
                 first = "one"
@@ -626,38 +904,62 @@ class TestFunctionAnalyser:
 
             def a_func(blarg):
                 return MyEnum("one")
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
-        MyEnum = Class("MyEnum", ["self", "_id"], None, None)
-        expected = {
-            a_func: {
-                "sets": set(),
-                "gets": set(),
-                "dels": set(),
-                "calls": {
-                    Call(
-                        "MyEnum()", ["@ReturnValue", constant("Str")], {}, target=MyEnum
-                    ),
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+        my_enum_symbol = Class(
+            name="MyEnum",
+            interface=CallInterface(args=("self", "_id")),
+        )
+        my_enum_first = Name("MyEnum.first", "MyEnum")
+        my_enum_second = Name("MyEnum.second", "MyEnum")
+        my_enum_call = Call(
+            name="MyEnum",
+            args=CallArguments(args=("@ReturnValue", constant)),
+            target=my_enum_symbol,
+        )
+
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    a_func,
+                    my_enum_symbol,
+                    my_enum_first,
+                    my_enum_second,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "sets": set(),
+                    "gets": set(),
+                    "dels": set(),
+                    "calls": {my_enum_call},
+                },
+                my_enum_symbol: {
+                    "sets": set(),
+                    "gets": {my_enum_first, my_enum_second},
+                    "calls": set(),
+                    "dels": set(),
                 },
             },
-            MyEnum: {
-                "sets": set(),
-                "gets": {
-                    Name("MyEnum.first", "MyEnum"),
-                    Name("MyEnum.second", "MyEnum"),
-                },
-                "calls": set(),
-                "dels": set(),
-            },
-        }
+        )
 
+        assert (
+            results.context.symbol_table._symbols
+            == expected.context.symbol_table._symbols
+        )
         assert results == expected
 
-        # Tuple (w/ class)
-        _ast = parse(
+    def test_return_tuple_with_class(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        constant: str,
+    ):
+        ast_ = parse(
             """
             class MyEnum(Enum):
                 first = "one"
@@ -665,43 +967,57 @@ class TestFunctionAnalyser:
 
             def a_func(blarg):
                 return 1, MyEnum("one"), blarg.attr
-        """
+            """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("a_func", ["blarg"], None, None)
-        MyEnum = Class("MyEnum", ["self", "_id"], None, None)
-        expected = {
-            a_func: {
-                "sets": set(),
-                "gets": {
-                    Name("blarg.attr", "blarg"),
+        a_func = Func(name="a_func", interface=CallInterface(args=("blarg",)))
+        my_enum_symbol = Class(
+            name="MyEnum",
+            interface=CallInterface(args=("self", "_id")),
+        )
+        my_enum_first = Name("MyEnum.first", "MyEnum")
+        my_enum_second = Name("MyEnum.second", "MyEnum")
+        my_enum_call = Call(
+            name="MyEnum",
+            args=CallArguments(args=("@ReturnValue", constant)),
+            target=my_enum_symbol,
+        )
+
+        expected = FileIr(
+            context=make_root_context(
+                [
+                    a_func,
+                    my_enum_symbol,
+                    my_enum_first,
+                    my_enum_second,
+                ],
+                include_root_symbols=True,
+            ),
+            file_ir={
+                a_func: {
+                    "sets": set(),
+                    "gets": {Name("blarg.attr", "blarg")},
+                    "dels": set(),
+                    "calls": {my_enum_call},
                 },
-                "dels": set(),
-                "calls": {
-                    Call(
-                        "MyEnum()", ["@ReturnValue", constant("Str")], {}, target=MyEnum
-                    ),
+                my_enum_symbol: {
+                    "sets": set(),
+                    "gets": {my_enum_first, my_enum_second},
+                    "calls": set(),
+                    "dels": set(),
                 },
             },
-            MyEnum: {
-                "sets": set(),
-                "gets": {
-                    Name("MyEnum.first", "MyEnum"),
-                    Name("MyEnum.second", "MyEnum"),
-                },
-                "calls": set(),
-                "dels": set(),
-            },
-        }
+        )
 
-        print(results)
         assert results == expected
 
-    @pytest.mark.py_3_8_plus()
-    def test_walrus(self, parse):
-        # General walrus use
-        _ast = parse(
+    def test_walrus(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def fn(arg):
                 if (a := arg.attr):
@@ -710,169 +1026,200 @@ class TestFunctionAnalyser:
                     return (b := arg.another_attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
-        expected = {
-            a_func: {
-                "sets": {
-                    Name("a"),
-                    Name("b"),
+        fn = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context([fn], include_root_symbols=True),
+            file_ir={
+                fn: {
+                    "sets": {
+                        Name("a"),
+                        Name("b"),
+                    },
+                    "gets": {
+                        Name("a"),
+                        Name("arg.attr", "arg"),
+                        Name("arg.another_attr", "arg"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "gets": {
-                    Name("a"),
-                    Name("arg.attr", "arg"),
-                    Name("arg.another_attr", "arg"),
-                },
-                "dels": set(),
-                "calls": set(),
             },
-        }
+        )
 
-        print(results)
         assert results == expected
 
-        # Basic
-        _ast = parse(
+    def test_walrus_basic(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def fn(arg):
                 thing = (a, b := arg.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
-        expected = {
-            a_func: {
-                "sets": {
-                    Name("b"),
-                    Name("thing"),
+        fn = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context([fn], include_root_symbols=True),
+            file_ir={
+                fn: {
+                    "sets": {
+                        Name("b"),
+                        Name("thing"),
+                    },
+                    "gets": {
+                        Name("a"),
+                        Name("arg.attr", "arg"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "gets": {
-                    Name("a"),
-                    Name("arg.attr", "arg"),
-                },
-                "dels": set(),
-                "calls": set(),
             },
-        }
+        )
 
-        print(results)
         assert results == expected
 
-        # Multiple assignment
-        _ast = parse(
+    def test_walrus_multiple_assignment(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def fn(arg):
                 x, y = (a, b := c)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
-        expected = {
-            a_func: {
-                "sets": {
-                    Name("x"),
-                    Name("y"),
-                    Name("b"),
+        fn = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context([fn], include_root_symbols=True),
+            file_ir={
+                fn: {
+                    "sets": {
+                        Name("x"),
+                        Name("y"),
+                        Name("b"),
+                    },
+                    "gets": {
+                        Name("a"),
+                        Name("c"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "gets": {
-                    Name("a"),
-                    Name("c"),
-                },
-                "dels": set(),
-                "calls": set(),
             },
-        }
+        )
 
-        print(results)
         assert results == expected
 
-    @pytest.mark.py_3_8_plus()
-    def test_walrus_lambda(self, parse, capfd):
-        # Walrus'd Lambda
-        _ast = parse(
+    def test_walrus_lambda(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+        capfd: pytest.CaptureFixture[str],
+    ):
+        ast_ = parse(
             """
             def fn(arg):
                 other = (name := lambda *a, **k: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        output, _ = capfd.readouterr()
-        assert "unable to unbind lambdas defined in functions" in output
+        _, stderr = capfd.readouterr()
+        assert "unable to unbind lambdas defined in functions" in stderr
 
-        a_func = Func("fn", ["arg"], None, None)
-        expected = {
-            a_func: {
-                "sets": {
-                    Name("other"),
-                    Name("name"),
+        fn = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context([fn], include_root_symbols=True),
+            file_ir={
+                fn: {
+                    "sets": {
+                        Name("other"),
+                        Name("name"),
+                    },
+                    "gets": {
+                        Name("a.attr", "a"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "gets": {
-                    Name("a.attr", "a"),
-                },
-                "dels": set(),
-                "calls": set(),
             },
-        }
+        )
 
-        print(results)
         assert results == expected
 
-        # Walrus multi assign w/ lambda
-        _ast = parse(
+    def test_walrus_multiple_assign_with_lambda(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def fn(arg):
                 other = (alpha, beta := lambda *a, **k: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
-        expected = {
-            a_func: {
-                "sets": {
-                    Name("other"),
-                    Name("beta"),
+        fn = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context([fn], include_root_symbols=True),
+            file_ir={
+                fn: {
+                    "sets": {
+                        Name("other"),
+                        Name("beta"),
+                    },
+                    "gets": {
+                        Name("alpha"),
+                        Name("a.attr", "a"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "gets": {
-                    Name("alpha"),
-                    Name("a.attr", "a"),
-                },
-                "dels": set(),
-                "calls": set(),
             },
-        }
+        )
 
-        print(results)
         assert results == expected
 
-        # Walrus multi assign w/ lambda as list
-        _ast = parse(
+    def test_walrus_multiple_assign_with_lambda_as_list(
+        self,
+        parse: ParseFn,
+        make_root_context: MakeRootContextFn,
+    ):
+        ast_ = parse(
             """
             def fn(arg):
                 other = [alpha, beta := lambda *a, **k: a.attr]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(ast_, compile_root_context(ast_)).analyse()
 
-        a_func = Func("fn", ["arg"], None, None)
-        expected = {
-            a_func: {
-                "sets": {
-                    Name("other"),
-                    Name("beta"),
+        fn = Func(name="fn", interface=CallInterface(args=("arg",)))
+        expected = FileIr(
+            context=make_root_context([fn], include_root_symbols=True),
+            file_ir={
+                fn: {
+                    "sets": {
+                        Name("other"),
+                        Name("beta"),
+                    },
+                    "gets": {
+                        Name("alpha"),
+                        Name("a.attr", "a"),
+                    },
+                    "dels": set(),
+                    "calls": set(),
                 },
-                "gets": {
-                    Name("alpha"),
-                    Name("a.attr", "a"),
-                },
-                "dels": set(),
-                "calls": set(),
             },
-        }
+        )
 
-        print(results)
         assert results == expected

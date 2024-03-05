@@ -2,49 +2,88 @@ from __future__ import annotations
 
 import ast
 import sys
+from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
+from importlib.util import find_spec
 from os.path import dirname, join
 from pathlib import Path
+from textwrap import dedent
 from typing import TYPE_CHECKING
+from unittest import mock
 
 import pytest
 
-import rattr
 from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
-from rattr.analyser.context import Context, RootContext
-from rattr.analyser.context.symbol import Builtin, Call, Name, Symbol
 from rattr.analyser.file import FileAnalyser
 from rattr.analyser.results import generate_results_from_ir
-from rattr.analyser.types import FileIR, FuncOrAsyncFunc, FunctionIR
-from rattr.analyser.util import LOCAL_VALUE_PREFIX, has_affect
-from rattr.cli.parser import (
-    Cache,
-    ExcludeImports,
-    ExcludePatterns,
-    FollowImports,
-    Output,
-    ShowPath,
-    ShowWarnings,
-    StrictOrPermissive,
+from rattr.ast.types import Identifier
+from rattr.config import Arguments, Config, Output, State
+from rattr.models.context import Context, SymbolTable, compile_root_context
+from rattr.models.ir import FileIr, FunctionIr
+from rattr.models.results import FileResults
+from rattr.models.symbol import (
+    Builtin,
+    Call,
+    CallArguments,
+    Name,
+    Symbol,
+    UserDefinedCallableSymbol,
 )
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from collections.abc import Callable, Iterator, Mapping
+    from typing import Final, TypeVar
 
-    from rattr.analyser.types import FileResults
+    from tests.shared import (
+        ArgumentsFn,
+        FileIrFromDictFn,
+        MakeRootContextFn,
+        MakeSymbolTableFn,
+        OsDependentPathFn,
+        ParseFn,
+        SetTestingConfigFn,
+        StateFn,
+    )
+
+    StrOrPath = TypeVar("StrOrPath", str, Path)
+
+
+pytest_python_version_markers: Final = (
+    (3, 9),
+    (3, 10),
+    (3, 11),
+    (3, 12),
+)
+
+
+def __python_version_marker(major: int, minor: int) -> str:
+    return f"python_{major}_{minor}"
 
 
 def pytest_configure(config):
     config.addinivalue_line("addopts", "--strict-markers")
 
     config.addinivalue_line("markers", "pypy: mark test to run only under pypy")
-    config.addinivalue_line(
-        "markers", "py_3_8_plus: mark test to run only under Python 3.8+"
-    )
+    config.addinivalue_line("markers", "cpython: mark test to run only under cpython")
+
+    for major, minor in pytest_python_version_markers:
+        marker = __python_version_marker(major, minor)
+        config.addinivalue_line(
+            "markers",
+            f"{marker}: mark test to run only under Python {major}.{minor}",
+        )
+
+    config.addinivalue_line("markers", "windows: mark test to run only under Windows")
+    config.addinivalue_line("markers", "posix: mark test to run only under Posix")
+
     config.addinivalue_line(
         "markers",
         "update_expected_results: mark test that updates the expected test results for "
         "a benchmarking test, only run if the mark is explicitly given",
+    )
+    config.addinivalue_line(
+        "markers",
+        "update_expected_irs: as with update_expected_results but for irs",
     )
 
 
@@ -52,13 +91,26 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     """Alter the collected tests."""
     if not is_pypy():
         skip_test_items_with_mark(items, "pypy")
+    if not is_cpython():
+        skip_test_items_with_mark(items, "cpython")
 
-    if not is_python_3_8_plus():
-        skip_test_items_with_mark(items, "py_3_8_plus")
+    for major, minor in pytest_python_version_markers:
+        if not is_python_version(f"{major}.{minor}"):
+            skip_test_items_with_mark(items, __python_version_marker(major, minor))
+
+    if not is_windows():
+        skip_test_items_with_mark(items, "windows")
+    if not is_posix():
+        skip_test_items_with_mark(items, "posix")
 
     skip_test_items_with_mark_if_not_explicitly_given(
         items,
         "update_expected_results",
+        config=config,
+    )
+    skip_test_items_with_mark_if_not_explicitly_given(
+        items,
+        "update_expected_irs",
         config=config,
     )
 
@@ -89,65 +141,99 @@ def skip_test_items_with_mark_if_not_explicitly_given(
     skip_test_items_with_mark(items, mark)
 
 
-def is_pypy():
-    """Return `True` if running under pypy."""
-    try:
-        import __pypy__  # noqa: F401
+def is_pypy() -> bool:
+    return find_spec("__pypy__") is not None
 
+
+def is_cpython() -> bool:
+    return not is_pypy()
+
+
+def is_python_version(version: str) -> bool:
+    return version == f"{sys.version_info.major}.{sys.version_info.minor}"
+
+
+def is_windows() -> bool:
+    return sys.platform == "win32"
+
+
+def is_posix() -> bool:
+    if sys.platform == "linux":
         return True
-    except ModuleNotFoundError:
-        return False
-
-
-def is_python_3_8_plus():
-    """Return `True` if running under Python 3.8 plus."""
-    if sys.version_info.major != 3:
-        raise NotImplementedError
-
-    if sys.version_info.minor >= 8:
+    if sys.platform == "darwin":
         return True
-    else:
-        return False
+    return False
+
+
+@pytest.fixture(scope="session", autouse=True)
+@mock.patch("rattr.config._types.validate_arguments", lambda args: args)
+def _init_testing_config() -> None:
+    Config(
+        arguments=Arguments(
+            pyproject_toml_override=None,
+            _follow_imports_level=1,
+            _excluded_imports=set(),
+            _excluded_names=set(),
+            _warning_level="default",
+            collapse_home=True,
+            truncate_deep_paths=True,
+            is_strict=False,
+            threshold=0,
+            stdout=Output.results,
+            target=Path("target.py"),
+        ),
+        state=State(),
+    )
+
+
+@pytest.fixture(scope="function")
+@mock.patch("rattr.config._types.validate_arguments", lambda args: args)
+def set_testing_config() -> SetTestingConfigFn:
+    def _set_testing_config(arguments: Arguments, state: State = None) -> None:
+        Config(arguments=arguments, state=state or State())
+
+    return _set_testing_config
+
+
+def _nth_line_is_empty(lines: list[str], *, n: int) -> bool:
+    return lines and (lines[n] == "" or lines[n].isspace())
 
 
 @pytest.fixture
-def parse():
-    def _inner(source: str) -> ast.AST:
+def parse() -> ParseFn:
+    def _inner(source: str) -> ast.Module:
         """Return the parsed AST for the given code, use relative indentation.
 
-        Assume usage is:
-            parse('''
+        Assumed usage is:
+            parse(
+                '''
                 <source code>       # first line sets the base indent
                 <source code>
                     <source code>   # this is indented once (relative)
                 <source code>
-            ''')
+                '''
+            )
 
-        Require the opening and closing blank lines.
         """
-        lines = list()
-        source_lines = source.splitlines()[1:-1]
+        lines = source.splitlines()
 
-        if not len(source_lines):
-            raise ValueError("Incorrect source code formatting")
+        # Skip the first and last line if empty, this is because in the usage such as:
+        # parse(
+        #   """
+        #   ...
+        #   """
+        # )
+        # the first and last line (specifically the first) will have a different
+        # indentation level, which will throw off `dedent(...)`.
+        if _nth_line_is_empty(lines, n=0):
+            lines = lines[1:]
+        if _nth_line_is_empty(lines, n=-1):
+            lines = lines[:-1]
 
-        # Determine whitespace from first line
-        indent = str()
-        for c in source_lines[0]:
-            if not c.isspace():
-                break
-            indent += c
+        if not len(lines):
+            raise ValueError("parse(...) expects a non-empty, non-whitespace string")
 
-        # Strip whitespace from all lines
-        for line in source_lines:
-            if line.startswith(indent):
-                lines.append(line[len(indent) :])
-            elif line == "":
-                lines.append(line)
-            else:
-                raise SyntaxError("Incorrect indentation in test code")
-
-        return ast.parse("\n".join(lines))
+        return ast.parse(dedent("\n".join(lines)))
 
     return _inner
 
@@ -155,15 +241,17 @@ def parse():
 @pytest.fixture
 def parse_with_context(parse: Callable[[str], ast.AST]):
     def _inner(source: str) -> tuple[ast.AST, Context]:
-        _ast = parse(source)
-        _ctx = RootContext(_ast)
-        return _ast, _ctx
+        ast_module = parse(source)
+        context = compile_root_context(ast_module)
+        return ast_module, context
 
     return _inner
 
 
 @pytest.fixture
-def analyse_single_file(parse_with_context: Callable[[str], tuple[ast.AST, Context]]) -> Callable[[str], tuple[FileIR, FileResults]]:
+def analyse_single_file(
+    parse_with_context: Callable[[str], tuple[ast.AST, Context]],
+) -> Callable[[str], tuple[FileIr, FileResults]]:
     """Parse and analyse the source as though it were a single file.
 
     NOTE
@@ -171,9 +259,10 @@ def analyse_single_file(parse_with_context: Callable[[str], tuple[ast.AST, Conte
         wait for the new config code to be merged s.t. we can mock the config easier and
         call the functions used in __main__.py more directly.
     """
+
     def _inner(source: str) -> tuple[ast.AST, Context]:
-        _ast, _ctx = parse_with_context(source)
-        file_ir = FileAnalyser(_ast, _ctx).analyse()
+        ast_module, context = parse_with_context(source)
+        file_ir = FileAnalyser(ast_module, context).analyse()
         file_results = generate_results_from_ir(file_ir, {})
 
         return file_ir, file_results
@@ -182,72 +271,119 @@ def analyse_single_file(parse_with_context: Callable[[str], tuple[ast.AST, Conte
 
 
 @pytest.fixture
-def root_context_with() -> Callable[[list[Symbol]], Context]:
-    def _inner(extra: list[Symbol]) -> Context:
-        context = RootContext(ast.Module(body=[]))
-        context.add_all(extra)
+def builtin() -> Callable[[str], Builtin]:
+    # TODO This is no longer useful, refactor to remove it
+
+    def _inner(name: str) -> Builtin:
+        return Builtin(name)
+
+    return _inner
+
+
+@pytest.fixture()
+def run_in_strict_mode(arguments: ArgumentsFn) -> Iterator[None]:
+    with arguments(is_strict=True):
+        yield
+
+
+@pytest.fixture()
+def run_in_permissive_mode(arguments: ArgumentsFn) -> Iterator[None]:
+    with arguments(is_strict=False):
+        yield
+
+
+@pytest.fixture
+def make_symbol_table(make_root_context: MakeRootContextFn) -> MakeSymbolTableFn:
+    def _make_symbol_table(
+        symbols: Mapping[Identifier, Symbol] | Iterable[Symbol] = (),
+        *,
+        include_root_symbols: bool = False,
+    ) -> SymbolTable:
+        context = make_root_context(symbols, include_root_symbols=include_root_symbols)
+        return context.symbol_table
+
+    return _make_symbol_table
+
+
+@pytest.fixture
+def make_root_context() -> MakeRootContextFn:
+    def _make_root_context(
+        symbols: Mapping[Identifier, Symbol] | Iterable[Symbol] = (),
+        *,
+        include_root_symbols: bool = False,
+    ) -> SymbolTable:
+        if include_root_symbols:
+            context = compile_root_context(ast.Module(body=[]))
+        else:
+            context = Context(parent=None)
+
+        if isinstance(symbols, Mapping):
+            context.symbol_table._symbols = symbols
+        elif isinstance(symbols, Iterable):
+            context.add(symbols)
+        else:
+            raise TypeError
+
         return context
 
-    return _inner
+    return _make_root_context
 
 
 @pytest.fixture
-def builtin() -> Callable[[str], Builtin]:
-    def _inner(name: str) -> Builtin:
-        return Builtin(name, has_affect=has_affect(name))
-
-    return _inner
-
-
-@pytest.fixture
-def RootSymbolTable():
-    def _inner(*args):
-        """Create a root context with the addition of the **kwargs."""
-        symtab = RootContext(ast.Module(body=[])).symbol_table
-
-        for s in args:
-            symtab.add(s)
-
-        return symtab
-
-    return _inner
-
-
-@pytest.fixture(scope="function", autouse=True)
-def _set_current_file(config) -> None:
-    with config("current_file", "_in_test.py"):
-        yield
-
-
-@pytest.fixture()
-def run_in_strict_mode(config) -> None:
-    with config("strict", True):
-        yield
-
-
-@pytest.fixture()
-def run_in_permissive_mode(config) -> None:
-    with config("strict", False):
-        yield
-
-
-@pytest.fixture
-def config():
+def arguments() -> ArgumentsFn:
     @contextmanager
-    def _inner(attr, value):
-        if not hasattr(rattr.config, attr):
-            raise AttributeError
+    def _inner(**kwargs):
+        arguments = Config().arguments
 
-        _previous = getattr(rattr.config, attr)
-        setattr(rattr.config, attr, value)
+        _missing_attrs = {
+            attr for attr in kwargs.keys() if not hasattr(arguments, attr)
+        }
+        if _missing_attrs:
+            raise AttributeError(_missing_attrs)
+
+        previous = {attr: getattr(arguments, attr) for attr in kwargs.keys()}
+
+        for attr, value in kwargs.items():
+            setattr(arguments, attr, value)
+
         yield
-        setattr(rattr.config, attr, _previous)
+
+        for attr, value in previous.items():
+            setattr(arguments, attr, value)
 
     return _inner
 
 
 @pytest.fixture
-def stdlib_modules():
+def state() -> StateFn:
+    @contextmanager
+    def _inner(**kwargs):
+        state = Config().state
+
+        _missing_attrs = {attr for attr in kwargs.keys() if not hasattr(state, attr)}
+        if _missing_attrs:
+            raise AttributeError(_missing_attrs)
+
+        previous = {attr: getattr(state, attr) for attr in kwargs.keys()}
+
+        for attr, value in kwargs.items():
+            setattr(state, attr, value)
+
+        yield
+
+        for attr, value in previous.items():
+            setattr(state, attr, value)
+
+    return _inner
+
+
+@pytest.fixture
+def config() -> Config:
+    return Config()
+
+
+@pytest.fixture
+def stdlib_modules() -> set[str]:
     # Scraped from python.org
     scraped = {
         "string",
@@ -329,7 +465,6 @@ def stdlib_modules():
         "queue",
         "_thread",
         "asyncio",
-        "asyncio",
         "socket",
         "ssl",
         "select",
@@ -391,7 +526,6 @@ def stdlib_modules():
         "timeit",
         "trace",
         "tracemalloc",
-        "distutils",
         "venv",
         "zipapp",
         "sys",
@@ -400,7 +534,6 @@ def stdlib_modules():
         "warnings",
         "dataclasses",
         "contextlib",
-        "abc",
         "atexit",
         "traceback",
         "gc",
@@ -437,7 +570,7 @@ def stdlib_modules():
 
 
 @pytest.fixture
-def builtins():
+def builtins() -> set[str]:
     generated = {
         "abs",
         "all",
@@ -524,17 +657,12 @@ def snippet():
 
 
 @pytest.fixture
-def file_ir_from_dict():
-    def _inner(ir):
-        # Make quasi-context
-        ctx = Context(None)
-        ctx.add_all(ir.keys())
-
-        # Create FileIR
-        file_ir = FileIR(ctx)
-        file_ir._file_ir = ir
-
-        return file_ir
+def file_ir_from_dict(make_root_context: MakeRootContextFn) -> FileIrFromDictFn:
+    def _inner(ir: Mapping[UserDefinedCallableSymbol, FunctionIr]) -> FileIr:
+        return FileIr(
+            context=make_root_context(ir.keys(), include_root_symbols=False),
+            file_ir=ir,
+        )
 
     return _inner
 
@@ -548,35 +676,48 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "print"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return {
             "sets": {
-                Name("set_in_print_def"),
+                Name(name="set_in_print_def"),
             },
             "gets": {
-                Name("get_in_print_def"),
+                Name(name="get_in_print_def"),
             },
             "dels": {
-                Name("del_in_print_def"),
+                Name(name="del_in_print_def"),
             },
             "calls": {
-                Call("call_in_print_def", [], {}, None),
+                Call(
+                    name="call_in_print_def",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": {
-                Name("set_in_print"),
+                Name(name="set_in_print"),
             },
             "gets": {
-                Name("get_in_print"),
+                Name(name="get_in_print"),
             },
             "dels": {
-                Name("del_in_print"),
+                Name(name="del_in_print"),
             },
             "calls": {
-                Call("call_in_print", [], {}, None),
+                Call(
+                    name="call_in_print",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
@@ -595,35 +736,48 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "module.example"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return {
             "sets": {
-                Name("set_in_example_def"),
+                Name(name="set_in_example_def"),
             },
             "gets": {
-                Name("get_in_example_def"),
+                Name(name="get_in_example_def"),
             },
             "dels": {
-                Name("del_in_example_def"),
+                Name(name="del_in_example_def"),
             },
             "calls": {
-                Call("call_in_example_def", [], {}, None),
+                Call(
+                    name="call_in_example_def",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
             "sets": {
-                Name("set_in_example"),
+                Name(name="set_in_example"),
             },
             "gets": {
-                Name("get_in_example"),
+                Name(name="get_in_example"),
             },
             "dels": {
-                Name("del_in_example"),
+                Name(name="del_in_example"),
             },
             "calls": {
-                Call("call_in_example", [], {}, None),
+                Call(
+                    name="call_in_example",
+                    args=CallArguments(args=(), kwargs={}),
+                    target=None,
+                ),
             },
         }
 
@@ -641,323 +795,30 @@ def handler():
 
 
 @pytest.fixture
-def constant():
-    """Return the version specific name for a constant of the given type.
+def constant() -> str:
+    config = Config()
 
-    In Python <= 3.7, constants are named as such "@Str", "@Num", etc.
+    _prefix = config.LITERAL_VALUE_PREFIX
+    _constant = ast.Constant.__name__
 
-    In Python >= 3.8, constants are all named "@Constant".
+    return f"{_prefix}{_constant}"
 
-    """
 
-    def _inner(node_type: str):
-        if sys.version_info.major != 3:
-            raise AssertionError
+@pytest.fixture
+def literal():
+    config = Config()
 
-        if sys.version_info.minor <= 7:
-            return f"{LOCAL_VALUE_PREFIX}{node_type}"
+    _prefix = config.LITERAL_VALUE_PREFIX
+
+    def _inner(node: ast.AST | type[ast.AST]) -> str:
+        if isinstance(node, ast.AST):
+            cls = node.__class__
         else:
-            return f"{LOCAL_VALUE_PREFIX}Constant"
+            cls = node
+
+        return f"{_prefix}{cls.__name__}"
 
     return _inner
-
-
-@pytest.fixture
-def illegal_field_name():
-    return "illegal-field"
-
-
-@pytest.fixture
-def toml_dict_with_illegal_fields():
-    return {
-        FollowImports.ARG_LONG_NAME: 3,
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.b\\.c",
-            "a\\.b.*",
-            "a\\.b\\.c\\.e",
-            "a\\.b\\.c.*",
-        ],
-        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
-        ShowWarnings.ARG_LONG_NAME: "all",
-        illegal_field_name: "full",  # bad field name
-        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
-        Output.SHOW_IR_ARG_LONG_NAME: True,
-        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
-        Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "cache.json",
-    }
-
-
-@pytest.fixture
-def toml_dict_with_bad_field_types_and_error1():
-    return {
-        FollowImports.ARG_LONG_NAME: "abcd",  # bad field type
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.b\\.c",
-            "a\\.b.*",
-            "a\\.b\\.c\\.e",
-            "a\\.b\\.c.*",
-        ],
-        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
-        ShowWarnings.ARG_LONG_NAME: "all",
-        ShowPath.ARG_LONG_NAME: "full",
-        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
-        Output.SHOW_IR_ARG_LONG_NAME: True,
-        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
-        Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
-    }, (
-        f"Error parsing pyproject.toml. Arg: '{FollowImports.ARG_LONG_NAME}' "
-        f"is of wrong type: 'str'. Expected type: "
-        f"'{FollowImports.TOML_ARG_NAME_ARG_TYPE_MAP[FollowImports.ARG_LONG_NAME].__name__}'."  # noqa: E501
-    )
-
-
-@pytest.fixture
-def toml_dict_with_bad_field_types_and_error2():
-    return {
-        FollowImports.ARG_LONG_NAME: 3,
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.b\\.c",
-            "a\\.b.*",
-            "a\\.b\\.c\\.e",
-            "a\\.b\\.c.*",
-        ],
-        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
-        ShowWarnings.ARG_LONG_NAME: "all",
-        ShowPath.ARG_LONG_NAME: "full",
-        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
-        Output.SHOW_IR_ARG_LONG_NAME: 4,  # bad field type
-        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
-        Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
-    }, (
-        f"Error parsing pyproject.toml. Arg: '{Output.SHOW_IR_ARG_LONG_NAME}' "
-        f"is of wrong type: 'int'. Expected type: "
-        f"'{Output.TOML_ARG_NAME_ARG_TYPE_MAP[Output.SHOW_IR_ARG_LONG_NAME].__name__}'."
-    )
-
-
-@pytest.fixture
-def toml_dict_with_bad_field_types_and_error3():
-    return {
-        FollowImports.ARG_LONG_NAME: 3,
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.b\\.c",
-            "a\\.b.*",
-            "a\\.b\\.c\\.e",
-            "a\\.b\\.c.*",
-        ],
-        ExcludePatterns.ARG_LONG_NAME: True,  # bad field type
-        ShowWarnings.ARG_LONG_NAME: "all",
-        ShowPath.ARG_LONG_NAME: "full",
-        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
-        Output.SHOW_IR_ARG_LONG_NAME: True,
-        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
-        Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "rattr/cli/parser.py",
-    }, (
-        f"Error parsing pyproject.toml. Arg: '{ExcludePatterns.ARG_LONG_NAME}' "
-        f"is of wrong type: 'bool'. Expected type: "
-        f"'{ExcludePatterns.TOML_ARG_NAME_ARG_TYPE_MAP[ExcludePatterns.ARG_LONG_NAME].__name__}'."  # noqa: E501
-    )
-
-
-@pytest.fixture
-def toml_dicts_with_bad_field_types_and_errors(
-    toml_dict_with_bad_field_types_and_error1,
-    toml_dict_with_bad_field_types_and_error2,
-    toml_dict_with_bad_field_types_and_error3,
-):
-    return [
-        toml_dict_with_bad_field_types_and_error1,
-        toml_dict_with_bad_field_types_and_error2,
-        toml_dict_with_bad_field_types_and_error3,
-    ]
-
-
-@pytest.fixture
-def toml_dict_with_mutex_arg_violation_and_error1():
-    return {
-        FollowImports.ARG_LONG_NAME: 3,
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.b\\.c",
-            "a\\.b.*",
-            "a\\.b\\.c\\.e",
-            "a\\.b\\.c.*",
-        ],
-        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
-        ShowWarnings.ARG_LONG_NAME: "all",
-        ShowPath.ARG_LONG_NAME: "full",
-        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
-        Output.SHOW_IR_ARG_LONG_NAME: True,  # mutex violation
-        Output.SILENT_ARG_LONG_NAME: True,  # mutex violation
-        Cache.ARG_LONG_NAME: "cache.json",
-    }, (
-        f"-irs "
-        f"('--{Output.SHOW_IR_ARG_LONG_NAME}', "
-        f"'--{Output.SHOW_RESULTS_ARG_LONG_NAME}', "
-        f"'--{Output.SHOW_STATS_ARG_LONG_NAME}') "
-        f"and -S ('--{Output.SILENT_ARG_LONG_NAME}') are mutually exclusive"
-    )
-
-
-@pytest.fixture
-def toml_dict_with_mutex_arg_violation_and_error2():
-    return {
-        FollowImports.ARG_LONG_NAME: 3,
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.b\\.c",
-            "a\\.b.*",
-            "a\\.b\\.c\\.e",
-            "a\\.b\\.c.*",
-        ],
-        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "_.*"],
-        ShowWarnings.ARG_LONG_NAME: "all",
-        ShowPath.ARG_LONG_NAME: "full",
-        StrictOrPermissive.STRICT_ARG_LONG_NAME: True,  # mutex violation
-        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,  # mutex violation
-        Output.SHOW_IR_ARG_LONG_NAME: True,
-        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
-        Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "cache.json",
-    }, (
-        f"argument --{StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME}: not allowed "
-        f"with argument --{StrictOrPermissive.STRICT_ARG_LONG_NAME}"
-    )
-
-
-@pytest.fixture
-def toml_dicts_with_mutex_arg_violation_and_errors(
-    toml_dict_with_mutex_arg_violation_and_error1,
-    toml_dict_with_mutex_arg_violation_and_error2,
-):
-    return [
-        toml_dict_with_mutex_arg_violation_and_error1,
-        toml_dict_with_mutex_arg_violation_and_error2,
-    ]
-
-
-@pytest.fixture
-def correct_toml_dict1():
-    return {
-        FollowImports.ARG_LONG_NAME: 3,
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.a\\.a",
-            "b\\.b.*",
-            "c\\.c\\.c\\.c",
-            "d\\d\\.d.*",
-        ],
-        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "c_.*"],
-        ShowWarnings.ARG_LONG_NAME: "all",
-        StrictOrPermissive.STRICT_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "cache.json",
-    }
-
-
-@pytest.fixture
-def correct_toml_dict2():
-    return {
-        FollowImports.ARG_LONG_NAME: 3,
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.a\\.a",
-            "b\\.b.*",
-            "c\\.c\\.c\\.c",
-            "d\\d\\.d.*",
-        ],
-        ExcludePatterns.ARG_LONG_NAME: ["a_.*", "b_.*", "c_.*"],
-        ShowWarnings.ARG_LONG_NAME: "all",
-        ShowPath.ARG_LONG_NAME: "full",
-        StrictOrPermissive.PERMISSIVE_ARG_LONG_NAME: 1,
-        Cache.ARG_LONG_NAME: "cache.json",
-    }
-
-
-@pytest.fixture
-def correct_toml_dict3():
-    return {
-        FollowImports.ARG_LONG_NAME: 1,
-        ExcludeImports.ARG_LONG_NAME: [
-            "a\\.b\\.c",
-            "a\\.b.*",
-            "a\\.b\\.c\\.e",
-            "a\\.b\\.c.*",
-        ],
-        ShowWarnings.ARG_LONG_NAME: "all",
-        ShowPath.ARG_LONG_NAME: "full",
-        StrictOrPermissive.STRICT_ARG_LONG_NAME: True,
-        Output.SHOW_IR_ARG_LONG_NAME: True,
-        Output.SHOW_RESULTS_ARG_LONG_NAME: True,
-        Output.SHOW_STATS_ARG_LONG_NAME: True,
-        Cache.ARG_LONG_NAME: "cache.json",
-    }
-
-
-@pytest.fixture
-def sys_args1():
-    return [
-        "rattr",
-        "rattr/cli/parser.py",
-    ]
-
-
-@pytest.fixture
-def sys_args2():
-    return [
-        "rattr",
-        "--follow-imports",
-        "2",
-        "--strict",
-        "-w",
-        "file",
-        "rattr/cli/argparse.py",
-        "-p",
-        "short",
-    ]
-
-
-@pytest.fixture
-def sys_args3():
-    return [
-        "rattr",
-        "--follow-imports",
-        "2",
-        "--strict",
-        "-w",
-        "file",
-        "rattr/cli/argparse.py",
-        "-p",
-        "short",
-        "-F",
-        "*exclude-import*",
-        "-x",
-        "*exclude-pattern*",
-        "-S",
-    ]
-
-
-@pytest.fixture
-def sys_args4():
-    return ["rattr", "rattr/cli/parser.py", "-S"]
-
-
-@pytest.fixture
-def sys_args5():
-    return ["rattr", "rattr/cli/parser.py", "--permissive", "3"]
-
-
-@pytest.fixture
-def sys_args6():
-    here = Path(__file__).resolve().parent / "data" / "config_1.toml"
-
-    return [
-        "rattr",
-        "rattr/cli/parser.py",
-        "--permissive",
-        "3",
-        "--config",
-        str(here),
-    ]
 
 
 @pytest.fixture
@@ -983,3 +844,20 @@ def stringify_nodes():
         return [ast.dump(n) for n in nodes]
 
     return _inner
+
+
+@pytest.fixture
+def os_dependent_path() -> OsDependentPathFn:
+    def _make_path_os_independent(posix_style_path: StrOrPath) -> StrOrPath:
+        if sys.platform != "win32":
+            if isinstance(posix_style_path, str):
+                return posix_style_path.replace("\\", "/")
+            else:
+                return Path(str(posix_style_path).replace("\\", "/"))
+        else:
+            if isinstance(posix_style_path, str):
+                return posix_style_path.replace("/", "\\")
+            else:
+                return Path(str(posix_style_path).replace("/", "\\"))
+
+    return _make_path_os_independent

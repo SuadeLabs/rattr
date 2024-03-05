@@ -1,14 +1,25 @@
 #!/bin/bash
 
-venvdir="venv"
+venvdir=".venv"
 
-python3 -m pip install --upgrade pip
+python3.9 -m pip install --upgrade pip
 
+echo "[mkvenv] deactivating current venv..."
 deactivate 2> /dev/null
 
+echo "[mkvenv] releting existing venv..."
 rm -rf $venvdir
-python3 -m venv $venvdir
 
-source venv/bin/activate
+echo "[mkvenv] creating new venv..."
+python3.9 -m venv $venvdir
+
+echo "[mkvenv] activating venv..."
+source $venvdir/bin/activate
+
+echo "[mkvenv] updating .python-version..."
+python -V | cut -f2 -d" " > .python-version
+
+echo "[mkvenv] installing dependencies..."
+python -m pip install --upgrade pip
 python -m pip install .[dev]
 python -m pip install -r requirements.txt

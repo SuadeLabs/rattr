@@ -1,30 +1,13 @@
 """Rattr functions for producing and displaying results."""
 from __future__ import annotations
 
-import json
-
-from rattr.analyser.context import Symbol
 from rattr.analyser.ir_dag import IrDagNode
-from rattr.analyser.types import FileIR, FileResults, ImportsIR
+from rattr.analyser.types import ImportIrs
+from rattr.models.ir import FileIr
+from rattr.models.results import FileResults
 
 
-class ResultsEncoder(json.JSONEncoder):
-    """Return the results encoded as JSON."""
-
-    def default(self, obj):
-        if isinstance(obj, set):
-            return sorted(obj)
-
-        if isinstance(obj, list):
-            return sorted(obj)
-
-        if isinstance(obj, Symbol):
-            return repr(obj)
-
-        return super().default(obj)
-
-
-def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResults:
+def generate_results_from_ir(file_ir: FileIr, import_irs: ImportIrs) -> FileResults:
     """Generate the final results from the given IR.
 
     Removing cycles:
@@ -54,10 +37,10 @@ def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResu
         the final result).
 
     """
-    simplified: FileResults = dict()
+    simplified = FileResults()
 
     for foc, foc_ir in file_ir.items():
-        ir_dag = IrDagNode(None, foc, foc_ir, file_ir, imports_ir)
+        ir_dag = IrDagNode(None, foc, foc_ir, file_ir, import_irs)
         ir_dag.populate()
 
         composed_ir = ir_dag.simplify()
@@ -66,7 +49,7 @@ def generate_results_from_ir(file_ir: FileIR, imports_ir: ImportsIR) -> FileResu
             "gets": {s.name for s in composed_ir["gets"]},
             "sets": {s.name for s in composed_ir["sets"]},
             "dels": {s.name for s in composed_ir["dels"]},
-            "calls": {s.name for s in composed_ir["calls"]},
+            "calls": {s.name_of_call for s in composed_ir["calls"]},
         }
 
     return simplified
