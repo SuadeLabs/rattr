@@ -29,10 +29,6 @@ if TYPE_CHECKING:
 class IrDagNode:
     """Represent a function call for simplification."""
 
-    # TODO
-    # Refactor populate and simplify to be functions, not methods, and non-recursive via
-    # a deque.
-
     call: Call
     func: Func
     func_ir: FunctionIr
