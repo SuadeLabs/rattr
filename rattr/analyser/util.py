@@ -589,7 +589,7 @@ def parse_rattr_results_from_annotation(
 def is_blacklisted_module(module: str) -> bool:
     """Return `True` if the given module matches a blacklisted pattern.
 
-    NOTE Deprecated, see rattr.ast.place.is_in_import_blacklist
+    NOTE Deprecated, see rattr.module_locator.util.is_in_import_blacklist
     """
     config = Config()
 
@@ -612,10 +612,14 @@ def is_pip_module(module: str) -> bool:
     if spec is None or spec.origin is None:
         return False
 
-    # No backslashes, bad windows!
-    spec.origin = spec.origin.replace("\\", "/")
-
-    return any(re.fullmatch(p, spec.origin) for p in pip_install_locations)
+    return any(
+        re.fullmatch(
+            pip_install_location,
+            # No backslashes, bad windows!
+            spec.origin.replace("\\", "/"),
+        )
+        for pip_install_location in pip_install_locations
+    )
 
 
 def is_stdlib_module(module: str) -> bool:

@@ -1058,7 +1058,6 @@ class TestUtil:
         assign = ast.parse("a += 1").body[0]
         assert get_assignment_targets(assign) == [assign.target]
 
-    @pytest.mark.py_3_8_plus()
     def test_get_assignment_targets_walrus(self):
         # Walrus in assign
         assign = ast.parse("a = (b := 1)").body[0]
@@ -1068,7 +1067,6 @@ class TestUtil:
         assign = ast.parse("a = (b := 1)").body[0].value
         assert get_assignment_targets(assign) == [assign.target]
 
-    @pytest.mark.py_3_8_plus()
     def test_get_contained_walruses(self, stringify_nodes, walrus):
         walruses = get_contained_walruses(ast.parse("a = b").body[0])
         assert stringify_nodes(walruses) == []
@@ -1138,7 +1136,6 @@ class TestUtil:
         assign = ast.parse("a += 1").body[0]
         assert not lambda_in_rhs(assign)
 
-    @pytest.mark.py_3_8_plus()
     def test_walrus_in_rhs(self):
         # Single
         assign = ast.parse("a = (b := c)").body[0]

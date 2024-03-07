@@ -6,10 +6,10 @@ import attrs
 from attrs import field
 
 from rattr.analyser.util import get_file_hash
-from rattr.ast.util import is_in_import_blacklist
 from rattr.models.results import FileResults
 from rattr.models.symbol import Import
 from rattr.models.symbol._util import PYTHON_BUILTINS_LOCATION
+from rattr.module_locator.util import is_in_import_blacklist
 
 if TYPE_CHECKING:
     from rattr.analyser.types import ImportIrs

@@ -60,7 +60,6 @@ class TestModuleLevelStatements:
 
         assert results.ir_as_dict() == {}
 
-    @pytest.mark.py_3_8_plus()
     def test_walrus_operator(self, parse):
         _ast = parse(
             """
@@ -115,7 +114,6 @@ class TestModuleLevelStatements:
 
         assert results.ir_as_dict() == expected
 
-    @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment(self, parse):
         # Walrus multi assign w/ lambda
         _ast = parse(
@@ -128,7 +126,6 @@ class TestModuleLevelStatements:
 
         assert results.ir_as_dict() == {}
 
-    @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_list(self, parse):
         # Walrus multi assign w/ lambda
         _ast = parse(
@@ -141,7 +138,6 @@ class TestModuleLevelStatements:
 
         assert results.ir_as_dict() == {}
 
-    @pytest.mark.py_3_8_plus()
     def test_walrus_lambda(self, parse):
         # Walrus'd Lambda
         _ast = parse(
@@ -171,7 +167,6 @@ class TestModuleLevelStatements:
 
         assert results.ir_as_dict() == expected
 
-    @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_lambda(self, parse):
         # Walrus multi assign w/ lambda
         _ast = parse(
@@ -194,7 +189,6 @@ class TestModuleLevelStatements:
 
         assert results.ir_as_dict() == expected
 
-    @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_lambda_list(self, parse):
         # Walrus multi assign w/ lambda
         _ast = parse(

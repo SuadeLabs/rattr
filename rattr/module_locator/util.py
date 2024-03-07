@@ -1,16 +1,29 @@
 from __future__ import annotations
 
-from functools import lru_cache
-from importlib.util import find_spec
+import re
+import sys
+from functools import cache
+from importlib.util import find_spec as stdlib_find_spec
+from itertools import product
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from isort import sections
+from isort.api import place_module
+
 from rattr.config import Config
+from rattr.module_locator._locate import (  # noqa: F401
+    find_module_in_path,
+    iter_python_path_dirs,
+    locate_module_in_python_path,
+)
+from rattr.module_locator.models import ModuleSpec
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
-    from importlib.machinery import ModuleSpec
+    from typing import Final
 
+    from rattr.ast.types import Identifier
     from rattr.versioning.typing import TypeAlias
 
     ModuleName: TypeAlias = str
@@ -18,22 +31,57 @@ if TYPE_CHECKING:
     ImportLevel: TypeAlias = int
 
 
+RE_PIP_INSTALL_LOCATIONS: Final = (re.compile(r".+/site-packages.*"),)
+
+
 def module_exists(modulename: ModuleName) -> bool:
     return find_module_spec_fast(modulename) is not None
 
 
-@lru_cache(maxsize=None)
+@cache
 def find_module_spec_fast(modulename: ModuleName) -> ModuleSpec | None:
-    # TODO
-    # In a future branch create a custom implementation which does not execute module
-    # level statements in the target's parent files.
+    if is_in_stdlib(modulename):
+        return __find_stdlib_module_spec_impl(modulename)
+
+    locations = locate_module_in_python_path(modulename)
+
+    if not locations:
+        return None
+
+    return ModuleSpec(name=modulename, origin=format_origin_for_os(locations[0]))
+
+
+def __find_stdlib_module_spec_impl(modulename: ModuleName) -> ModuleSpec | None:
     try:
-        return find_spec(modulename)
+        stdlib_spec = stdlib_find_spec(modulename)
     except (AttributeError, ModuleNotFoundError, ValueError):
         return None
 
+    if stdlib_spec is None:
+        return None
 
-@lru_cache(maxsize=None)
+    return ModuleSpec(
+        name=stdlib_spec.name,
+        origin=format_origin_for_os(stdlib_spec.origin),
+    )
+
+
+def format_origin_for_os(origin: str | Path | None) -> str | None:
+    if origin is None:
+        return origin
+
+    if isinstance(origin, Path):
+        origin = str(origin)
+
+    if sys.platform != "win32":
+        return origin
+
+    # HACK
+    # Windows paths are case-insensitive so force lower case for comparisons etc
+    return origin[:2] + origin[2:].lower()
+
+
+@cache
 def find_module_name_and_spec(
     target: FullyQualifiedName,
 ) -> tuple[ModuleName, ModuleSpec] | tuple[None, None]:
@@ -153,3 +201,76 @@ def derive_absolute_module_name(
         base = ".".join(base.split(".")[:-level])
 
     return f"{base}.{target}" if target is not None else base
+
+
+def is_in_stdlib(name: Identifier) -> bool:
+    """Return `True` if the given name is an stdlib module or in an stdlib module.
+
+    >>> is_stdlib_module("math")
+    True
+    >>> is_stdlib_module("math.pi")
+    True
+    >>> is_stdlib_module("pytest.fixture")
+    False
+    """
+    return place_module(name) == sections.STDLIB
+
+
+def is_in_pip(name: Identifier) -> bool:
+    """Return `True` if the given name is available via pip.
+
+    >>> # Given that pytest is pip installed
+    >>> is_in_pip("pytest")
+    True
+    >>> is_in_pip("pytest.fixture")
+    True
+    >>> is_in_pip("math")
+    False
+    >>> is_in_pip("something.made.up")
+    False
+    """
+
+    origins = [__safe_origin(module) for module in derive_module_names_right(name)]
+
+    return any(
+        re_pip_location.fullmatch(origin)
+        for origin, re_pip_location in product(origins, RE_PIP_INSTALL_LOCATIONS)
+        if origin is not None
+    )
+
+
+def is_in_import_blacklist(name: Identifier) -> bool:
+    """Return `True` if the given name matches a blacklisted pattern."""
+    config = Config()
+
+    # Somewhat undefined behaviour, but don't follow null strings
+    if not name:
+        return True
+
+    # Exclude stdlib modules such as the built-in "_thread" (stdlib modules are handled
+    # separately from blacklist).
+    if is_in_stdlib(name):
+        return False
+
+    origins = [__safe_origin(module) for module in derive_module_names_right(name)]
+
+    # It is possible that we can't determine the spec (due to some PYTHON_PATH
+    # tampering or some other shenanigans) and in that case we still want to assume that
+    # the origin is exactly as given as it may still be blacklisted.
+    origins.append(name)
+
+    return any(
+        re_pattern.fullmatch(origin)
+        for origin, re_pattern in product(origins, config.re_blacklist_patterns)
+        if origin is not None
+    )
+
+
+def __safe_origin(module: Identifier) -> str | None:
+    spec = find_module_spec_fast(module)
+
+    if spec is None or spec.origin is None:
+        return None
+
+    # No backslashes, bad windows!
+    return spec.origin.replace("\\", "/")

@@ -20,6 +20,8 @@ from rattr.models.symbol import (
     Name,
     Symbol,
 )
+from rattr.module_locator.models import ModuleSpec
+from rattr.module_locator.util import format_origin_for_os
 
 
 class TestAttrsDerivedProperties:
@@ -184,13 +186,23 @@ class TestImport:
         # NOTE
         # Use `find_spec` not `find_module_spec_fast` here as we are indirectly testing
         # the correctness of the latter's impl.
+        stdlib_spec = find_spec(module_name)
+        rattr_spec = (
+            ModuleSpec(
+                name=stdlib_spec.name,
+                origin=format_origin_for_os(stdlib_spec.origin),
+            )
+            if stdlib_spec is not None
+            else None
+        )
+
         import_ = Import(name, qualified_name)
 
         assert import_.name == name
         assert import_.qualified_name == qualified_name
 
         assert import_.module_name == module_name
-        assert import_.module_spec == find_spec(module_name)
+        assert import_.module_spec == rattr_spec
 
 
 class TestFunc:
