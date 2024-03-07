@@ -152,6 +152,7 @@ def test_find_module_name_and_spec_real_world(target: str, module_name: str):
         "rattr.does.not.exist",
         "rattr.ast",
         "rattr.ast.util",
+        "rattr.analyser.annotations.rattr_ignore",
         # pip installed
         "isort",
         "isort.place",

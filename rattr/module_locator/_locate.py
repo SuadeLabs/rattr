@@ -10,8 +10,12 @@ from rattr.module_locator.exc import RattrSysPathNotPopulated
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from typing import Final
 
     from rattr.module_locator.types import ModuleName
+
+
+rattr_root: Final = Path(__file__).parents[2]
 
 
 @cache
@@ -79,7 +83,7 @@ def iter_python_path_dirs() -> Iterator[Path]:
 
     yield from (
         python_path_dir
-        for python_path_dirname in (first, *sys.path[1:])
+        for python_path_dirname in (first, rattr_root, *sys.path[1:])
         if (python_path_dir := Path(python_path_dirname))
         if python_path_dir.exists()
     )
