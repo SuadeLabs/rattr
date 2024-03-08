@@ -2,24 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from rattr.analyser.file import FileAnalyser
 from rattr.models.context import Context, compile_root_context
 from rattr.models.ir import FileIr
 from rattr.models.symbol import Call, CallArguments, CallInterface, Func, Name
-from rattr.plugins import plugins
-from rattr.plugins.analysers.builtins import SortedAnalyser
 
 if TYPE_CHECKING:
-    from tests.shared import MakeSymbolTableFn, ParseFn
+    from tests.shared import MakeSymbolTableFn, ParseFn, ParseWithContextFn
 
 
 class TestCustomFunctionAnalysers:
-    @pytest.fixture(autouse=True)
-    def apply_plugins(self):
-        plugins.register(SortedAnalyser())
-
     def test_sorted_no_key(self, parse: ParseFn, make_symbol_table: MakeSymbolTableFn):
         _ast = parse(
             """
@@ -265,3 +257,40 @@ class TestCustomFunctionAnalysers:
         )
 
         assert results == expected
+
+
+def test_getattr(
+    parse_with_context: ParseWithContextFn,
+    make_symbol_table: MakeSymbolTableFn,
+):
+    ast_module, context = parse_with_context(
+        """
+        def a_func(arg):
+            return getattr(getattr(getattr(arg, "inner_attr"), "middle_attr"), "outer_attr")
+        """
+    )
+    results = FileAnalyser(ast_module, context).analyse()
+
+    a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
+
+    expected = FileIr(
+        context=Context(
+            parent=None,
+            symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+        ),
+        file_ir={
+            a_func: {
+                "gets": {
+                    Name("arg"),
+                    Name("arg.inner_attr", "arg"),
+                    Name("arg.inner_attr.middle_attr", "arg"),
+                    Name("arg.inner_attr.middle_attr.outer_attr", "arg"),
+                },
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            }
+        },
+    )
+
+    assert results == expected

@@ -2,24 +2,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from rattr.analyser.file import FileAnalyser
 from rattr.models.context import Context, compile_root_context
 from rattr.models.ir import FileIr
-from rattr.models.symbol import Builtin, Call, CallArguments, CallInterface, Func, Name
-from rattr.plugins import plugins
-from rattr.plugins.analysers.collections import DefaultDictAnalyser
+from rattr.models.symbol import (
+    Builtin,
+    Call,
+    CallArguments,
+    CallInterface,
+    Func,
+    Import,
+    Name,
+)
 
 if TYPE_CHECKING:
     from tests.shared import MakeSymbolTableFn, ParseFn
 
 
 class TestCustomCollectionsAnalysers:
-    @pytest.fixture(autouse=True)
-    def apply_plugins(self):
-        plugins.register(DefaultDictAnalyser())
-
     def test_defaultdict_no_factory(
         self,
         parse: ParseFn,
@@ -27,25 +27,29 @@ class TestCustomCollectionsAnalysers:
     ):
         _ast = parse(
             """
+            from collections import defaultdict
+
             def a_func(arg):
                 d = defaultdict()
             """
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
+        defaultdict_import = Import("defaultdict", "collections.defaultdict")
         a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         expected = FileIr(
             context=Context(
                 parent=None,
-                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+                symbol_table=make_symbol_table(
+                    [defaultdict_import, a_func],
+                    include_root_symbols=True,
+                ),
             ),
             file_ir={
                 a_func: {
                     "gets": set(),
-                    "sets": {
-                        Name("d"),
-                    },
+                    "sets": {Name("d")},
                     "dels": set(),
                     "calls": set(),
                 }
@@ -61,6 +65,8 @@ class TestCustomCollectionsAnalysers:
     ):
         _ast = parse(
             """
+            from collections import defaultdict
+
             def a_func(arg):
                 d = defaultdict(factory)
 
@@ -70,6 +76,7 @@ class TestCustomCollectionsAnalysers:
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
+        defaultdict_import = Import("defaultdict", "collections.defaultdict")
         a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
         factory = Func(name="factory", interface=CallInterface(args=()))
 
@@ -78,6 +85,7 @@ class TestCustomCollectionsAnalysers:
                 parent=None,
                 symbol_table=make_symbol_table(
                     [
+                        defaultdict_import,
                         a_func,
                         factory,
                     ],
@@ -111,11 +119,14 @@ class TestCustomCollectionsAnalysers:
         parse: ParseFn,
         make_symbol_table: MakeSymbolTableFn,
     ):
+        defaultdict_import = Import("defaultdict", "collections.defaultdict")
         a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
 
         # Lambda to literal
         _ast = parse(
             """
+            from collections import defaultdict
+
             def a_func(arg):
                 d = defaultdict(lambda: 0)
             """
@@ -125,7 +136,13 @@ class TestCustomCollectionsAnalysers:
         expected = FileIr(
             context=Context(
                 parent=None,
-                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+                symbol_table=make_symbol_table(
+                    [
+                        defaultdict_import,
+                        a_func,
+                    ],
+                    include_root_symbols=True,
+                ),
             ),
             file_ir={
                 a_func: {
@@ -144,6 +161,8 @@ class TestCustomCollectionsAnalysers:
         # Lambda to attr
         _ast = parse(
             """
+            from collections import defaultdict
+
             def a_func(arg):
                 d = defaultdict(lambda: arg.attr)
             """
@@ -153,7 +172,13 @@ class TestCustomCollectionsAnalysers:
         expected = FileIr(
             context=Context(
                 parent=None,
-                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+                symbol_table=make_symbol_table(
+                    [
+                        defaultdict_import,
+                        a_func,
+                    ],
+                    include_root_symbols=True,
+                ),
             ),
             file_ir={
                 a_func: {
@@ -176,19 +201,28 @@ class TestCustomCollectionsAnalysers:
     ):
         _ast = parse(
             """
+            from collections import defaultdict
+
             def a_func(arg):
                 d = defaultdict(defaultdict(list))
             """
         )
         results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
+        defaultdict_import = Import("defaultdict", "collections.defaultdict")
         a_func = Func(name="a_func", interface=CallInterface(args=("arg",)))
         list_builtin = Builtin("list")
 
         expected = FileIr(
             context=Context(
                 parent=None,
-                symbol_table=make_symbol_table([a_func], include_root_symbols=True),
+                symbol_table=make_symbol_table(
+                    [
+                        defaultdict_import,
+                        a_func,
+                    ],
+                    include_root_symbols=True,
+                ),
             ),
             file_ir={
                 a_func: {

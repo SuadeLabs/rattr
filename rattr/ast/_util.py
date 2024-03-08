@@ -89,6 +89,7 @@ def get_python_attr_access_fn_obj_attr_pair(
 def names_of(
     node: ast.expr,
     *,
+    unravel_attr_access_calls: bool = True,
     safe: bool = False,
 ) -> tuple[Identifier, Identifier]:
     """Return the node's basename and fullname.
@@ -122,7 +123,11 @@ def names_of(
         return node.id, node.id
 
     if isinstance(node, ast.Call):
-        return __ast_call_name(node, safe=safe)
+        return __ast_call_name(
+            node,
+            unravel_attr_access_calls=unravel_attr_access_calls,
+            safe=safe,
+        )
 
     if isinstance(
         node,
@@ -153,12 +158,13 @@ def __safe_name(node: ast.expr) -> Identifier:
 def __ast_call_name(
     node: ast.Call,
     *,
+    unravel_attr_access_calls: bool = False,
     safe: bool = True,
 ) -> tuple[Identifier, Identifier]:
     basename, lhs_name = names_of(node.func, safe=safe)
 
     # Special case: `getattr`, etc
-    if basename in PYTHON_ATTR_ACCESS_BUILTINS:
+    if unravel_attr_access_calls and basename in PYTHON_ATTR_ACCESS_BUILTINS:
         obj, attr = get_python_attr_access_fn_obj_attr_pair(basename, node)
         return basename, f"{obj}.{attr}"
 

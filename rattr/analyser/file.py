@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import copy
 from collections import deque
+from typing import TYPE_CHECKING
 
 import attrs
 
@@ -14,10 +15,7 @@ from rattr.analyser.function import FunctionAnalyser
 from rattr.analyser.types import ImportIrs
 from rattr.analyser.util import (
     has_annotation,
-    is_blacklisted_module,
     is_excluded_name,
-    is_pip_module,
-    is_stdlib_module,
     parse_rattr_results_from_annotation,
     read,
     timer,
@@ -36,7 +34,11 @@ from rattr.extra import DictChanges
 from rattr.models.context import Context, compile_root_context
 from rattr.models.ir import FileIr
 from rattr.models.symbol import Import
+from rattr.module_locator.util import is_in_import_blacklist, is_in_pip, is_in_stdlib
 from rattr.plugins import plugins
+
+if TYPE_CHECKING:
+    from rattr.models.symbol import Func
 
 
 @attrs.mutable
@@ -157,13 +159,13 @@ def parse_and_analyse_imports(
         if spec.origin in seen_module_origins:
             continue
 
-        if is_blacklisted_module(name):
+        if is_in_import_blacklist(name):
             continue
 
-        if not config.arguments.follow_pip_imports and is_pip_module(name):
+        if not config.arguments.follow_pip_imports and is_in_pip(name):
             continue
 
-        if not config.arguments.follow_stdlib_imports and is_stdlib_module(name):
+        if not config.arguments.follow_stdlib_imports and is_in_stdlib(name):
             continue
 
         with read(spec.origin) as (import_file_lines, import_file_source):
@@ -222,18 +224,30 @@ class FileAnalyser(NodeVisitor):
             return error.error(str(exc.args[0]), culprit=node)
 
         if has_annotation("rattr_results", node):
-            self.file_ir[fn] = parse_rattr_results_from_annotation(
-                node,
-                context=self.context,
-            )
-            return
+            return self.visit_function_with_rattr_results_annotation(node, fn)
 
-        if plugins.custom_function_handler.has_analyser(node.name, self.context):
-            handler = plugins.custom_function_handler.get(node.name, self.context)
-            self.file_ir[fn] = handler.on_def(node.name, node, self.context)
-            return
+        if plugins.has_analyser(fn, modulename=self.context.modulename):
+            return self.visit_function_with_custom_analyser(node, fn)
 
         self.file_ir[fn] = FunctionAnalyser(node, self.context).analyse()
+
+    def visit_function_with_rattr_results_annotation(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        fn: Func,
+    ) -> None:
+        self.file_ir[fn] = parse_rattr_results_from_annotation(
+            node,
+            context=self.context,
+        )
+
+    def visit_function_with_custom_analyser(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        fn: Func,
+    ) -> None:
+        custom_analyser = plugins.get_analyser(fn, modulename=self.context.modulename)
+        self.file_ir[fn] = custom_analyser.on_def(fn.id, node, self.context)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self.visit_AnyFunctionDef(node)
