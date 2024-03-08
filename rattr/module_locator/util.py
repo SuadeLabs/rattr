@@ -4,7 +4,6 @@ import re
 import sys
 from functools import cache
 from importlib.util import find_spec as stdlib_find_spec
-from itertools import product
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,11 +22,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from typing import Final
 
-    from rattr.ast.types import Identifier
+    from rattr.ast.types import FullyQualifiedName, ModuleName
     from rattr.versioning.typing import TypeAlias
 
-    ModuleName: TypeAlias = str
-    FullyQualifiedName: TypeAlias = str
     ImportLevel: TypeAlias = int
 
 
@@ -51,6 +48,7 @@ def find_module_spec_fast(modulename: ModuleName) -> ModuleSpec | None:
     return ModuleSpec(name=modulename, origin=format_origin_for_os(locations[0]))
 
 
+@cache
 def __find_stdlib_module_spec_impl(modulename: ModuleName) -> ModuleSpec | None:
     try:
         stdlib_spec = stdlib_find_spec(modulename)
@@ -66,6 +64,7 @@ def __find_stdlib_module_spec_impl(modulename: ModuleName) -> ModuleSpec | None:
     )
 
 
+@cache
 def format_origin_for_os(origin: str | Path | None) -> str | None:
     if origin is None:
         return origin
@@ -138,6 +137,7 @@ def derive_module_names_right(modulename: ModuleName) -> list[ModuleName]:
     return list(iter_module_names_right(modulename.split(".")))
 
 
+@cache
 def derive_module_name_from_path(filepath: Path | str | None) -> str | None:
     """Return the recognised name of the given module."""
     if filepath is None:
@@ -183,10 +183,12 @@ def iter_module_names_left(module_parts: Iterable[str]) -> Iterator[ModuleName]:
         yield ".".join(module_parts[start_offset:])
 
 
+@cache
 def derive_module_names_left(modulename: ModuleName) -> list[ModuleName]:
     return list(iter_module_names_left(modulename.split(".")))
 
 
+@cache
 def derive_absolute_module_name(
     base: ModuleName,
     target: ModuleName | None,
@@ -203,7 +205,8 @@ def derive_absolute_module_name(
     return f"{base}.{target}" if target is not None else base
 
 
-def is_in_stdlib(name: Identifier) -> bool:
+@cache
+def is_in_stdlib(name: ModuleName) -> bool:
     """Return `True` if the given name is an stdlib module or in an stdlib module.
 
     >>> is_stdlib_module("math")
@@ -216,7 +219,8 @@ def is_in_stdlib(name: Identifier) -> bool:
     return place_module(name) == sections.STDLIB
 
 
-def is_in_pip(name: Identifier) -> bool:
+@cache
+def is_in_pip(name: ModuleName) -> bool:
     """Return `True` if the given name is available via pip.
 
     >>> # Given that pytest is pip installed
@@ -229,17 +233,16 @@ def is_in_pip(name: Identifier) -> bool:
     >>> is_in_pip("something.made.up")
     False
     """
-
-    origins = [__safe_origin(module) for module in derive_module_names_right(name)]
-
     return any(
         re_pip_location.fullmatch(origin)
-        for origin, re_pip_location in product(origins, RE_PIP_INSTALL_LOCATIONS)
-        if origin is not None
+        for module in derive_module_names_right(name)
+        for re_pip_location in RE_PIP_INSTALL_LOCATIONS
+        if (origin := __safe_origin(module)) is not None
     )
 
 
-def is_in_import_blacklist(name: Identifier) -> bool:
+@cache
+def is_in_import_blacklist(name: ModuleName) -> bool:
     """Return `True` if the given name matches a blacklisted pattern."""
     config = Config()
 
@@ -261,12 +264,14 @@ def is_in_import_blacklist(name: Identifier) -> bool:
 
     return any(
         re_pattern.fullmatch(origin)
-        for origin, re_pattern in product(origins, config.re_blacklist_patterns)
+        for origin in origins
+        for re_pattern in config.re_blacklist_patterns
         if origin is not None
     )
 
 
-def __safe_origin(module: Identifier) -> str | None:
+@cache
+def __safe_origin(module: ModuleName) -> str | None:
     spec = find_module_spec_fast(module)
 
     if spec is None or spec.origin is None:

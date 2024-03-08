@@ -73,6 +73,10 @@ if TYPE_CHECKING:
         def __call__(self, source: str) -> ast.Module:
             ...
 
+    class ParseWithContextFn(Protocol):
+        def __call__(self, source: str) -> tuple[ast.Module, Context]:
+            ...
+
     StrOrPath = TypeVar("StrOrPath", str, Path)
 
     class OsDependentPathFn(Protocol):

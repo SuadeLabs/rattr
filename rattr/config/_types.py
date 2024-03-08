@@ -196,7 +196,7 @@ class Config(metaclass=ConfigMetaclass):
     )
     """The set of perennial module blacklist patterns, i.e. rattr itself."""
 
-    PLUGIN_BLACKLIST_PATTERNS: set[str] = field(default_factory=set)
+    PLUGINS_BLACKLIST_PATTERNS: set[str] = field(default_factory=set)
     """The set of blacklist patterns set by custom plugins."""
 
     @cached_property
@@ -293,7 +293,7 @@ class Config(metaclass=ConfigMetaclass):
         return (
             self.arguments.excluded_imports
             | self.MODULE_BLACKLIST_PATTERNS
-            | self.PLUGIN_BLACKLIST_PATTERNS
+            | self.PLUGINS_BLACKLIST_PATTERNS
         )
 
     @property

@@ -4,14 +4,11 @@ from __future__ import annotations
 import ast
 from abc import ABCMeta, abstractmethod, abstractproperty
 from ast import NodeTransformer, NodeVisitor  # noqa: F401
-from itertools import product
 from typing import TYPE_CHECKING
 
 from rattr import error
 from rattr.analyser.types import FunctionIr
-from rattr.ast.types import AstFunctionDef
 from rattr.models.context import Context
-from rattr.models.symbol import Import
 
 if TYPE_CHECKING:
     from rattr.ast.types import Identifier
@@ -66,7 +63,7 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
     def on_def(
         self,
         name: Identifier,
-        node: AstFunctionDef,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
         ctx: Context,
     ) -> FunctionIr:
         """Return the IR of the definition of the handled function."""
@@ -92,110 +89,3 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
             "dels": set(),
             "calls": set(),
         }
-
-
-class CustomFunctionHandler:
-    """Dispatch to CustomFunctionAnalyser.
-
-    If a builtin and user-defined function have the same name, then the builtin
-    function analyser will take precedence.
-
-    Initialiser:
-        Register the given builtin and user-defined custom function analysers.
-
-    """
-
-    def __init__(
-        self,
-        builtins: list[CustomFunctionAnalyser] | None = None,
-        user_defined: list[CustomFunctionAnalyser] | None = None,
-    ) -> None:
-        self._builtins: dict[str, CustomFunctionAnalyser] = {}
-        self._user_def: dict[str, CustomFunctionAnalyser] = {}
-
-        for analyser in builtins or []:
-            self._builtins[analyser.name] = analyser
-
-        for analyser in user_defined or []:
-            self._user_def[analyser.name] = analyser
-
-    def __get_by_name(self, name: Identifier) -> CustomFunctionAnalyser | None:
-        analyser = None
-
-        if name in self._user_def:
-            analyser = self._user_def[name]
-
-        if name in self._builtins:
-            analyser = self._builtins[name]
-
-        return analyser
-
-    def __get_by_symbol(
-        self,
-        name: Identifier,
-        ctx: Context,
-    ) -> CustomFunctionAnalyser | None:
-        symbols: list[Import] = []
-
-        for symbol in (s for s in ctx.symbol_table.symbols if isinstance(s, Import)):
-            # From imported
-            if name in (symbol.name, symbol.qualified_name):
-                symbols.append(symbol)
-
-            # Module imported
-            if name.startswith(f"{symbol.name}."):
-                symbols.append(symbol)
-
-        for symbol, analyser in product(symbols, self._user_def.values()):
-            # From imported
-            if analyser.qualified_name == symbol.qualified_name:
-                return analyser
-
-            # Module imported
-            if analyser.qualified_name == name.replace(
-                symbol.name, symbol.qualified_name
-            ):
-                return analyser
-
-        return None
-
-    def get(self, name: Identifier, ctx: Context) -> CustomFunctionAnalyser | None:
-        """Return the analyser for the function `name`, `None` otherwise."""
-        analyser = self.__get_by_name(name)
-
-        if analyser is None:
-            analyser = self.__get_by_symbol(name, ctx)
-
-        return analyser
-
-    def has_analyser(self, name: Identifier, ctx: Context) -> bool:
-        """Return `True` if there is a analyser for the function `name`."""
-        return self.get(name, ctx) is not None
-
-    def handle_def(
-        self,
-        name: Identifier,
-        node: AstFunctionDef,
-        ctx: Context,
-    ) -> FunctionIr:
-        """Dispatch to the to the appropriate analyser."""
-        analyser = self.get(name, ctx)
-
-        if analyser is None:
-            raise ValueError
-
-        return analyser.on_def(name, node, ctx)
-
-    def handle_call(
-        self,
-        name: Identifier,
-        node: ast.Call,
-        ctx: Context,
-    ) -> FunctionIr:
-        """Dispatch to the to the appropriate analyser."""
-        analyser = self.get(name, ctx)
-
-        if analyser is None:
-            raise ValueError
-
-        return analyser.on_call(name, node, ctx)
