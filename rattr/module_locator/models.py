@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import attrs
+from typing import NamedTuple
 
 
-@attrs.frozen
-class ModuleSpec:
+class ModuleSpec(NamedTuple):
     name: str
     origin: str | None
