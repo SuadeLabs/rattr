@@ -187,8 +187,20 @@ class CallArguments:
         self: Identifier | None = None,
     ) -> CallArguments:
         """Return a new `CallArguments` parsed from the given function call."""
-        args: list[str] = [arg_name(arg) for arg in call.args]
-        kwargs: dict[str, str] = {kw.arg: kwarg_name(kw) for kw in call.keywords}
+        args: list[str] = [
+            arg_name(
+                arg,
+                culprit=call,
+            )
+            for arg in call.args
+        ]
+        kwargs: dict[str, str] = {
+            kw.arg: kwarg_name(
+                kw,
+                culprit=call,
+            )
+            for kw in call.keywords
+        }
 
         if self is not None:
             args = [self, *args]
