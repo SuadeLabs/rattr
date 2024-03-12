@@ -294,23 +294,32 @@ def test_is_in_import_blacklist_known_stdlib_modules(stdlib_modules: Iterable[st
 
 @pytest.mark.parametrize(
     "banned,unbanned",
-    [({"beelzebub", "abaddon"}, {"michael", "raphael", "gabriel"})],
+    [
+        (
+            {"beelzebub", "abaddon"},
+            {"michael", "raphael", "gabriel"},
+        )
+    ],
 )
 def test_is_in_import_blacklist_from_cli_argument(
     arguments: ArgumentsFn,
     banned: set[str],
     unbanned: set[str],
 ):
+    is_in_import_blacklist.cache_clear()
+
     # Nothing is banned
     with arguments(_excluded_imports=set()):
-        for banned_module in banned:
+        for banned_module in sorted(banned):
             assert not is_in_import_blacklist(banned_module)
-        for unbanned_module in unbanned:
+        for unbanned_module in sorted(unbanned):
             assert not is_in_import_blacklist(unbanned_module)
+
+    is_in_import_blacklist.cache_clear()
 
     # Only bad things are banned
     with arguments(_excluded_imports=banned):
-        for banned_module in banned:
+        for banned_module in sorted(banned):
             assert is_in_import_blacklist(banned_module)
-        for unbanned_module in unbanned:
+        for unbanned_module in sorted(unbanned):
             assert not is_in_import_blacklist(unbanned_module)

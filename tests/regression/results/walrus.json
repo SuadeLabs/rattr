@@ -1,4 +1,14 @@
 {
+    "_get_simple_present_of_be": {
+        "gets": [
+            "things"
+        ],
+        "sets": [],
+        "dels": [],
+        "calls": [
+            "len()"
+        ]
+    },
     "_pretty_list_format": {
         "gets": [
             "_comma_separated_items",
@@ -14,16 +24,6 @@
         "calls": [
             "@Constant.join()",
             "ValueError()",
-            "len()"
-        ]
-    },
-    "_get_simple_present_of_be": {
-        "gets": [
-            "things"
-        ],
-        "sets": [],
-        "dels": [],
-        "calls": [
             "len()"
         ]
     },

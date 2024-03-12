@@ -1,4 +1,24 @@
 {
+    "i_use_a_lib_function": {
+        "gets": [
+            "data",
+            "data[].goodness",
+            "datum",
+            "datum.is_a_good_thing",
+            "datum.type",
+            "good_data"
+        ],
+        "sets": [
+            "datum",
+            "good_data"
+        ],
+        "dels": [],
+        "calls": [
+            "Exception()",
+            "len()",
+            "my_lib_function()"
+        ]
+    },
     "my_foo": {
         "gets": [
             "x.attr"
@@ -6,26 +26,6 @@
         "sets": [],
         "dels": [],
         "calls": []
-    },
-    "some_function": {
-        "gets": [
-            "x",
-            "x.attr",
-            "x.is_whatever",
-            "x.whatever",
-            "y",
-            "y.attr",
-            "z",
-            "z.attr"
-        ],
-        "sets": [
-            "x.another_thing",
-            "x.some_thing"
-        ],
-        "dels": [],
-        "calls": [
-            "my_foo()"
-        ]
     },
     "overwrite_me": {
         "gets": [
@@ -52,24 +52,24 @@
             "this_should_not_appear_in_the_results()"
         ]
     },
-    "i_use_a_lib_function": {
+    "some_function": {
         "gets": [
-            "data",
-            "data[].goodness",
-            "datum",
-            "datum.is_a_good_thing",
-            "datum.type",
-            "good_data"
+            "x",
+            "x.attr",
+            "x.is_whatever",
+            "x.whatever",
+            "y",
+            "y.attr",
+            "z",
+            "z.attr"
         ],
         "sets": [
-            "datum",
-            "good_data"
+            "x.another_thing",
+            "x.some_thing"
         ],
         "dels": [],
         "calls": [
-            "Exception()",
-            "len()",
-            "my_lib_function()"
+            "my_foo()"
         ]
     }
 }
