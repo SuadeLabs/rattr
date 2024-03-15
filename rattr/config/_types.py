@@ -110,6 +110,10 @@ class Arguments(argparse.Namespace):
         return set(self._excluded_names)
 
     @property
+    def re_excluded_names(self) -> tuple[re.Pattern[str], ...]:
+        return tuple(_cached_re_compile(p) for p in self.excluded_names)
+
+    @property
     def show_warnings(self) -> ShowWarnings:
         if self._warning_level == "none":
             return ShowWarnings(0)
