@@ -168,7 +168,7 @@ class SortedAnalyser(CustomFunctionAnalyser):
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         # HACK Avoid circular import
         from rattr.analyser.function import FunctionAnalyser
-        from rattr.analyser.ir_dag import partially_unbind
+        from rattr.analyser.results import unbind_ir_with_call_swaps
 
         if len(node.args) == 0:
             return super().on_call(name, node, ctx)
@@ -208,7 +208,7 @@ class SortedAnalyser(CustomFunctionAnalyser):
             lambda_analyser.visit(key.value.body)
 
             # Substitute
-            lambda_analyser.func_ir = partially_unbind(
+            lambda_analyser.func_ir = unbind_ir_with_call_swaps(
                 lambda_analyser.func_ir,
                 {iterator: iterable},
             )

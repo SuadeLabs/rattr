@@ -28,8 +28,7 @@ def _init_rattr_config() -> Config:
 def main(config: Config) -> None:
     """Rattr entry point."""
     file_ir, import_irs, stats = parse_and_analyse_file()
-
-    results = generate_results_from_ir(file_ir, import_irs)
+    results = generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
 
     if not config.is_within_badness_threshold:
         badness, threshold = config.state.badness, config.arguments.threshold
