@@ -15,7 +15,6 @@ import pytest
 
 from rattr.analyser.base import Assertor, CustomFunctionAnalyser
 from rattr.analyser.file import FileAnalyser
-from rattr.analyser.results import generate_results_from_ir
 from rattr.ast.types import Identifier
 from rattr.config import Arguments, Config, Output, State
 from rattr.models.context import Context, SymbolTable, compile_root_context
@@ -29,6 +28,7 @@ from rattr.models.symbol import (
     Symbol,
     UserDefinedCallableSymbol,
 )
+from rattr.results import generate_results_from_ir
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping

@@ -8,7 +8,6 @@ import pytest
 
 import tests.helpers as helpers
 from rattr.analyser.file import FileAnalyser
-from rattr.analyser.results import generate_results_from_ir
 from rattr.models.context import compile_root_context
 from rattr.models.ir import FileIr
 from rattr.models.results import FileResults
@@ -22,6 +21,7 @@ from rattr.models.symbol import (
     Import,
     Name,
 )
+from rattr.results import generate_results_from_ir
 from tests.shared import match_output
 
 if TYPE_CHECKING:

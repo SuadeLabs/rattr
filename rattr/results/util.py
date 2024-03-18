@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections import deque
 from typing import TYPE_CHECKING
 
-from rattr.analyser.results import (
+from rattr.models.results import FileResults
+from rattr.results import (
     IrCallTreeNode,
     IrEnvironment,
     IrTarget,
@@ -11,7 +12,6 @@ from rattr.analyser.results import (
     find_call_target_and_ir,
     unbind_ir_with_call_swaps,
 )
-from rattr.models.results import FileResults
 
 if TYPE_CHECKING:
     from rattr.analyser.types import ImportIrs

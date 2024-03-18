@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 
 from rattr import error
 from rattr.analyser.file import RattrStats, parse_and_analyse_file
-from rattr.analyser.results import generate_results_from_ir
 from rattr.analyser.types import ImportIrs
 from rattr.cli import parse_arguments
 from rattr.config import Config, Output, State
 from rattr.models.ir import FileIr
 from rattr.models.results import FileResults, make_cacheable_results
 from rattr.models.util import serialise, serialise_irs
+from rattr.results import generate_results_from_ir
 
 if TYPE_CHECKING:
     from pathlib import Path

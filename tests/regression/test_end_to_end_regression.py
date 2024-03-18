@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 from rattr.analyser.file import parse_and_analyse_file
-from rattr.analyser.results import generate_results_from_ir
 from rattr.cli import parse_arguments
 from rattr.config import Config
 from rattr.models.util import OutputIrs, deserialise, serialise, serialise_irs
+from rattr.results import generate_results_from_ir
 from tests.regression.shared import (
     assert_actual_and_expected_have_the_same_functions_irs,
     assert_actual_and_expected_have_the_same_functions_results,

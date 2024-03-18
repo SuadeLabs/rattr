@@ -9,6 +9,7 @@ from rattr.analyser.util import get_dynamic_name
 from rattr.ast.util import fullname_of
 from rattr.models.context import Context
 from rattr.models.symbol import Name
+from rattr.results import unbind_ir_with_call_swaps
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -168,7 +169,6 @@ class SortedAnalyser(CustomFunctionAnalyser):
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         # HACK Avoid circular import
         from rattr.analyser.function import FunctionAnalyser
-        from rattr.analyser.results import unbind_ir_with_call_swaps
 
         if len(node.args) == 0:
             return super().on_call(name, node, ctx)

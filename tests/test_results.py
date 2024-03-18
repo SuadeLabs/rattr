@@ -7,7 +7,6 @@ from unittest import mock
 
 import pytest
 
-from rattr.analyser.results import generate_results_from_ir
 from rattr.models.ir import FileIr
 from rattr.models.results.file import FileResults
 from rattr.models.symbol import (
@@ -19,6 +18,7 @@ from rattr.models.symbol import (
     Name,
 )
 from rattr.models.util import serialise
+from rattr.results import generate_results_from_ir
 from tests.shared import Import_
 
 if TYPE_CHECKING:

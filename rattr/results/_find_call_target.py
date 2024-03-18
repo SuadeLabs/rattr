@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from rattr import error
-from rattr.analyser.results import IrTarget
 from rattr.analyser.util import is_excluded_name
 from rattr.config import Config
 from rattr.models.symbol import Builtin, Call, Class, Func, Import, Name
@@ -13,10 +12,11 @@ from rattr.module_locator.util import (
     is_in_pip,
     is_in_stdlib,
 )
+from rattr.results import IrTarget
 
 if TYPE_CHECKING:
-    from rattr.analyser.results import IrCall, IrEnvironment
     from rattr.ast.types import Identifier
+    from rattr.results import IrCall, IrEnvironment
 
 
 def find_call_target_and_ir(
