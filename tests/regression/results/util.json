@@ -1,17 +1,26 @@
 {
-    "recursive": {
+    "Things": {
         "gets": [
-            "_x.multivalue",
-            "x.xs",
-            "x.xs[].single_value"
+            "Things.one",
+            "Things.three",
+            "Things.two"
         ],
-        "sets": [
-            "_x"
+        "sets": [],
+        "dels": [],
+        "calls": []
+    },
+    "_four_fn": {
+        "gets": [
+            "Exception",
+            "arg_a",
+            "arg_a.accessed_in_four",
+            "arg_a.is_a_good_thing",
+            "arg_a.type"
         ],
+        "sets": [],
         "dels": [],
         "calls": [
-            "len()",
-            "sum()"
+            "my_lib_function()"
         ]
     },
     "_one_fn": {
@@ -31,6 +40,23 @@
         "dels": [],
         "calls": [
             "some_function()"
+        ]
+    },
+    "_three_fn": {
+        "gets": [
+            "arg_a",
+            "arg_a.first",
+            "arg_a.second",
+            "arg_a.third",
+            "arg_b",
+            "arg_b.first",
+            "arg_b.second",
+            "arg_b.third"
+        ],
+        "sets": [],
+        "dels": [],
+        "calls": [
+            "sum()"
         ]
     },
     "_two_fn": {
@@ -55,50 +81,12 @@
             "_one_fn()"
         ]
     },
-    "_three_fn": {
-        "gets": [
-            "arg_a.first",
-            "arg_a.second",
-            "arg_a.third",
-            "arg_b.first",
-            "arg_b.second",
-            "arg_b.third"
-        ],
-        "sets": [],
-        "dels": [],
-        "calls": [
-            "sum()"
-        ]
-    },
-    "_four_fn": {
-        "gets": [
-            "Exception",
-            "arg_a",
-            "arg_a.accessed_in_four",
-            "arg_a.is_a_good_thing",
-            "arg_a.type"
-        ],
-        "sets": [],
-        "dels": [],
-        "calls": [
-            "my_lib_function()"
-        ]
-    },
-    "Things": {
-        "gets": [
-            "Things.one",
-            "Things.three",
-            "Things.two"
-        ],
-        "sets": [],
-        "dels": [],
-        "calls": []
-    },
     "dispatcher": {
         "gets": [
             "@Constant",
             "@Constant.attr",
             "Exception",
+            "arg_b",
             "arg_b.first",
             "arg_b.second",
             "arg_b.some_thing",
@@ -129,6 +117,21 @@
             "_one_fn()",
             "_three_fn()",
             "_two_fn()"
+        ]
+    },
+    "recursive": {
+        "gets": [
+            "_x.multivalue",
+            "x.xs",
+            "x.xs[].single_value"
+        ],
+        "sets": [
+            "_x"
+        ],
+        "dels": [],
+        "calls": [
+            "len()",
+            "sum()"
         ]
     }
 }

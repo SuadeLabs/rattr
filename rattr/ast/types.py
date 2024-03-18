@@ -5,6 +5,8 @@ import ast
 from rattr.versioning.typing import TypeAlias
 
 Identifier: TypeAlias = str
+ModuleName: TypeAlias = str
+FullyQualifiedName: TypeAlias = str
 
 
 AstLiterals = (

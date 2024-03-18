@@ -1035,8 +1035,10 @@ def get_function_form(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
 def is_excluded_name(name: str) -> bool:
     """Return `True` if the given name is in the exclude list."""
     config = Config()
-
-    return any(re.fullmatch(x, name) for x in config.arguments.excluded_names)
+    return any(
+        pattern.fullmatch(name) is not None
+        for pattern in config.arguments.re_excluded_names
+    )
 
 
 def is_method_on_constant(name: str) -> bool:

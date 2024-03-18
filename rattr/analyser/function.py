@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ast
 from itertools import accumulate
+from typing import TYPE_CHECKING
 
 from rattr import error
 from rattr.analyser.base import NodeVisitor
@@ -34,6 +35,25 @@ from rattr.models.symbol import (
 )
 from rattr.models.symbol.util import without_call_brackets
 from rattr.plugins import plugins
+
+if TYPE_CHECKING:
+    from rattr.models.plugins import CustomFunctionAnalyser
+
+
+def custom_analyser_for_target(
+    node: ast.Call,
+    context: Context,
+) -> CustomFunctionAnalyser:
+    target_name = without_call_brackets(
+        fullname_of(
+            node,
+            unravel_attr_access_calls=False,
+            safe=True,
+        )
+    )
+    target_symbol = context.get_call_target(target_name, node, warn=False)
+
+    return plugins.get_analyser(target_symbol, modulename=context.modulename)
 
 
 class FunctionAnalyser(NodeVisitor):
@@ -136,17 +156,16 @@ class FunctionAnalyser(NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         """Visit ast.Call(func, args, keywords)."""
         config = Config()
-        _, fullname = self.get_and_verify_name(node, ast.Load())
 
-        # Handle special builtins such as getattr, setattr, etc
-        if self.handle_special_function(node):
-            return
+        if (analyser := custom_analyser_for_target(node, self.context)) is not None:
+            return self.visit_call_to_target_with_custom_analyser(node, analyser)
+
+        _, fullname = self.get_and_verify_name(node, ast.Load())
+        target = self.context.get_call_target(fullname, node, warn=True)
 
         # NOTE
         # Add the call to the IR and manually visit the arguments, but not `node.func`
         # as it will register an incorrect "gets"
-
-        target = self.context.get_call_target(fullname, node, warn=True)
 
         if isinstance(target, Class):
             error.warning(f"{target.name!r} initialised but not stored", node)
@@ -166,30 +185,24 @@ class FunctionAnalyser(NodeVisitor):
         for arg in (*node.args, *node.keywords):
             self.visit(arg)
 
-    # ----------------------------------------------------------------------- #
-    # Result alterors: special functions
-    # ----------------------------------------------------------------------- #
+    def visit_call_to_target_with_custom_analyser(
+        self,
+        node: ast.Call,
+        custom_analyser: CustomFunctionAnalyser,
+    ) -> None:
+        target_name = without_call_brackets(
+            fullname_of(
+                node,
+                unravel_attr_access_calls=False,
+                safe=True,
+            )
+        )
+        target_call_ir = custom_analyser.on_call(target_name, node, self.context)
 
-    def handle_special_function(self, node: ast.Call) -> bool:
-        """Return `True` if handled."""
-        if isinstance(node.func, ast.Name):
-            name = without_call_brackets(node.func.id)
-        else:
-            name = without_call_brackets(fullname_of(node, safe=True))
-
-        analyser = plugins.custom_function_handler.get(name, self.context.root)
-
-        if analyser is None:
-            return False
-
-        ir = analyser.on_call(name, node, self.context)
-
-        self.func_ir["sets"] |= ir["sets"]
-        self.func_ir["gets"] |= ir["gets"]
-        self.func_ir["dels"] |= ir["dels"]
-        self.func_ir["calls"] |= ir["calls"]
-
-        return True
+        self.func_ir["gets"] |= target_call_ir["gets"]
+        self.func_ir["sets"] |= target_call_ir["sets"]
+        self.func_ir["dels"] |= target_call_ir["dels"]
+        self.func_ir["calls"] |= target_call_ir["calls"]
 
     # ----------------------------------------------------------------------- #
     # Context alterors: assignments and deleteion

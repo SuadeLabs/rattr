@@ -273,7 +273,7 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": {Name("arg.attr", "arg")},
+                    "gets": {Name("arg"), Name("arg.attr", "arg")},
                     "sets": set(),
                     "dels": set(),
                     "calls": set(),
@@ -304,7 +304,11 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": {Name("arg.inner.outer", "arg")},
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.inner", "arg"),
+                        Name("arg.inner.outer", "arg"),
+                    },
                     "sets": set(),
                     "dels": set(),
                     "calls": set(),
@@ -335,7 +339,12 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": {Name("arg.b[].inner.outer", "arg")},
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.b[]", "arg"),
+                        Name("arg.b[].inner", "arg"),
+                        Name("arg.b[].inner.outer", "arg"),
+                    },
                     "sets": set(),
                     "dels": set(),
                     "calls": set(),
@@ -366,7 +375,7 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": {Name("arg.attr", "arg")},
+                    "gets": {Name("arg"), Name("arg.attr", "arg")},
                     "sets": set(),
                     "dels": set(),
                     "calls": set(),
@@ -397,7 +406,11 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": {Name("arg.inner.outer", "arg")},
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.inner", "arg"),
+                        Name("arg.inner.outer", "arg"),
+                    },
                     "sets": set(),
                     "dels": set(),
                     "calls": set(),
@@ -428,7 +441,12 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": {Name("arg.b[].inner.outer", "arg")},
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.b[]", "arg"),
+                        Name("arg.b[].inner", "arg"),
+                        Name("arg.b[].inner.outer", "arg"),
+                    },
                     "sets": set(),
                     "dels": set(),
                     "calls": set(),
@@ -459,7 +477,7 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": set(),
+                    "gets": {Name("arg")},
                     "sets": {Name("arg.attr", "arg")},
                     "dels": set(),
                     "calls": set(),
@@ -490,7 +508,10 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": set(),
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.b[]", "arg"),
+                    },
                     "sets": {Name("arg.b[].attr", "arg")},
                     "dels": set(),
                     "calls": set(),
@@ -521,7 +542,7 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": set(),
+                    "gets": {Name("arg")},
                     "sets": set(),
                     "dels": {Name("arg.attr", "arg")},
                     "calls": set(),
@@ -552,7 +573,10 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": set(),
+                    "gets": {
+                        Name("arg"),
+                        Name("arg.b[]", "arg"),
+                    },
                     "sets": set(),
                     "dels": {Name("arg.b[].attr", "arg")},
                     "calls": set(),
@@ -630,7 +654,7 @@ class TestFunctionAnalyser:
             ),
             file_ir={
                 a_func: {
-                    "gets": {Name("arg.attr", "arg")},
+                    "gets": {Name("arg"), Name("arg.attr", "arg")},
                     "sets": set(),
                     "dels": set(),
                     "calls": {format_call},

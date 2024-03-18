@@ -110,6 +110,10 @@ class Arguments(argparse.Namespace):
         return set(self._excluded_names)
 
     @property
+    def re_excluded_names(self) -> tuple[re.Pattern[str], ...]:
+        return tuple(_cached_re_compile(p) for p in self.excluded_names)
+
+    @property
     def show_warnings(self) -> ShowWarnings:
         if self._warning_level == "none":
             return ShowWarnings(0)
@@ -196,7 +200,7 @@ class Config(metaclass=ConfigMetaclass):
     )
     """The set of perennial module blacklist patterns, i.e. rattr itself."""
 
-    PLUGIN_BLACKLIST_PATTERNS: set[str] = field(default_factory=set)
+    PLUGINS_BLACKLIST_PATTERNS: set[str] = field(default_factory=set)
     """The set of blacklist patterns set by custom plugins."""
 
     @cached_property
@@ -293,7 +297,7 @@ class Config(metaclass=ConfigMetaclass):
         return (
             self.arguments.excluded_imports
             | self.MODULE_BLACKLIST_PATTERNS
-            | self.PLUGIN_BLACKLIST_PATTERNS
+            | self.PLUGINS_BLACKLIST_PATTERNS
         )
 
     @property

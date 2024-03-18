@@ -31,14 +31,34 @@ NAMEDTUPLE_INVALID_SECOND_PARAMETER_VALUE_ERROR: Final = (
 )
 
 
-def basename_of(node: ast.expr, *, safe: bool = False) -> Identifier:
+def basename_of(
+    node: ast.expr,
+    *,
+    unravel_attr_access_calls: bool = True,
+    safe: bool = False,
+) -> Identifier:
     """Return the basename of the given expression."""
-    return names_of(node, safe=safe)[0]
+    basename, _ = names_of(
+        node,
+        unravel_attr_access_calls=unravel_attr_access_calls,
+        safe=safe,
+    )
+    return basename
 
 
-def fullname_of(node: ast.expr, *, safe: bool = False) -> Identifier:
+def fullname_of(
+    node: ast.expr,
+    *,
+    unravel_attr_access_calls: bool = True,
+    safe: bool = False,
+) -> Identifier:
     """Return the fullname of the given expression."""
-    return names_of(node, safe=safe)[1]
+    _, fullname = names_of(
+        node,
+        unravel_attr_access_calls=unravel_attr_access_calls,
+        safe=safe,
+    )
+    return fullname
 
 
 def unravel_names(

@@ -240,6 +240,7 @@ class TestRegression:
                 },
                 fn_a: {
                     "gets": {
+                        Name("arg"),
                         Name("arg.attr", "arg"),
                     },
                     "sets": set(),
