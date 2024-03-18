@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
@@ -35,7 +34,7 @@ class IrCallTreeNode(NamedTuple):
     @classmethod
     def new(cls, target: IrTarget, call: IrCall | None) -> IrCallTreeNode:
         return cls(
-            target=IrTarget(symbol=target.symbol, ir=copy.deepcopy(target.ir)),
+            target=IrTarget(symbol=target.symbol, ir=target.ir.copy()),
             edge_in=call,
             edges_out=[
                 IrCall(caller=target.symbol, symbol=symbol)
