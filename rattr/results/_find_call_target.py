@@ -89,7 +89,7 @@ def resolve_class_init(
     try:
         target = __resolve_target_and_ir(call, environment=environment)
     except ImportError:
-        error.error(error_, culprit=call)
+        error.error(error_, culprit=call.symbol)
         return None
 
     return target
@@ -132,9 +132,12 @@ def resolve_import(
     local_name = target.name.replace(f"{target.module_name}.", "").removesuffix("()")
     new_target = module_ir.context.get(local_name)
 
+    imported_as_ = (
+        f" (imported as {target.name!r})" if target.name != local_name else ""
+    )
     unresolved_ = (
-        f"unable to resolve call to {local_name!r} in import {module_} "
-        f"(imported as {target.name!r}), {{why}}"
+        f"unable to resolve call to {local_name!r} in import {module_}{imported_as_}, "
+        f"{{why}}"
     )
 
     if isinstance(new_target, (Func, Class)):
@@ -154,7 +157,7 @@ def resolve_import(
     if new_target is None and is_call_to_method_or_member(local_name):
         error.info(unresolved_.format(why="it is a method"), culprit=target)
     else:
-        error.error(unresolved_.format(why="for an unknown reason"), culprit=target)
+        error.error(unresolved_.format(why="it is likely undefined"), culprit=target)
 
     return None
 
