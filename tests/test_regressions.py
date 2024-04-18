@@ -908,7 +908,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -976,7 +976,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -1044,7 +1044,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -1112,7 +1112,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -1185,7 +1185,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -1264,7 +1264,7 @@ class TestNamedTupleFromInheritance:
 
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="NamedTuple",
@@ -1338,7 +1338,7 @@ class TestNamedTupleFromInheritance:
         # Before the fix this failed at the simplification in "generate_results_from_ir"
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="NamedTuple",
@@ -1412,7 +1412,7 @@ class TestNamedTupleFromInheritance:
         # Before the fix this failed at the simplification in "generate_results_from_ir"
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="NamedTuple",
@@ -1492,7 +1492,7 @@ class TestRattrConstantInNameableOnCheckForNamedTuple:
 
         with mock.patch("sys.exit") as _exit, arguments(_warning_level="all"):
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         my_function = Func(
             name="my_function",

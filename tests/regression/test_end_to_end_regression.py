@@ -61,7 +61,7 @@ def test_run_e2e_regression_tests_for_results(
 
     # Equivalent to main function
     file_ir, import_irs, _ = parse_and_analyse_file()
-    actual_results = generate_results_from_ir(file_ir, import_irs)
+    actual_results = generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
 
     if not actual_results:
         pytest.skip(f"no results for {code_file}")
@@ -109,7 +109,7 @@ def test_update_expected_results(code_file: Path, results_file: Path):
     )
 
     file_ir, import_irs, _ = parse_and_analyse_file()
-    results = generate_results_from_ir(file_ir, import_irs)
+    results = generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
 
     results_file.write_text(serialise(results, indent=4))
 
@@ -146,7 +146,7 @@ def test_run_e2e_regression_tests_for_ir(
 
     # Equivalent to main function
     file_ir, import_irs, _ = parse_and_analyse_file()
-    _ = generate_results_from_ir(file_ir, import_irs)
+    _ = generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
 
     # Ensure filename is the same in CI
     actual_tests_dir = Path(__file__).parents[1]
@@ -200,7 +200,7 @@ def test_update_expected_ir(code_file: Path, ir_files: Path):
     )
 
     file_ir, import_irs, _ = parse_and_analyse_file()
-    _ = generate_results_from_ir(file_ir, import_irs)
+    _ = generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
 
     serialised = serialise_irs(
         target_name=str(code_file),

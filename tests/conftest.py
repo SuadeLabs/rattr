@@ -271,7 +271,7 @@ def analyse_single_file(
     def _inner(source: str) -> tuple[ast.AST, Context]:
         ast_module, context = parse_with_context(source)
         file_ir = FileAnalyser(ast_module, context).analyse()
-        file_results = generate_results_from_ir(file_ir, {})
+        file_results = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         return file_ir, file_results
 

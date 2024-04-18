@@ -216,8 +216,13 @@ class TestGeneratorExpession:
                     "gets": {
                         Name("ys"),
                         Name("my_target"),
+                        Name("my_target.if_attr", "my_target"),
+                        Name("x.attr", "x"),
+                        Name("x.if_attr", "x"),
                     },
-                    "sets": set(),
+                    "sets": {
+                        Name("x"),
+                    },
                     "dels": set(),
                     "calls": {
                         Call(
