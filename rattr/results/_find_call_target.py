@@ -44,7 +44,7 @@ def find_call_target_and_ir(
         return resolve_class_init(call, environment=environment)
 
     if isinstance(target, Import):
-        return resolve_import(call.symbol.target, environment=environment)
+        return resolve_import(target, environment=environment)
 
     raise TypeError(f"{call} is not an IrCall")
 
