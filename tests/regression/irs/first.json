@@ -3999,6 +3999,32 @@
                         },
                         {
                             "type": "Name",
+                            "name": "datum.is_a_good_thing",
+                            "basename": "datum",
+                            "location": {
+                                "lineno": 2,
+                                "col_offset": 7,
+                                "end_lineno": 2,
+                                "end_col_offset": 28,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "datum.type",
+                            "basename": "datum",
+                            "location": {
+                                "lineno": 4,
+                                "col_offset": 42,
+                                "end_lineno": 4,
+                                "end_col_offset": 52,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
                             "name": "good_data",
                             "basename": "good_data",
                             "location": {
@@ -4191,6 +4217,110 @@
                                 "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
                             },
                             "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "x",
+                            "basename": "x",
+                            "location": {
+                                "lineno": 11,
+                                "col_offset": 26,
+                                "end_lineno": 11,
+                                "end_col_offset": 27,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "x.attr",
+                            "basename": "x",
+                            "location": {
+                                "lineno": 7,
+                                "col_offset": 11,
+                                "end_lineno": 7,
+                                "end_col_offset": 17,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "x.is_whatever",
+                            "basename": "x",
+                            "location": {
+                                "lineno": 13,
+                                "col_offset": 7,
+                                "end_lineno": 13,
+                                "end_col_offset": 20,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "x.whatever",
+                            "basename": "x",
+                            "location": {
+                                "lineno": 14,
+                                "col_offset": 26,
+                                "end_lineno": 14,
+                                "end_col_offset": 36,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "y",
+                            "basename": "y",
+                            "location": {
+                                "lineno": 11,
+                                "col_offset": 38,
+                                "end_lineno": 11,
+                                "end_col_offset": 39,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "y.attr",
+                            "basename": "y",
+                            "location": {
+                                "lineno": 7,
+                                "col_offset": 11,
+                                "end_lineno": 7,
+                                "end_col_offset": 17,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "z",
+                            "basename": "z",
+                            "location": {
+                                "lineno": 11,
+                                "col_offset": 50,
+                                "end_lineno": 11,
+                                "end_col_offset": 51,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "z.attr",
+                            "basename": "z",
+                            "location": {
+                                "lineno": 7,
+                                "col_offset": 11,
+                                "end_lineno": 7,
+                                "end_col_offset": 17,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
                         }
                     ],
                     "sets": [
@@ -4203,6 +4333,32 @@
                                 "col_offset": 0,
                                 "end_lineno": 41,
                                 "end_col_offset": 21,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "x.another_thing",
+                            "basename": "x",
+                            "location": {
+                                "lineno": 14,
+                                "col_offset": 8,
+                                "end_lineno": 14,
+                                "end_col_offset": 23,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "x.some_thing",
+                            "basename": "x",
+                            "location": {
+                                "lineno": 11,
+                                "col_offset": 4,
+                                "end_lineno": 11,
+                                "end_col_offset": 16,
                                 "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
                             },
                             "interface": null
@@ -4309,6 +4465,19 @@
                         },
                         {
                             "type": "Name",
+                            "name": "x.attr",
+                            "basename": "x",
+                            "location": {
+                                "lineno": 7,
+                                "col_offset": 11,
+                                "end_lineno": 7,
+                                "end_col_offset": 17,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
                             "name": "x.is_whatever",
                             "basename": "x",
                             "location": {
@@ -4348,6 +4517,19 @@
                         },
                         {
                             "type": "Name",
+                            "name": "y.attr",
+                            "basename": "y",
+                            "location": {
+                                "lineno": 7,
+                                "col_offset": 11,
+                                "end_lineno": 7,
+                                "end_col_offset": 17,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
                             "name": "z",
                             "basename": "z",
                             "location": {
@@ -4355,6 +4537,19 @@
                                 "col_offset": 50,
                                 "end_lineno": 11,
                                 "end_col_offset": 51,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "z.attr",
+                            "basename": "z",
+                            "location": {
+                                "lineno": 7,
+                                "col_offset": 11,
+                                "end_lineno": 7,
+                                "end_col_offset": 17,
                                 "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
                             },
                             "interface": null
@@ -4390,6 +4585,44 @@
                     ],
                     "dels": [],
                     "calls": [
+                        {
+                            "type": "Call",
+                            "name": "my_foo",
+                            "args": {
+                                "args": [
+                                    "y"
+                                ],
+                                "kwargs": {}
+                            },
+                            "target": {
+                                "type": "Func",
+                                "name": "my_foo",
+                                "location": {
+                                    "lineno": 6,
+                                    "col_offset": 0,
+                                    "end_lineno": 7,
+                                    "end_col_offset": 17,
+                                    "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                                },
+                                "interface": {
+                                    "posonlyargs": [],
+                                    "args": [
+                                        "x"
+                                    ],
+                                    "vararg": null,
+                                    "kwonlyargs": [],
+                                    "kwarg": null
+                                },
+                                "is_async": false
+                            },
+                            "location": {
+                                "lineno": 11,
+                                "col_offset": 31,
+                                "end_lineno": 11,
+                                "end_col_offset": 40,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
+                            }
+                        },
                         {
                             "type": "Call",
                             "name": "my_foo",
@@ -4463,44 +4696,6 @@
                                 "col_offset": 43,
                                 "end_lineno": 11,
                                 "end_col_offset": 52,
-                                "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
-                            }
-                        },
-                        {
-                            "type": "Call",
-                            "name": "my_foo",
-                            "args": {
-                                "args": [
-                                    "y"
-                                ],
-                                "kwargs": {}
-                            },
-                            "target": {
-                                "type": "Func",
-                                "name": "my_foo",
-                                "location": {
-                                    "lineno": 6,
-                                    "col_offset": 0,
-                                    "end_lineno": 7,
-                                    "end_col_offset": 17,
-                                    "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
-                                },
-                                "interface": {
-                                    "posonlyargs": [],
-                                    "args": [
-                                        "x"
-                                    ],
-                                    "vararg": null,
-                                    "kwonlyargs": [],
-                                    "kwarg": null
-                                },
-                                "is_async": false
-                            },
-                            "location": {
-                                "lineno": 11,
-                                "col_offset": 31,
-                                "end_lineno": 11,
-                                "end_col_offset": 40,
                                 "file": "/home/suade/rattr/feature/tests/regression/code/first.py"
                             }
                         }
