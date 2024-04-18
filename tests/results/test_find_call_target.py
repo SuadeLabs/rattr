@@ -106,7 +106,10 @@ def test_find_call_target_and_ir_target_is_in_stdlib(
     assert stdlib_call_symbol.target.module_name == "math"
 
     actual = find_call_target_and_ir(
-        stdlib_call_symbol,
+        IrCall(
+            mock.Mock(),  # unused when symbol is an import
+            symbol=stdlib_call_symbol,
+        ),
         environment=example_environment_a,
     )
     assert actual is None
