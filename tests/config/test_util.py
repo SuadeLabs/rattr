@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest import mock
 
-from rattr.config.util import _is_project_root, find_xdg_cache_dir
+from rattr.config._util import _is_project_root
+from rattr.config.util import find_xdg_cache_dir
 
 
 def mock_path(
