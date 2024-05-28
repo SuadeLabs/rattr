@@ -1,0 +1,1920 @@
+{
+    "import_irs": {},
+    "target_ir": {
+        "filename": "/home/suade/rattr/feature/tests/regression/code/module/foo.py",
+        "ir": {
+            "context": {
+                "parent": null,
+                "symbol_table": {
+                    "__annotations__": {
+                        "type": "Name",
+                        "name": "__annotations__",
+                        "basename": "__annotations__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "__builtins__": {
+                        "type": "Name",
+                        "name": "__builtins__",
+                        "basename": "__builtins__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "__cached__": {
+                        "type": "Name",
+                        "name": "__cached__",
+                        "basename": "__cached__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "__doc__": {
+                        "type": "Name",
+                        "name": "__doc__",
+                        "basename": "__doc__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "__file__": {
+                        "type": "Name",
+                        "name": "__file__",
+                        "basename": "__file__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "__loader__": {
+                        "type": "Name",
+                        "name": "__loader__",
+                        "basename": "__loader__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "__name__": {
+                        "type": "Name",
+                        "name": "__name__",
+                        "basename": "__name__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "__package__": {
+                        "type": "Name",
+                        "name": "__package__",
+                        "basename": "__package__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "__spec__": {
+                        "type": "Name",
+                        "name": "__spec__",
+                        "basename": "__spec__",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": null
+                    },
+                    "ArithmeticError": {
+                        "type": "Builtin",
+                        "name": "ArithmeticError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "AssertionError": {
+                        "type": "Builtin",
+                        "name": "AssertionError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "AttributeError": {
+                        "type": "Builtin",
+                        "name": "AttributeError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "BaseException": {
+                        "type": "Builtin",
+                        "name": "BaseException",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "BlockingIOError": {
+                        "type": "Builtin",
+                        "name": "BlockingIOError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "BrokenPipeError": {
+                        "type": "Builtin",
+                        "name": "BrokenPipeError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "BufferError": {
+                        "type": "Builtin",
+                        "name": "BufferError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "BytesWarning": {
+                        "type": "Builtin",
+                        "name": "BytesWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ChildProcessError": {
+                        "type": "Builtin",
+                        "name": "ChildProcessError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ConnectionAbortedError": {
+                        "type": "Builtin",
+                        "name": "ConnectionAbortedError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ConnectionError": {
+                        "type": "Builtin",
+                        "name": "ConnectionError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ConnectionRefusedError": {
+                        "type": "Builtin",
+                        "name": "ConnectionRefusedError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ConnectionResetError": {
+                        "type": "Builtin",
+                        "name": "ConnectionResetError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "DeprecationWarning": {
+                        "type": "Builtin",
+                        "name": "DeprecationWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "EOFError": {
+                        "type": "Builtin",
+                        "name": "EOFError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "EnvironmentError": {
+                        "type": "Builtin",
+                        "name": "EnvironmentError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "Exception": {
+                        "type": "Builtin",
+                        "name": "Exception",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "FileExistsError": {
+                        "type": "Builtin",
+                        "name": "FileExistsError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "FileNotFoundError": {
+                        "type": "Builtin",
+                        "name": "FileNotFoundError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "FloatingPointError": {
+                        "type": "Builtin",
+                        "name": "FloatingPointError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "FutureWarning": {
+                        "type": "Builtin",
+                        "name": "FutureWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "GeneratorExit": {
+                        "type": "Builtin",
+                        "name": "GeneratorExit",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "IOError": {
+                        "type": "Builtin",
+                        "name": "IOError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ImportError": {
+                        "type": "Builtin",
+                        "name": "ImportError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ImportWarning": {
+                        "type": "Builtin",
+                        "name": "ImportWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "IndentationError": {
+                        "type": "Builtin",
+                        "name": "IndentationError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "IndexError": {
+                        "type": "Builtin",
+                        "name": "IndexError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "InterruptedError": {
+                        "type": "Builtin",
+                        "name": "InterruptedError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "IsADirectoryError": {
+                        "type": "Builtin",
+                        "name": "IsADirectoryError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "KeyError": {
+                        "type": "Builtin",
+                        "name": "KeyError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "KeyboardInterrupt": {
+                        "type": "Builtin",
+                        "name": "KeyboardInterrupt",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "LookupError": {
+                        "type": "Builtin",
+                        "name": "LookupError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "MemoryError": {
+                        "type": "Builtin",
+                        "name": "MemoryError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ModuleNotFoundError": {
+                        "type": "Builtin",
+                        "name": "ModuleNotFoundError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "NameError": {
+                        "type": "Builtin",
+                        "name": "NameError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "NotADirectoryError": {
+                        "type": "Builtin",
+                        "name": "NotADirectoryError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "NotImplemented": {
+                        "type": "Builtin",
+                        "name": "NotImplemented",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "NotImplementedError": {
+                        "type": "Builtin",
+                        "name": "NotImplementedError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "OSError": {
+                        "type": "Builtin",
+                        "name": "OSError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "OverflowError": {
+                        "type": "Builtin",
+                        "name": "OverflowError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "PendingDeprecationWarning": {
+                        "type": "Builtin",
+                        "name": "PendingDeprecationWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "PermissionError": {
+                        "type": "Builtin",
+                        "name": "PermissionError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ProcessLookupError": {
+                        "type": "Builtin",
+                        "name": "ProcessLookupError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "RecursionError": {
+                        "type": "Builtin",
+                        "name": "RecursionError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ReferenceError": {
+                        "type": "Builtin",
+                        "name": "ReferenceError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ResourceWarning": {
+                        "type": "Builtin",
+                        "name": "ResourceWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "RuntimeError": {
+                        "type": "Builtin",
+                        "name": "RuntimeError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "RuntimeWarning": {
+                        "type": "Builtin",
+                        "name": "RuntimeWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "StopAsyncIteration": {
+                        "type": "Builtin",
+                        "name": "StopAsyncIteration",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "StopIteration": {
+                        "type": "Builtin",
+                        "name": "StopIteration",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "SyntaxError": {
+                        "type": "Builtin",
+                        "name": "SyntaxError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "SyntaxWarning": {
+                        "type": "Builtin",
+                        "name": "SyntaxWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "SystemError": {
+                        "type": "Builtin",
+                        "name": "SystemError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "SystemExit": {
+                        "type": "Builtin",
+                        "name": "SystemExit",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "TabError": {
+                        "type": "Builtin",
+                        "name": "TabError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "TimeoutError": {
+                        "type": "Builtin",
+                        "name": "TimeoutError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "TypeError": {
+                        "type": "Builtin",
+                        "name": "TypeError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "UnboundLocalError": {
+                        "type": "Builtin",
+                        "name": "UnboundLocalError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "UnicodeDecodeError": {
+                        "type": "Builtin",
+                        "name": "UnicodeDecodeError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "UnicodeEncodeError": {
+                        "type": "Builtin",
+                        "name": "UnicodeEncodeError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "UnicodeError": {
+                        "type": "Builtin",
+                        "name": "UnicodeError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "UnicodeTranslateError": {
+                        "type": "Builtin",
+                        "name": "UnicodeTranslateError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "UnicodeWarning": {
+                        "type": "Builtin",
+                        "name": "UnicodeWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "UserWarning": {
+                        "type": "Builtin",
+                        "name": "UserWarning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ValueError": {
+                        "type": "Builtin",
+                        "name": "ValueError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "Warning": {
+                        "type": "Builtin",
+                        "name": "Warning",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ZeroDivisionError": {
+                        "type": "Builtin",
+                        "name": "ZeroDivisionError",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "abs": {
+                        "type": "Builtin",
+                        "name": "abs",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "all": {
+                        "type": "Builtin",
+                        "name": "all",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "any": {
+                        "type": "Builtin",
+                        "name": "any",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ascii": {
+                        "type": "Builtin",
+                        "name": "ascii",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "bin": {
+                        "type": "Builtin",
+                        "name": "bin",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "bool": {
+                        "type": "Builtin",
+                        "name": "bool",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "breakpoint": {
+                        "type": "Builtin",
+                        "name": "breakpoint",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "bytearray": {
+                        "type": "Builtin",
+                        "name": "bytearray",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "bytes": {
+                        "type": "Builtin",
+                        "name": "bytes",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "callable": {
+                        "type": "Builtin",
+                        "name": "callable",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "chr": {
+                        "type": "Builtin",
+                        "name": "chr",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "classmethod": {
+                        "type": "Builtin",
+                        "name": "classmethod",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "compile": {
+                        "type": "Builtin",
+                        "name": "compile",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "complex": {
+                        "type": "Builtin",
+                        "name": "complex",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "copyright": {
+                        "type": "Builtin",
+                        "name": "copyright",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "credits": {
+                        "type": "Builtin",
+                        "name": "credits",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "delattr": {
+                        "type": "Builtin",
+                        "name": "delattr",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "dict": {
+                        "type": "Builtin",
+                        "name": "dict",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "dir": {
+                        "type": "Builtin",
+                        "name": "dir",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "divmod": {
+                        "type": "Builtin",
+                        "name": "divmod",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "enumerate": {
+                        "type": "Builtin",
+                        "name": "enumerate",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "eval": {
+                        "type": "Builtin",
+                        "name": "eval",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "exec": {
+                        "type": "Builtin",
+                        "name": "exec",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "exit": {
+                        "type": "Builtin",
+                        "name": "exit",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "filter": {
+                        "type": "Builtin",
+                        "name": "filter",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "float": {
+                        "type": "Builtin",
+                        "name": "float",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "format": {
+                        "type": "Builtin",
+                        "name": "format",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "frozenset": {
+                        "type": "Builtin",
+                        "name": "frozenset",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "getattr": {
+                        "type": "Builtin",
+                        "name": "getattr",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "globals": {
+                        "type": "Builtin",
+                        "name": "globals",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "hasattr": {
+                        "type": "Builtin",
+                        "name": "hasattr",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "hash": {
+                        "type": "Builtin",
+                        "name": "hash",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "help": {
+                        "type": "Builtin",
+                        "name": "help",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "hex": {
+                        "type": "Builtin",
+                        "name": "hex",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "id": {
+                        "type": "Builtin",
+                        "name": "id",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "input": {
+                        "type": "Builtin",
+                        "name": "input",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "int": {
+                        "type": "Builtin",
+                        "name": "int",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "isinstance": {
+                        "type": "Builtin",
+                        "name": "isinstance",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "issubclass": {
+                        "type": "Builtin",
+                        "name": "issubclass",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "iter": {
+                        "type": "Builtin",
+                        "name": "iter",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "len": {
+                        "type": "Builtin",
+                        "name": "len",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "license": {
+                        "type": "Builtin",
+                        "name": "license",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "list": {
+                        "type": "Builtin",
+                        "name": "list",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "locals": {
+                        "type": "Builtin",
+                        "name": "locals",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "map": {
+                        "type": "Builtin",
+                        "name": "map",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "max": {
+                        "type": "Builtin",
+                        "name": "max",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "memoryview": {
+                        "type": "Builtin",
+                        "name": "memoryview",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "min": {
+                        "type": "Builtin",
+                        "name": "min",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "next": {
+                        "type": "Builtin",
+                        "name": "next",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "object": {
+                        "type": "Builtin",
+                        "name": "object",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "oct": {
+                        "type": "Builtin",
+                        "name": "oct",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "open": {
+                        "type": "Builtin",
+                        "name": "open",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "ord": {
+                        "type": "Builtin",
+                        "name": "ord",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "pow": {
+                        "type": "Builtin",
+                        "name": "pow",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "print": {
+                        "type": "Builtin",
+                        "name": "print",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "property": {
+                        "type": "Builtin",
+                        "name": "property",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "quit": {
+                        "type": "Builtin",
+                        "name": "quit",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "range": {
+                        "type": "Builtin",
+                        "name": "range",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "repr": {
+                        "type": "Builtin",
+                        "name": "repr",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "reversed": {
+                        "type": "Builtin",
+                        "name": "reversed",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "round": {
+                        "type": "Builtin",
+                        "name": "round",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "set": {
+                        "type": "Builtin",
+                        "name": "set",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "setattr": {
+                        "type": "Builtin",
+                        "name": "setattr",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "slice": {
+                        "type": "Builtin",
+                        "name": "slice",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "sorted": {
+                        "type": "Builtin",
+                        "name": "sorted",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "staticmethod": {
+                        "type": "Builtin",
+                        "name": "staticmethod",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "str": {
+                        "type": "Builtin",
+                        "name": "str",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "sum": {
+                        "type": "Builtin",
+                        "name": "sum",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "super": {
+                        "type": "Builtin",
+                        "name": "super",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "tuple": {
+                        "type": "Builtin",
+                        "name": "tuple",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "type": {
+                        "type": "Builtin",
+                        "name": "type",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "vars": {
+                        "type": "Builtin",
+                        "name": "vars",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "zip": {
+                        "type": "Builtin",
+                        "name": "zip",
+                        "location": {
+                            "lineno": 0,
+                            "col_offset": 0,
+                            "end_lineno": null,
+                            "end_col_offset": null,
+                            "file": "built-in"
+                        },
+                        "interface": "any"
+                    },
+                    "my_lib_function": {
+                        "type": "Func",
+                        "name": "my_lib_function",
+                        "location": {
+                            "lineno": 1,
+                            "col_offset": 0,
+                            "end_lineno": 4,
+                            "end_col_offset": 61,
+                            "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                        },
+                        "interface": {
+                            "posonlyargs": [],
+                            "args": [
+                                "thing"
+                            ],
+                            "vararg": null,
+                            "kwonlyargs": [],
+                            "kwarg": null
+                        },
+                        "is_async": false
+                    }
+                },
+                "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+            },
+            "symbols": {
+                "my_lib_function": {
+                    "type": "Func",
+                    "name": "my_lib_function",
+                    "location": {
+                        "lineno": 1,
+                        "col_offset": 0,
+                        "end_lineno": 4,
+                        "end_col_offset": 61,
+                        "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                    },
+                    "interface": {
+                        "posonlyargs": [],
+                        "args": [
+                            "thing"
+                        ],
+                        "vararg": null,
+                        "kwonlyargs": [],
+                        "kwarg": null
+                    },
+                    "is_async": false
+                }
+            },
+            "function_irs": {
+                "my_lib_function": {
+                    "gets": [
+                        {
+                            "type": "Name",
+                            "name": "thing.is_a_good_thing",
+                            "basename": "thing",
+                            "location": {
+                                "lineno": 2,
+                                "col_offset": 7,
+                                "end_lineno": 2,
+                                "end_col_offset": 28,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                            },
+                            "interface": null
+                        },
+                        {
+                            "type": "Name",
+                            "name": "thing.type",
+                            "basename": "thing",
+                            "location": {
+                                "lineno": 4,
+                                "col_offset": 42,
+                                "end_lineno": 4,
+                                "end_col_offset": 52,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                            },
+                            "interface": null
+                        }
+                    ],
+                    "sets": [],
+                    "dels": [],
+                    "calls": [
+                        {
+                            "type": "Call",
+                            "name": "Exception",
+                            "args": {
+                                "args": [
+                                    "@JoinedStr"
+                                ],
+                                "kwargs": {}
+                            },
+                            "target": {
+                                "type": "Builtin",
+                                "name": "Exception",
+                                "location": {
+                                    "lineno": 0,
+                                    "col_offset": 0,
+                                    "end_lineno": null,
+                                    "end_col_offset": null,
+                                    "file": "built-in"
+                                },
+                                "interface": "any"
+                            },
+                            "location": {
+                                "lineno": 4,
+                                "col_offset": 10,
+                                "end_lineno": 4,
+                                "end_col_offset": 61,
+                                "file": "/home/suade/rattr/feature/tests/regression/code/module/foo.py"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

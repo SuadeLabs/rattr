@@ -1,13 +1,26 @@
 """Tests for module/file level features."""
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
 
-from rattr.analyser.context import RootContext
-from rattr.analyser.context.symbol import Func, Name
 from rattr.analyser.file import FileAnalyser
+from rattr.models.context import compile_root_context
+from rattr.models.symbol import CallInterface, Func, Name
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from tests.shared import StateFn
+
+
+@pytest.fixture(autouse=True)
+def __set_current_file(state: StateFn) -> Iterator[None]:
+    with state(current_file=Path(__file__)):
+        yield
 
 
 class TestModuleLevelStatements:
@@ -19,9 +32,9 @@ class TestModuleLevelStatements:
             two = 2
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     def test_typed_assignment(self, parse):
         _ast = parse(
@@ -31,9 +44,9 @@ class TestModuleLevelStatements:
             two: int = 2
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     def test_augmented_assignment(self, parse):
         _ast = parse(
@@ -43,9 +56,9 @@ class TestModuleLevelStatements:
             two += 2
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_operator(self, parse):
@@ -55,9 +68,9 @@ class TestModuleLevelStatements:
             x = (y := 2)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     def test_multiple_assignment(self, parse):
         _ast = parse(
@@ -67,9 +80,9 @@ class TestModuleLevelStatements:
             z = 3, 4
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        assert results == {}
+        assert results.ir_as_dict() == {}
 
     def test_lambda(self, parse):
         # Anonymous
@@ -79,7 +92,7 @@ class TestModuleLevelStatements:
             """
         )
         with mock.patch("sys.exit") as _exit:
-            FileAnalyser(_ast, RootContext(_ast)).analyse()
+            FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
         # Named
         _ast = parse(
@@ -87,20 +100,20 @@ class TestModuleLevelStatements:
             name = lambda *a, **k: a.attr
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        name = Func(name="name", interface=CallInterface(vararg="a", kwarg="k"))
 
         expected = {
-            Func("name", [], "a", "k"): {
+            name: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment(self, parse):
@@ -111,11 +124,9 @@ class TestModuleLevelStatements:
             other, another = (alpha, beta := 1)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {}
-
-        assert results == expected
+        assert results.ir_as_dict() == {}
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_list(self, parse):
@@ -126,11 +137,9 @@ class TestModuleLevelStatements:
             other, another = [alpha, beta := 1]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
 
-        expected = {}
-
-        assert results == expected
+        assert results.ir_as_dict() == {}
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_lambda(self, parse):
@@ -140,28 +149,27 @@ class TestModuleLevelStatements:
             other = (name := lambda *a, **k: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        name = Func(name="name", interface=CallInterface(vararg="a", kwarg="k"))
+        other = Func(name="other", interface=CallInterface(vararg="a", kwarg="k"))
 
         expected = {
-            Func("name", [], "a", "k"): {
+            name: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
-            Func("other", [], "a", "k"): {
+            other: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_lambda(self, parse):
@@ -171,20 +179,20 @@ class TestModuleLevelStatements:
             other = (alpha, beta := lambda *a, **k: a.attr)
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        beta = Func(name="beta", interface=CallInterface(vararg="a", kwarg="k"))
 
         expected = {
-            Func("beta", [], "a", "k"): {
+            beta: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected
 
     @pytest.mark.py_3_8_plus()
     def test_walrus_multiple_assignment_lambda_list(self, parse):
@@ -194,17 +202,17 @@ class TestModuleLevelStatements:
             other = [alpha, beta := lambda *a, **k: a.attr]
             """
         )
-        results = FileAnalyser(_ast, RootContext(_ast)).analyse()
+        results = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
+
+        beta = Func(name="beta", interface=CallInterface(vararg="a", kwarg="k"))
 
         expected = {
-            Func("beta", [], "a", "k"): {
+            beta: {
                 "calls": set(),
                 "dels": set(),
-                "gets": {
-                    Name("a.attr", "a"),
-                },
+                "gets": {Name("a.attr", "a")},
                 "sets": set(),
             },
         }
 
-        assert results == expected
+        assert results.ir_as_dict() == expected

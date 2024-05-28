@@ -2,10 +2,24 @@
 from __future__ import annotations
 
 import ast
+from typing import TYPE_CHECKING
 
 from rattr.analyser.base import CustomFunctionAnalyser
-from rattr.analyser.context import Context
-from rattr.analyser.types import FuncOrAsyncFunc, FunctionIR
+from rattr.analyser.types import FunctionIr
+from rattr.ast.util import fullname_of
+from rattr.models.symbol import Call, CallArguments
+
+if TYPE_CHECKING:
+    from rattr.models.context import Context
+
+
+def as_ast_lambda(expr: ast.expr) -> ast.Lambda:
+    return ast.Lambda(
+        args=ast.arguments(
+            posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]
+        ),
+        body=expr,
+    )
 
 
 class DefaultDictAnalyser(CustomFunctionAnalyser):
@@ -17,10 +31,15 @@ class DefaultDictAnalyser(CustomFunctionAnalyser):
     def qualified_name(self) -> str:
         return "collections.defaultdict"
 
-    def on_def(self, name: str, node: FuncOrAsyncFunc, ctx: Context) -> FunctionIR:
+    def on_def(
+        self,
+        name: str,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: Context,
+    ) -> FunctionIr:
         return super().on_def(name, node, ctx)
 
-    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIR:
+    def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         # HACK Avoid circular import
         from rattr.analyser.function import FunctionAnalyser
 
@@ -31,27 +50,25 @@ class DefaultDictAnalyser(CustomFunctionAnalyser):
 
         # Three cases:
         #   1. A named callable         ->  Add call to name
-        #   2. A lambda                 ->  Fold-in results of body
-        #   3. Non-lambda expression    ->  Visit
-
-        fn_analyser = FunctionAnalyser(ast.FunctionDef(), ctx)
+        #   2. A lambda                 ->  Visit lambda
+        #   3. Non-lambda expression    ->  Visit expression as dummy lambda
 
         if isinstance(default_factory, (ast.Name, ast.Attribute)):
-            target = ast.Call(
-                func=default_factory,
-                args=[],
-                keywords=[],
+            name = fullname_of(default_factory)
+            target = ctx.get_call_target(name, culprit=node)
+            results = FunctionIr.new(
+                calls={
+                    Call(
+                        name=name,
+                        args=CallArguments(),
+                        target=target,
+                        token=default_factory,
+                    ),
+                }
             )
-
-            # Populate ast.AST fields
-            target._fields = tuple()
-            target.lineno = default_factory.lineno
-            target.col_offset = default_factory.col_offset
         elif isinstance(default_factory, ast.Lambda):
-            target = default_factory.body
+            results = FunctionAnalyser(default_factory, ctx).analyse()
         else:
-            target = default_factory
+            results = FunctionAnalyser(as_ast_lambda(default_factory), ctx).analyse()
 
-        fn_analyser.visit(target)
-
-        return fn_analyser.func_ir
+        return results

@@ -4,86 +4,54 @@ from __future__ import annotations
 import ast
 import builtins
 import hashlib
+import io
 import json
 import re
 import sys
-from contextlib import contextmanager
-from copy import deepcopy
-from importlib.util import find_spec
+from contextlib import redirect_stderr
 from itertools import accumulate, chain, filterfalse
 from os.path import isfile
+from pathlib import Path
 from string import ascii_lowercase
 from time import perf_counter
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING
 
 from isort.api import place_module
 
-from rattr import config, error
-from rattr.analyser.context.symbol import (
+from rattr import error
+from rattr.analyser.exc import RattrResultsError
+from rattr.ast.types import AstComprehensions, AstLiterals, AstNodeWithName
+from rattr.config import Config
+from rattr.extra import DictChanges  # noqa: F401
+from rattr.models.ir import FunctionIr
+from rattr.models.symbol import (
+    PYTHON_ATTR_ACCESS_BUILTINS,
+    PYTHON_BUILTINS,
+    Call,
+    CallArguments,
     Class,
     Import,
     Name,
-    Symbol,
-    parse_call,
-    parse_name,
 )
-from rattr.analyser.types import (
-    AnyAssign,
-    AnyFunctionDef,
-    AstDef,
-    Comprehension,
-    Constant,
-    FileResults,
-    FuncOrAsyncFunc,
-    FunctionIR,
-    Literal,
-    Nameable,
-    StrictlyNameable,
-)
+from rattr.module_locator.util import find_module_spec_fast
 
-# The prefix given to local constants, literals, etc to produce a name
-# E.g. "hi" -> get_basename_fullname_pair(.) = "@Str"
-# This must be a character that is not legal for standard Python _identifiers
-# or else code elsewhere may break
-LOCAL_VALUE_PREFIX = "@"
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+    from typing import Any, Final, Type
+
+    from rattr.analyser.types import RattrResults
+    from rattr.ast.types import Identifier
+    from rattr.models.context import Context
+    from rattr.models.symbol import Symbol
 
 
-# RegEx patterns for blacklisted modules
-MODULE_BLACKLIST_PATTERNS = {
-    "(rattr|rattr\\..*)",
-    "(package.rattr|packages.rattr\\..*)",
-}
-
-# Python builtins which are not functions, classes, etc.
-PYTHON_LITERAL_BUILTINS = {"None", "True", "False", "Ellipsis"}
-
-# Python builtins which end in "attr", these dynamically access attributes on a
-# given object
-# NOTE
-#   These must be handled explicitly by `FunctionAnalyser` or anyother
-#   `ast.NodeVisitor` implementation that records results/context and sees them
-PYTHON_ATTR_BUILTINS = {"delattr", "getattr", "hasattr", "setattr"}
-
-# All Python builtins that are present in the `RootContext`
-PYTHON_BUILTINS = set(filter(lambda b: b not in PYTHON_LITERAL_BUILTINS, dir(builtins)))
+re_rattr_name: Final = re.compile(r"^[A-Za-z_][\w\(\)\[\]\.]*$")
 
 
 def get_basename_fullname_pair(
-    node: Nameable,
+    node: ast.expr,
     safe: bool = False,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Return the node's tuple of the basename and the fullname.
 
     If node (and it's children, recursively) are not StrictlyNameable, then a
@@ -115,7 +83,11 @@ def get_basename_fullname_pair(
 
     For the third example, the fact that `a.attr` is accessed is lost!
 
+    NOTE Deprecated, see rattr.ast.util.names_of
+
     """
+    config = Config()
+
     # Base case
     # ast.Name ⊂ StrictlyNameable
     if isinstance(node, ast.Name):
@@ -125,7 +97,7 @@ def get_basename_fullname_pair(
     # node ⊂ ( StrictlyNameable \ { ast.Name } )
     if isinstance(node, ast.Call):
         basename, sub_name = get_basename_fullname_pair(node.func, safe)
-    elif isinstance(node, StrictlyNameable.__args__):
+    elif isinstance(node, AstNodeWithName):
         basename, sub_name = get_basename_fullname_pair(node.value, safe)
 
     if isinstance(node, ast.Attribute):
@@ -135,7 +107,7 @@ def get_basename_fullname_pair(
         return basename, f"{sub_name}[]"
 
     if isinstance(node, ast.Call):
-        if any(is_call_to(attr, node) for attr in PYTHON_ATTR_BUILTINS):
+        if any(is_call_to(attr, node) for attr in PYTHON_ATTR_ACCESS_BUILTINS):
             return basename, ".".join(get_xattr_obj_name_pair(basename, node))
 
         return basename, f"{sub_name}()"
@@ -147,8 +119,8 @@ def get_basename_fullname_pair(
     # node ⊂ Nameable ^ node ⊄ StrictlyNameable
     if safe:
         return (
-            f"{LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
-            f"{LOCAL_VALUE_PREFIX}{node.__class__.__name__}",
+            f"{config.LITERAL_VALUE_PREFIX}{node.__class__.__name__}",
+            f"{config.LITERAL_VALUE_PREFIX}{node.__class__.__name__}",
         )
 
     _error_class: Type[TypeError] = TypeError
@@ -156,11 +128,11 @@ def get_basename_fullname_pair(
         _error_class = error.RattrUnaryOpInNameable
     elif isinstance(node, ast.BinOp):
         _error_class = error.RattrBinOpInNameable
-    elif isinstance(node, Constant.__args__):
+    elif isinstance(node, ast.Constant):
         _error_class = error.RattrConstantInNameable
-    elif isinstance(node, Literal.__args__):
+    elif isinstance(node, AstLiterals):
         _error_class = error.RattrLiteralInNameable
-    elif isinstance(node, Comprehension.__args__):
+    elif isinstance(node, AstComprehensions):
         _error_class = error.RattrComprehensionInNameable
     elif isinstance(node, ast.GeneratorExp):
         _error_class = error.RattrComprehensionInNameable
@@ -170,17 +142,23 @@ def get_basename_fullname_pair(
     raise _error_class(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def get_basename(node: Nameable, safe: bool = False) -> str:
-    """Return the `_identifier` of the innermost ast.Name node."""
+def get_basename(node: ast.expr, safe: bool = False) -> str:
+    """Return the `_identifier` of the innermost ast.Name node.
+
+    NOTE Deprecated, see rattr.ast.utils
+    """
     return get_basename_fullname_pair(node, safe)[0]
 
 
-def get_fullname(node: Nameable, safe: bool = False) -> str:
-    """Return the fullname of the given node."""
+def get_fullname(node: ast.expr, safe: bool = False) -> str:
+    """Return the fullname of the given node.
+
+    NOTE Deprecated, see rattr.ast.utils
+    """
     return get_basename_fullname_pair(node, safe)[1]
 
 
-def get_attrname(node: Nameable) -> str:
+def get_attrname(node: ast.expr) -> str:
     """Return the `_identifier` of the outermost attribute in a nested name.
 
     E.g. `a.b.c.d` -> `d`
@@ -199,9 +177,9 @@ def get_attrname(node: Nameable) -> str:
 
 
 def unravel_names(
-    node: Nameable,
+    node: ast.expr,
     *,
-    get_name: Callable[[Nameable], str] = get_basename,
+    get_name: Callable[[ast.expr], str] = get_basename,
 ) -> Iterable[str]:
     """Return the basename of each nameable in the given node.
 
@@ -220,8 +198,10 @@ def unravel_names(
     >>> list(unravel_names(ravelled_names, get_name=get_fullname))
     ["a.attr"]
 
+    NOTE Deprecated, see rattr.ast.util.unravel_names
+
     """
-    if isinstance(node, StrictlyNameable.__args__):
+    if isinstance(node, AstNodeWithName):
         return [get_name(node)]
 
     if isinstance(node, (ast.Tuple, ast.List)):
@@ -242,6 +222,8 @@ def is_call_to(target: str, node: ast.Call) -> bool:
     Thus rather than determining if a call is to `getattr` by checking the
     basename against "getattr", use `is_call_to("getattr", node)`.
 
+    NOTE Deprecated, see rattr.ast.utils
+
     """
     if not isinstance(node, ast.Call):
         raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
@@ -257,13 +239,18 @@ def has_affect(builtin: str) -> bool:
     if builtin not in PYTHON_BUILTINS:
         raise ValueError(f"'{builtin}' is not a Python builtin")
 
-    return builtin in PYTHON_ATTR_BUILTINS
+    return builtin in PYTHON_ATTR_ACCESS_BUILTINS
 
 
 def get_xattr_obj_name_pair(
-    xattr: str, node: ast.Call, warn: bool = False
-) -> Tuple[str, str]:
-    """Return the object-name pair for a call to getattr, setattr, etc."""
+    xattr: str,
+    node: ast.Call,
+    warn: bool = False,
+) -> tuple[str, str]:
+    """Return the object-name pair for a call to getattr, setattr, etc.
+
+    NOTE Deprecated, see rattr.ast.utils
+    """
     if len(node.args) < 2:
         error.fatal(f"invalid call to '{xattr}', not enough args", node)
 
@@ -289,8 +276,8 @@ def get_xattr_obj_name_pair(
         return ".".join(get_xattr_obj_name_pair(xattr, obj)), attr_name
 
     # Base Case
-    # NOTE Call ∈ StrictlyNameable, thus base case comes second
-    if isinstance(obj, StrictlyNameable.__args__):
+    # NOTE Call ∈ AstStrictlyNameable, thus base case comes second
+    if isinstance(obj, AstNodeWithName):
         return get_fullname(node.args[0]), attr_name
 
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
@@ -325,16 +312,22 @@ def get_second_argument_name(arguments: ast.arguments) -> str:
     return get_nth_argument_name(arguments, 1)
 
 
-def has_annotation(name: str, fn: AstDef) -> bool:
+def has_annotation(
+    name: str,
+    target: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+) -> bool:
     """Return `True` if the function is decorated with the given annotation."""
-    return name in map(get_attrname, fn.decorator_list)
+    return name in map(get_attrname, target.decorator_list)
 
 
-def get_annotation(name: str, fn: AstDef) -> Optional[ast.expr]:
+def get_annotation(
+    name: str,
+    target: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+) -> ast.expr | None:
     """Return the decorator node for the given annotation on the function."""
-    matching: List[ast.expr] = list()
+    matching: list[ast.expr] = []
 
-    for decorator in fn.decorator_list:
+    for decorator in target.decorator_list:
         suffix = get_attrname(decorator)
 
         if suffix != name:
@@ -345,12 +338,15 @@ def get_annotation(name: str, fn: AstDef) -> Optional[ast.expr]:
     if len(matching) < 1:
         return None
     if len(matching) > 1:
-        error.fatal(f"duplicated annotation '{name}' on '{fn.name}'", fn)
+        error.fatal(
+            f"duplicated annotation {name!r} on {target.name!r}",
+            culprit=target,
+        )
 
     return matching[0]
 
 
-def safe_eval(expr: ast.expr, culprit: ast.AST) -> Optional[Any]:
+def safe_eval(expr: ast.expr, culprit: ast.AST) -> Any | None:
     """Return the given expression as evaluated at compile-time.
 
     NOTE
@@ -391,13 +387,14 @@ def safe_eval(expr: ast.expr, culprit: ast.AST) -> Optional[Any]:
 
 
 def parse_annotation(
-    name: str, fn_def: FuncOrAsyncFunc
-) -> Tuple[List[Any], Dict[str, Any]]:
+    name: str,
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> tuple[list[Any], dict[str, Any]]:
     """Return the positional and keyword arguments of the annotation."""
     annotation = get_annotation(name, fn_def)
 
-    pos_args: List[Any] = list()
-    named_args: Dict[str, Any] = dict()
+    pos_args: list[Any] = []
+    named_args: dict[str, Any] = {}
 
     if not annotation:
         return pos_args, named_args
@@ -414,139 +411,203 @@ def parse_annotation(
     return pos_args, named_args
 
 
-def is_name(name: Any) -> bool:
-    """Return `True` if the given name is a valid Python `_identifier`.
-
-    See: `parse_rattr_results_from_annotation(...)`
-    """
-    if not isinstance(name, str):
+def is_name(target: str | object) -> bool:
+    """Return `True` if the given name is a valid Python identifier."""
+    if not isinstance(target, str):
         return False
 
-    if name.startswith("*"):
-        name = name[1:]
-
-    if name.startswith("@"):
-        name = name[1:]
-
-    return bool(re.match("^[A-Za-z_][A-Za-z\\d\\(\\)\\[\\]\\._]*$", name))
+    name = target.removeprefix("*").removeprefix("@")
+    return re_rattr_name.fullmatch(name) is not None
 
 
-def is_set_of_names(set_of_names: Any) -> bool:
-    """Return `True` if the given names are all valid Python `_identifier`s.
+def is_set_of_names(target: set[str] | object) -> bool:
+    return isinstance(target, set) and all(is_name(name) for name in target)
 
-    See: `is_name(...`)
-    See: `parse_rattr_results_from_annotation(...)`
-    """
-    if not isinstance(set_of_names, set):
+
+def is_list_of_names(target: list[str] | object) -> bool:
+    return isinstance(target, list) and all(is_name(name) for name in target)
+
+
+def is_list_of_call_specs(
+    call_specs: list[tuple[Identifier, tuple[list[Identifier], dict[Identifier, str]]]]
+    | object,
+) -> bool:
+    if not isinstance(call_specs, list):
         return False
 
-    return all(is_name(name) for name in set_of_names)
+    for spec in call_specs:
+        if not isinstance(spec, tuple):
+            return False
 
+        if len(spec) != 2:
+            return False
 
-def is_args(args: Any) -> bool:
-    """Return `True` if the given names are all valid Python `_identifier`s.
+        target_name, target_args = spec
 
-    See: `is_name(...`)
-    See: `parse_rattr_results_from_annotation(...)`
-    """
-    if not isinstance(args, tuple):
-        return False
+        if not is_name(target_name):
+            return False
 
-    if len(args) != 2:
-        return False
+        if not isinstance(target_args, tuple):
+            return False
 
-    pos_args, named_args = args
+        if len(target_args) != 2:
+            return False
 
-    if not is_set_of_names(set(pos_args)):
-        return False
+        target_pos_args, target_keyword_args = target_args
 
-    if not all(is_name(name) for name in named_args.keys()):
-        return False
-    if not all(is_name(arg) for arg in named_args.values()):
-        return False
+        if not is_list_of_names(target_pos_args):
+            return False
+
+        for arg_name, local_identifier in target_keyword_args.items():
+            if not is_name(arg_name):
+                return False
+            if not is_name(local_identifier):
+                return False
 
     return True
 
 
-def parse_rattr_results_from_annotation(fn_def: AnyFunctionDef, context) -> FunctionIR:
-    """Return the IR for the given function, assuming it is annotated."""
-    # Check arguments
-    expected = {"sets": set(), "gets": set(), "calls": list(), "dels": set()}
-    pos_args, named_args = parse_annotation("rattr_results", fn_def)
+def validate_rattr_results(rattr_results: RattrResults) -> None:
+    """Raise a RattrResultsError if the given results are invalid.
 
-    if pos_args != list():
+    Raises:
+        RattrResultsError: The given rattr results are invalid.
+    """
+    for key in ("gets", "sets", "dels"):
+        if not is_set_of_names(rattr_results[key]):
+            raise RattrResultsError(
+                f"'rattr_results' expects a set[Identifier] for {key!r}, where "
+                f"Identifier is a type alias for str"
+            )
+
+    if not is_list_of_call_specs(rattr_results["calls"]):
+        raise RattrResultsError(
+            "'rattr_results' expects 'calls' to be a "
+            "list[tuple[TargetName, tuple[list[PositionalArgumentName], "
+            "dict[KeywordArgumentName, LocalIdentifier]]]]; "
+            "where TargetName, PositionalArgumentName, KeywordArgumentName, and "
+            "LocalIdentifier are type aliases for str"
+        )
+
+
+def parse_rattr_results_from_annotation_args_impl(
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> RattrResults:
+    stderr_stream = io.StringIO()
+    has_likely_missing_comma = False
+
+    try:
+        with redirect_stderr(stderr_stream):
+            decorator_args, decorator_kwargs = parse_annotation("rattr_results", fn_def)
+    except SystemExit as exc:
+        stderr = stderr_stream.getvalue()
+
+        # TODO On switching to proper logging use logger here
+        for line in stderr.splitlines():
+            if "unable to evaluate" in line:
+                has_likely_missing_comma = True
+            else:
+                print(line)
+
+        if has_likely_missing_comma:
+            error.fatal(
+                "unable to parse 'rattr_results', you are likely missing a "
+                "comma in 'calls'",
+                culprit=fn_def,
+            )
+
+        raise exc
+
+    if decorator_args != []:
         error.fatal(
             f"unexpected positional arguments to 'rattr_results'; expected "
-            f"none, got {pos_args}",
-            fn_def,
+            f"none, got {decorator_args}",
+            culprit=fn_def,
         )
 
-    for name, default in expected.items():
-        if name in named_args:
+    rattr_results_from_annotation: RattrResults = {
+        "gets": set(),
+        "sets": set(),
+        "dels": set(),
+        "calls": list(),
+    }
+    for key, results in decorator_kwargs.items():
+        if key not in rattr_results_from_annotation:
             continue
-        named_args[name] = default
+        rattr_results_from_annotation[key] = results
 
-    if not all(key in expected.keys() for key in named_args.keys()):
+    if decorator_kwargs.keys() - rattr_results_from_annotation.keys():
         error.fatal(
-            f"'rattr_results' expects one-or-many of the arguments "
-            f"{set(expected.keys())}, found {set(named_args.keys())}",
-            fn_def,
+            f"unexpected keyword arguments to 'rattr_results'; expected any of "
+            f"{list(rattr_results_from_annotation.keys())}, got "
+            f"{list(decorator_kwargs.keys())}",
+            culprit=fn_def,
         )
 
-    # Check argument types
-    def __type_error(msg: str) -> None:
-        error.fatal("type error:" + msg, fn_def)
+    return rattr_results_from_annotation
 
-    if not is_set_of_names(named_args.get("sets")):
-        __type_error("'rattr_results' expects set of names for 'sets'")
 
-    if not is_set_of_names(named_args.get("gets")):
-        __type_error("'rattr_results' expects set of names for 'gets'")
+def parse_rattr_results_from_annotation(
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+    *,
+    context: Context,
+) -> FunctionIr:
+    """Return the IR for the given function, assuming it is annotated."""
+    rattr_results = parse_rattr_results_from_annotation_args_impl(fn_def)
 
-    if not is_set_of_names(named_args.get("dels")):
-        __type_error("'rattr_results' expects set of names for 'dels'")
+    try:
+        validate_rattr_results(rattr_results)
+    except RattrResultsError as exc:
+        error.fatal(exc.message, culprit=fn_def)
 
-    if not all(is_name(c[0]) for c in named_args.get("calls")):
-        __type_error("'rattr_results' LHS of 'calls' to be names")
+    def as_name(name: Identifier) -> Name:
+        return Name(
+            name=name,
+            basename=name.replace("*", "").split(".")[0],
+            token=fn_def,
+        )
 
-    if not all(is_args(c[1]) for c in named_args.get("calls")):
-        __type_error("'rattr_results' expects args for 'calls'")
+    def as_call(
+        call: tuple[Identifier, tuple[list[Identifier], dict[Identifier, Identifier]]],
+    ) -> Call:
+        (target_name, (args, kwargs)) = call
+        return Call(
+            name=target_name,
+            args=CallArguments(args=args, kwargs=kwargs),
+            target=context.get_call_target(target_name, culprit=fn_def),
+            token=fn_def,
+        )
 
-    if not all(len(c) == 2 for c in named_args.get("calls")):
-        __type_error("'rattr_results' expects two elements per call")
-
-    # Parse arguments as IR
     return {
-        "sets": {parse_name(n) for n in named_args.get("sets")},
-        "gets": {parse_name(n) for n in named_args.get("gets")},
-        "dels": {parse_name(n) for n in named_args.get("dels")},
-        "calls": {
-            parse_call(n, a, context.get_call_target(n, fn_def))
-            for n, a in named_args.get("calls")
-        },
+        "gets": {as_name(name) for name in rattr_results["gets"]},
+        "sets": {as_name(name) for name in rattr_results["sets"]},
+        "dels": {as_name(name) for name in rattr_results["dels"]},
+        "calls": {as_call(call) for call in rattr_results["calls"]},
     }
 
 
 def is_blacklisted_module(module: str) -> bool:
-    """Return `True` if the given module matches a blacklisted pattern."""
+    """Return `True` if the given module matches a blacklisted pattern.
+
+    NOTE Deprecated, see rattr.ast.place.is_in_import_blacklist
+    """
+    config = Config()
+
     # Exclude stdlib modules such as the built-in "_thread"
     if is_stdlib_module(module):
         return False
 
-    # Allow user specified exclusions via CLI
-    blacklist = set.union(MODULE_BLACKLIST_PATTERNS, config.excluded_imports)
-
-    return any(re.fullmatch(p, module) for p in blacklist)
+    return any(re.fullmatch(p, module) for p in config.blacklist_patterns)
 
 
 def is_pip_module(module: str) -> bool:
-    """Return `True` if the given module is pip installed."""
+    """Return `True` if the given module is pip installed.
+
+    NOTE Deprecated, see rattr.ast.place
+    """
     pip_install_locations = (".+/site-packages.*",)
 
-    try:
-        spec = find_spec(module)
-    except (AttributeError, ModuleNotFoundError, ValueError):
-        spec = None
+    spec = find_module_spec_fast(module)
 
     if spec is None or spec.origin is None:
         return False
@@ -566,79 +627,13 @@ def is_stdlib_module(module: str) -> bool:
     >>> is_stdlib_module("math.pi")
     True
 
+    NOTE Deprecated, see rattr.ast.place
     """
     return place_module(module) == "STDLIB"
 
 
 def is_in_builtins(name_or_qualified_name: str) -> bool:
     return name_or_qualified_name in dir(builtins)
-
-
-def get_function_def_args(
-    fn_def: AnyFunctionDef,
-) -> Tuple[List[str], Optional[str], Optional[str]]:
-    """Return the arguments in the given function definition."""
-    args = list()
-    vararg = None
-    kwarg = None
-
-    for pos in fn_def.args.args:
-        args.append(pos.arg)
-
-    if fn_def.args.vararg:
-        vararg = fn_def.args.vararg.arg
-
-    if fn_def.args.kwarg:
-        kwarg = fn_def.args.kwarg.arg
-
-    return args, vararg, kwarg
-
-
-def get_function_call_args(
-    fn_call: ast.Call,
-    self_name: Optional[str] = None,
-) -> Tuple[List[str], Dict[str, str]]:
-    """Return the arguments in the given function call.
-
-    Method/initialiser calls can provide a `self_name` to prepend to the
-    positional arguments.
-
-    """
-    _unsupported = "{} not supported in function calls"
-
-    args = list()
-    kwargs = dict()
-
-    for arg in fn_call.args:
-        if isinstance(arg, ast.Starred):
-            error.error(_unsupported.format("iterable unpacking"), fn_call)
-
-        args.append(get_fullname(arg, safe=True))
-
-    for kwarg in fn_call.keywords:
-        expected, got = kwarg.arg, kwarg.value
-
-        if expected is None:
-            error.fatal(_unsupported.format("dictionary unpacking"), fn_call)
-            return list(), dict()  # Make mypy happy
-
-        kwargs[expected] = get_fullname(got, safe=True)
-
-    if self_name is not None:
-        args = [self_name, *args]
-
-    return args, kwargs
-
-
-def remove_call_brackets(call: str):
-    """Return the given string with the trailing `()` removed, if present.
-
-    NOTE Made redundant by `str.removesuffix("()")` in Python 3.9+
-    """
-    if call.endswith("()"):
-        return call[:-2]
-
-    return call
 
 
 class timer:
@@ -672,37 +667,12 @@ class read:
         pass
 
 
-class Changes:
-    """Context manager to return the dict-like's changes across the block."""
-
-    def __init__(self, target, keys_fn=lambda t: t.keys()):
-        self.target = target
-        self.keys_fn = keys_fn
-
-    def __enter__(self):
-        self.antecedent: Set = set(self.keys_fn(self.target))
-        return self
-
-    def __exit__(self, *_):
-        self.consequent: Set = set(self.keys_fn(self.target))
-
-    @property
-    def added(self) -> Set:
-        """Return the keys added to the IR."""
-        return self.consequent - self.antecedent
-
-    @property
-    def removed(self) -> Set:
-        """Return the keys removed from the IR, should be the empty set."""
-        return self.antecedent - self.consequent
-
-
 def get_starred_imports(
-    symbols: List[Symbol],
+    symbols: list[Symbol],
     seen: Iterable[Import],
-) -> List[Import]:
+) -> list[Import]:
     """Return the starred imports in the given symbols."""
-    starred: List[Import] = list()
+    starred: list[Import] = []
 
     for symbol in symbols:
         if not isinstance(symbol, Import):
@@ -719,16 +689,9 @@ def get_starred_imports(
     return starred
 
 
-@contextmanager
-def enter_file(new_file: str) -> Generator:
-    """Set `config.current_file` for the scope of a context."""
-    old_file = config.current_file
-    config.current_file = new_file
-    yield
-    config.current_file = old_file
-
-
-def get_function_body(node: AnyFunctionDef) -> List[ast.stmt]:
+def get_function_body(
+    node: ast.Lambda | ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[ast.stmt]:
     """Return the body of the given function as a list of statements."""
     if isinstance(node, ast.Lambda):
         return [node.body]
@@ -739,7 +702,9 @@ def get_function_body(node: AnyFunctionDef) -> List[ast.stmt]:
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def get_assignment_targets(node: AnyAssign) -> List[ast.expr]:
+def get_assignment_targets(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> list[ast.expr]:
     """Return the given assignment's targets as a list."""
     if isinstance(node, ast.Assign):
         return node.targets
@@ -750,7 +715,9 @@ def get_assignment_targets(node: AnyAssign) -> List[ast.expr]:
     raise TypeError(f"line {node.lineno}: {ast.dump(node)}")
 
 
-def get_contained_walruses(node: AnyAssign) -> List[ast.NamedExpr]:
+def get_contained_walruses(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> list[ast.NamedExpr]:
     """Return the walruses in the RHS of the given assignment.
 
     >>> get_nested_walruses(ast.parse("a = (b := c)"))
@@ -770,8 +737,13 @@ def get_contained_walruses(node: AnyAssign) -> List[ast.NamedExpr]:
     return list(filter(lambda v: isinstance(v, ast.NamedExpr), rhs_values))
 
 
-def assignment_is_one_to_one(node: AnyAssign) -> bool:
-    """Return `True` if the given assignment is one-to-one."""
+def assignment_is_one_to_one(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> bool:
+    """Return `True` if the given assignment is one-to-one.
+
+    NOTE Deprecated, see rattr.ast.util.assignment_is_one_to_one
+    """
     _iterable = (ast.Tuple, ast.List)
 
     targets = get_assignment_targets(node)
@@ -783,8 +755,13 @@ def assignment_is_one_to_one(node: AnyAssign) -> bool:
     return not isinstance(node.value, _iterable)
 
 
-def lambda_in_rhs(node: AnyAssign) -> bool:
-    """Return `True` if the RHS of the given assignment contains a lambda."""
+def lambda_in_rhs(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> bool:
+    """Return `True` if the RHS of the given assignment contains a lambda.
+
+    NOTE Deprecated, see rattr.ast.util.has_lambda_in_rhs
+    """
     _iterable = (ast.Tuple, ast.List)
 
     if isinstance(node.value, ast.Lambda):
@@ -795,8 +772,13 @@ def lambda_in_rhs(node: AnyAssign) -> bool:
         return False
 
 
-def walrus_in_rhs(node: AnyAssign) -> bool:
-    """Return `True` if the RHS contains a walrus operator."""
+def walrus_in_rhs(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> bool:
+    """Return `True` if the RHS contains a walrus operator.
+
+    NOTE Deprecated, see rattr.ast.util.has_walrus_in_rhs
+    """
     _iterable = (ast.Tuple, ast.List)
 
     if isinstance(node.value, ast.NamedExpr):
@@ -807,8 +789,13 @@ def walrus_in_rhs(node: AnyAssign) -> bool:
         return False
 
 
-def namedtuple_in_rhs(node: AnyAssign) -> bool:
-    """Return `True` if the RHS contains a namedtuple creation."""
+def namedtuple_in_rhs(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> bool:
+    """Return `True` if the RHS contains a namedtuple creation.
+
+    NOTE Deprecated, see rattr.ast.util.has_namedtuple_declaration_in_rhs
+    """
     _iterable = (ast.Tuple, ast.List)
 
     def _target_is_namedtuple(call: ast.Call) -> bool:
@@ -832,6 +819,7 @@ def namedtuple_in_rhs(node: AnyAssign) -> bool:
 
 
 def _attrs_from_list_of_strings(attrs_argument: ast.List) -> list[str]:
+    """NOTE Deprecated, see rattr.ast.util.unpack_ast_list_of_strings."""
     attrs: list[str] = [
         arg.value
         for arg in attrs_argument.elts
@@ -846,6 +834,7 @@ def _attrs_from_list_of_strings(attrs_argument: ast.List) -> list[str]:
 
 
 def _attrs_from_space_delimited_string(attrs_argument: ast.Constant) -> list[str]:
+    """NOTE Deprecated, see rattr.ast.util.parse_space_delimited_ast_string."""
     if not isinstance(attrs_argument.value, str):
         raise SyntaxError
 
@@ -858,6 +847,7 @@ def _attrs_from_space_delimited_string(attrs_argument: ast.Constant) -> list[str
 
 
 def _namedtuple_attrs_from_second_argument(attrs_argument: ast.AST) -> list[str]:
+    """NOTE Deprecated."""
     if isinstance(attrs_argument, ast.List):
         return _attrs_from_list_of_strings(attrs_argument)
 
@@ -867,7 +857,9 @@ def _namedtuple_attrs_from_second_argument(attrs_argument: ast.AST) -> list[str]
     raise SyntaxError
 
 
-def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str, str]]:
+def get_namedtuple_attrs_from_call(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+) -> tuple[list[str], dict[str, str]]:
     """Return the args/attrs of the namedtuple constructed by this assignment by call.
 
     #### Note
@@ -883,6 +875,8 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
 
     Returns:
         tuple[list[str], dict[str, str]]: The positional and keyword args of the init.
+
+    NOTE Deprecated, see rattr.ast.util.namedtuple_init_signature_from_declaration
     """
     _invalid_signature_error = (
         "namedtuple expects exactly two positional arguments (i.e. name, attrs)"
@@ -912,7 +906,10 @@ def get_namedtuple_attrs_from_call(node: AnyAssign) -> tuple[list[str], dict[str
     return ["self", *attrs]
 
 
-def class_in_rhs(node: AnyAssign, context: Any) -> bool:
+def class_in_rhs(
+    node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+    context: Context,
+) -> bool:
     """Return `True` if the RHS of the given assignment is a class init."""
     _iterable = (ast.Tuple, ast.List)
 
@@ -920,7 +917,7 @@ def class_in_rhs(node: AnyAssign, context: Any) -> bool:
         full = get_fullname(expr, safe=True)
 
         try:
-            target = context.get_call_target(full, expr, False)
+            target = context.get_call_target(full, expr, warn=False)
         except ValueError:
             return False
 
@@ -934,24 +931,39 @@ def class_in_rhs(node: AnyAssign, context: Any) -> bool:
         return False
 
 
-def is_starred_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
-    """Return `True` if the given import is a `from module import *`."""
+def is_starred_import(node: ast.Import | ast.ImportFrom) -> bool:
+    """Return `True` if the given import is a `from module import *`.
+
+    NOTE Deprecated, see rattr.ast.util.is_starred_import
+    """
     if not isinstance(node, ast.ImportFrom):
         return False
 
     return any(target.name == "*" for target in node.names)
 
 
-def is_relative_import(node: Union[ast.Import, ast.ImportFrom]) -> bool:
-    """Return `True` if the given import is a relative import."""
+def is_relative_import(node: ast.Import | ast.ImportFrom) -> bool:
+    """Return `True` if the given import is a relative import.
+
+    NOTE Deprecated, see rattr.ast.util.is_relative_import
+    """
     if not isinstance(node, ast.ImportFrom):
         return False
 
     return node.level != 0
 
 
-def module_name_from_file_path(file: str) -> Optional[str]:
-    """Return the recognised name of the given module."""
+def module_name_from_file_path(file: Path | str | None) -> str | None:
+    """Return the recognised name of the given module.
+
+    NOTE Deprecated, see rattr.module_locator.util.derive_module_name_from_path
+    """
+    if file is None:
+        raise ValueError
+
+    if isinstance(file, Path):
+        file = str(file)
+
     module = file.replace("/", ".").replace("\\", ".")
 
     if module.endswith(".__init__.py"):
@@ -971,19 +983,18 @@ def module_name_from_file_path(file: str) -> Optional[str]:
     ordered = list(reversed(well_formed))
 
     for p in [*ordered, None]:
-        try:
-            spec = find_spec(p)
-            if spec is not None:
-                break
-        except (AttributeError, ModuleNotFoundError, ValueError):
-            continue
+        if find_module_spec_fast(p) is None:
+            break
 
     return p
 
 
 def get_absolute_module_name(base: str, level: int, target: str) -> str:
     """Return the absolute import for the given relative import."""
-    level -= int(config.current_file.endswith("__init__.py"))
+    config = Config()
+
+    if config.state.current_file.name == "__init__.py":
+        level -= 1
 
     if level > 0:
         new_base = ".".join(base.split(".")[:-level])
@@ -993,7 +1004,7 @@ def get_absolute_module_name(base: str, level: int, target: str) -> str:
     return f"{new_base}.{target}"
 
 
-def get_function_form(node: AnyFunctionDef) -> str:
+def get_function_form(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
     """Return the string representing the function form.
 
     Given the function, fn:
@@ -1017,25 +1028,11 @@ def get_function_form(node: AnyFunctionDef) -> str:
     return f"'{node.name}({', '.join(arguments)})'"
 
 
-def re_filter_ir(d: Dict[Symbol, Any], filter_by: str) -> Dict[str, Any]:
-    """Return the given dict filtered by the given regular expression."""
-    if not filter_by:
-        return d
-
-    return {f: d[f] for f in filter(lambda f: re.fullmatch(filter_by, f.name), d)}
-
-
-def re_filter_results(d: Dict[str, Any], filter_by: str) -> Dict[str, Any]:
-    """Return the given dict filtered by the given regular expression."""
-    if not filter_by:
-        return d
-
-    return {f: d[f] for f in filter(lambda f: re.fullmatch(filter_by, f), d)}
-
-
 def is_excluded_name(name: str) -> bool:
     """Return `True` if the given name is in the exclude list."""
-    return any(re.fullmatch(x, name) for x in config.excluded_names)
+    config = Config()
+
+    return any(re.fullmatch(x, name) for x in config.arguments.excluded_names)
 
 
 def is_method_on_constant(name: str) -> bool:
@@ -1131,10 +1128,13 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
 
     """
     first, second = get_xattr_obj_name_pair(fn_name, node, warn=True)
-
     basename = first.split(".")[0].replace("*", "").replace("[]", "").replace("()", "")
 
-    return Name(pattern.format(first=first, second=second), basename)
+    return Name(
+        name=pattern.format(first=first, second=second),
+        basename=basename,
+        token=node,
+    )
 
 
 def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:
@@ -1163,7 +1163,7 @@ def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
 
     if isfile(cache_filepath):
         with open(cache_filepath, "r") as f:
-            cache: Dict[str, Any] = json.load(f)
+            cache: dict[str, Any] = json.load(f)
     else:
         return False
 
@@ -1177,53 +1177,9 @@ def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
         return False
 
     # Check imports
-    for _import in cache.get("imports", dict()):
+    for _import in cache.get("imports", {}):
         file, hash = _import["filepath"], _import["filehash"]
         if hash != get_file_hash(file):
             return False
 
     return True
-
-
-def create_cache(
-    results: FileResults, imports: Set[str], encoder: json.JSONEncoder
-) -> None:
-    """Create a the cache and write it to the cache file.
-
-    NOTE:
-        The attribute `imports` should hold the file name of every directly and
-        indirectly imported source code file.
-
-    Cache file format (JSON):
-    {
-        "filepath": ...,    # the file the results belong to
-        "filehash": ...,    # the MD5 hash of the file when it was cached
-
-        "imports": [
-            {"filename": ..., "filehash": ...,},
-        ]
-
-        "results":
-            # For each function in the file:
-            "function_name": {
-                "sets"  : ["obj.attr", ...],
-                "gets"  : ["obj.attr", ...],
-                "dels"  : ["obj.attr", ...],
-                "calls" : ["obj.attr", ...],
-            },
-            ...
-        }
-    }
-
-    """
-    to_cache = dict()
-
-    to_cache["filepath"] = config.file
-    to_cache["filehash"] = get_file_hash(config.file)
-    to_cache["imports"] = [
-        {"filepath": file, "filehash": get_file_hash(file)} for file in imports
-    ]
-    to_cache["results"] = deepcopy(results)
-
-    with open(config.cache, "w") as f:
-        json.dump(to_cache, f, cls=encoder, indent=4)

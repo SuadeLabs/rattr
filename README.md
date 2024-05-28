@@ -51,6 +51,8 @@ Rattr is configurable both via pyproject.toml and the command line.
 
 ```
   -h, --help            show this help message and exit
+  -c TOML, --config TOML
+                        override the default 'pyproject.toml' with another config file
 
   -v, --version         show program's version number and exit
 
@@ -60,36 +62,46 @@ Rattr is configurable both via pyproject.toml and the command line.
                         1 - follow imports to local modules (default)
                         2 - follow imports to local and pip installed modules
                         3 - follow imports to local, pip installed, and stdlib modules
+
                         NB: following stdlib imports when using CPython will cause issues
 
   -F PATTERN, --exclude-import PATTERN
-                        do not follow imports to modules matching the given pattern, regardless of the
-                        level of -f
+                        do not follow imports to modules matching the given pattern,
+                        regardless of the level of -f
+                        
+                        TOML example: exclude-imports=['a', 'b']
 
   -x PATTERN, --exclude PATTERN
-                        exclude functions and classes matching the given regular expression from being
-                        analysed
+                        exclude functions and classes matching the
+                        given regular expression from being analysed
+                        
+                        TOML example: exclude=['a', 'b']
 
-  -w {none,file,all,ALL}, --show-warnings {none,file,all,ALL}
-                        show warnings level meaning:
-                        none - do not show warnings
-                        file - show warnings for <file>
-                        all  - show warnings for all files (default)
-                        All  - show warnings for all files, including low-priority
+  -w {none,local,default,all}, --warning-level {none,local,default,all}
+                        warnings level meaning:
+                        none    - do not show warnings
+                        local   - show warnings for <file>
+                        default - show warnings for all files (default)
+                        all     - show warnings for all files, including low-priority
+                        
                         NB: errors and fatal errors are always shown
+                        
+                        TOML example: warning-level='all'
 
-  -p {none,short,full}, --show-path {none,short,full}
-                        show path level meaning:
-                        none  - do not show the file path in errors/warnings
-                        short - show an abbreviated path (default)
-                        full  - show the full path
-                        E.g.: "/home/user/very/deep/dir/path/file" becomes "~/.../dir/path/file"
+  -H, --collapse-home   collapse the user's home directory in error messages
+                        E.g.: "/home/user/path/to/file" becomes "~/path/to/file"
+                        
+                        TOML example: collapse-home=true
+  -T, --truncate-deep-paths
+                        truncate deep file paths in error messages
+                        E.g.: "/home/user/very/deep/dir/to/file" becomes "/.../dir/to/file"
+                        
+                        TOML example: truncate-deep-paths=true
 
-  --strict              run rattr in strict mode, i.e. fail on any error
-  --permissive THRESHOLD
-                        run rattr in permissive mode, with the given badness threshold (when threshold
-                        is zero or omitted, it is taken as infinite) (default: --permissive 0 when
-                        group omitted)
+  --strict              select strict mode, i.e. fail on any error
+                        
+                        TOML example: strict=true
+  --threshold N         set the 'badness' threshold, where 0 is infinite (default: --threshold 0)
                         
                         typical badness values:
                         +0 - info
@@ -97,20 +109,19 @@ Rattr is configurable both via pyproject.toml and the command line.
                         +5 - error
                         +∞ - fatal
                         
-                        NB: badness is only contributed to by the target <file> and by the
-                        simplification stage (e.g. resolving function calls, etc).
+                        NB: badness is calculated form the target file and simplification stage
+                        
+                        TOML example: threshold=10
 
-  -i, --show-ir         show the IR for the file and imports
-  -r, --show-results    show the results of analysis
-  -s, --show-stats      show stats Rattr statisitics
-  -S, --silent          show only errors and warnings
+  -o {stats,ir,results}, --stdout {stats,ir,results}
+                        output selection:
+                        silent  - do not print to stdout
+                        ir      - print the intermediate representation to stdout
+                        results - print the results to stdout (default)
+                        
+                        TOML example: stdout='results'
 
-  --cache CACHE         the file to cache the results to, if successful
-
-  <filter-string>       filter the output to functions matching the given regular expression
-
-  <file>                the Python source file to analyse
-
+  <file>                the target source file
 ```
 ## pyproject.toml
 
@@ -159,18 +170,6 @@ cache = ''
 
 # Developer Notes
 
-## Use of Undocumented Behaviour
-
-In `rattr/analyser/types.py` several `Union` types are defined for
-convenience. In Python 3.8 to check if the variable `a` is an instance of any
-of the types within the `Union` the `typing` module provides `get_args` i.e.
-one would use `isinstance(a, get_args(UnionTypeName))`. However, this function
-is not provided in Python 3.7 and so the undocumented attribute `__args__` of
-the `UnionTypeName` must be used i.e. `isinstance(a, UnionTypeName.__args__)`.
-As this is undocumented it should be changed when we upgrade to Python 3.8+
-(and `$EDITOR` will not syntax highlight or tab-complete it).
-
-
 ## Annotations
 
 Rattr provides the ability to annotate functions in the target file such that
@@ -185,29 +184,71 @@ however they should be placed in the file containing the `Assertor` class.
 ### Annotation Format
 
 Annotations should take the form `rattr_<annotation_name>` to avoid namespace
-conflicts in importing code.
+conflicts.
 
 ### Detecting and Parsing Annotations
 
 The `rattr/analyser/utils.py` file provides the following annotation utility
 functions:
 
-* `has_annotation(name: str, fn: ast.FunctionDef) -> bool`
-* `get_annotation(name: str, fn: ast.FunctionDef) -> Optional[ast.AST]`
-* `parse_annotation(name: str, fn: ast.FunctionDef) -> Dict[str, Any]`
-* `parse_rattr_results_from_annotation(fn: ast.FunctionDef) -> Dict[str, Literal[...]]:`
-* `safe_eval(expr: ast.expr, culprit: Optional[ast.AST]) -> Union[Literal, Iterable[Iterable[...[Literal]]]]`
-* `is_name(name: Any) -> bool`
-* `is_set_of_names(set_of_names: Any) -> bool`
-* `is_args(args: Any) -> bool`
+* `has_annotation(name: str, target: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> bool`
+* `get_annotation(name: str, target: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> ast.expr | None`
+* `parse_annotation(name: str, fn_def: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[list[Any], dict[str, Any]]` \
+    where the first return value is the list of the safely evaluated literal values of the positional arguments, and the second argument os the dict from the name to safely evaluated literal value of the keyword arguments\
+    see `safe_eval(...)`
+* `parse_rattr_results_from_annotation(fn_def: ast.FunctionDef | ast.AsyncFunctionDef, *, context: Context) -> FunctionIr`
+* `safe_eval(expr: ast.expr, culprit: ast.AST) -> Any | None`
+* `is_name(target: str | object) -> bool`
+* `is_set_of_names(target: set[str] | object) -> bool`
+* `is_list_of_names(target: list[str] | object) -> bool`
+* `is_list_of_call_specs(call_specs: list[tuple[Identifier, tuple[list[Identifier], dict[Identifier, str]]]] | object) -> bool`
 
 
 ### Provided Annotations
 
-Annotation Name                             | Location
-:-------------------------------------------|:--------------------------------
-`rattr_ignore`                              | `rattr/analyser/annotations.py`
-`rattr_results(<results>)`                  | `rattr/analyser/annotations.py`
+The provided annotations can be found in `rattr/analyser/annotations.py`.
+
+Ignore a function (treated as though it were not defined):
+```python
+def rattr_ignore(*optional_target: Callable[P, R]) -> Callable[P, R]:
+    ...
+```
+
+Usage:
+```python
+@rattr_ignore
+def i_can_be_used_without_brackets():
+    ...
+
+
+@rattr_ignore()
+def or_with_them():
+    ...
+```
+
+Manually specify the results of a function:
+```python
+def rattr_results(
+    *,
+    gets: set[Identifier] | None = None,
+    sets: set[Identifier] | None = None,
+    dels: set[Identifier] | None = None,
+    calls: list[
+        tuple[
+            TargetName,
+            tuple[
+                list[PositionalArgumentName],
+                dict[KeywordArgumentName, LocalIdentifier],
+            ],
+        ]
+    ]
+    | None = None,
+) -> Callable[P, R]
+    ...
+```
+
+For usage see below.
+
 
 ### Results Annotation Grammar
 
@@ -216,11 +257,11 @@ Annotation Name                             | Location
 @rattr_results(
     sets={"a", "b.attr"},
     calls=[
-        ("callee_function", (["arg", "another"], {"kwarg": "some_var"}))
+        ("the_name_of_the_callee_function", (["arg", "another"], {"kwarg": "a.some_attr"}))
     ]
 )
 def decorated_function(...):
-    # ...
+    ...
 
 ```
 
@@ -326,40 +367,19 @@ will become `@BinOp.some_attr`, and the latter `@Int.to_bytes`.
 }
 ```
 
-## Support for Python 3.8
+## Supported Python Versions
 
-Between Python 3.7 and Python 3.8 there were several significant changes that
-effect Rattr and how it works, namely:
+At present `rattr` officially supports, and is tested under, Python versions 3.8
+through 3.11 as the run-time interpreter (i.e. supports `python3.8 -m rattr ...`).
+Previously Python 3.7 was supported but due to a number of `ast` changes (named
+expressions and constant changes) and useful stdlib changes in Python 3.8, this it is
+no longer supported (some code still makes exceptions for Python 3.7 which will be
+refactored over time).
 
-1. the introduction of the walrus operator;
-2. the addition of `posonlyargs` to `ast.arguments`;
-3. complete rework of the representation of constants in `ast`.
-
-As it stands Rattr will run on-and-under Python 3.8, however, with varying
-support for the above. Specifically: 1. is not supported, and usage will cause
-an error; 2. is not supported, and usage results in undefined behaviour; and 3.
-is fully supported.
-
-An additional issue with Python 3.7/3.8 cross-compatibility is the introduction
-of `typing.get_origin` and `typing.get_args`, removing the need to rely on the
-undefined behaviour of `Union().__args__`. Though, as the latter works in both,
-this does not affect the execution of Rattr -- it just results in some
-complaints by `mypy` which could be avoided it only Python 3.8 were supported.
-
-Links regarding the above:
-
-[1] https://stackoverflow.com/questions/45957615/check-a-variable-against-union-type-at-runtime-in-python-3-6
--- answers 1 and 2 specifically touch on the `typing.get_args` /
-`Union().__args__` issue.
-
-[2] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#literals
--- literals are very different.
-
-[3] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#NamedExpr
--- walrus operator.
-
-[4] https://greentreesnakes.readthedocs.io/en/latest/nodes.html#arguments
--- `posonlyargs`.
+Python version outside of the given range may not be able to run `rattr` but,
+hypothetically, any Python 3 code is a valid target. That is to say that while
+`python3.7 -m rattr my_python_3_7_file.py` will not work
+`python3.8 -m rattr my_python_3_7_file.py` (*sic*) will work.
 
 
 --------------------------------------------------------------------------------

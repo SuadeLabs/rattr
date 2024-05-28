@@ -7,60 +7,53 @@ are rather limited.
 from __future__ import annotations
 
 import ast
-from typing import List
+from typing import TYPE_CHECKING
 
 from rattr.analyser.base import NodeVisitor
-from rattr.analyser.context import Context
-from rattr.analyser.context.symbol import Class, Func, Name, Symbol
 from rattr.analyser.function import FunctionAnalyser
-from rattr.analyser.types import AnyAssign, AnyFunctionDef, ClassIR, FunctionIR
-from rattr.analyser.util import (
-    get_assignment_targets,
-    get_fullname,
-    get_function_def_args,
-    has_annotation,
-    unravel_names,
-)
+from rattr.analyser.types import ClassIr
+from rattr.analyser.util import has_annotation, parse_rattr_results_from_annotation
+from rattr.ast.util import assignment_targets, fullname_of, unravel_names
+from rattr.models.context import Context
+from rattr.models.symbol import CallInterface, Class, Func, Name
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from rattr.ast.types import Identifier
 
 
-def is_method(node: ast.AST) -> bool:
-    return isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef))
+def is_method(node: ast.stmt) -> bool:
+    return isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
 
 
-def get_statements(statements: ast.AST) -> List[AnyFunctionDef]:
-    return list(filter(lambda stmt: not is_method(stmt), statements))
+def init_method_or_none(
+    methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+) -> ast.FunctionDef | None:
+    init_methods = [method for method in methods if method.name == "__init__"]
 
-
-def get_methods(statements: ast.AST) -> List[ast.stmt]:
-    return list(filter(lambda stmt: is_method(stmt), statements))
-
-
-def get_initialiser(methods: List[AnyFunctionDef]) -> AnyFunctionDef:
-    init = list(filter(lambda m: m.name == "__init__", methods))
-
-    if len(init) == 0:
+    if len(init_methods) == 0:
         return None
 
-    return init[0]
+    return init_methods[0]
 
 
-def get_static_methods(methods: List[AnyFunctionDef]) -> AnyFunctionDef:
-    return filter(lambda m: has_annotation("staticmethod", m), methods)
+def iter_static_methods(
+    methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+) -> Iterator[ast.FunctionDef | ast.AsyncFunctionDef]:
+    return (method for method in methods if has_annotation("staticmethod", method))
 
 
-def get_base_names(cls: ast.ClassDef) -> List[str]:
-    return list(map(lambda b: get_fullname(b, safe=True), cls.bases))
+def base_names(cls: ast.ClassDef) -> list[Identifier]:
+    return [fullname_of(b, safe=True) for b in cls.bases]
 
 
-def is_enum(cls: ast.ClassDef) -> bool:
-    # NOTE Purely heuristic, though it does allow for user defined Enum bases
-    return any(n == "Enum" or n.endswith(".Enum") for n in get_base_names(cls))
+def is_enum_by_heuristic(cls: ast.ClassDef) -> bool:
+    return any(b == "Enum" or b.endswith(".Enum") for b in base_names(cls))
 
 
-def is_namedtuple(cls: ast.ClassDef) -> bool:
-    # NOTE Purely heuristic, though it does allow for user defined NamedTuple bases
-    bases = get_base_names(cls)
-    return any(b == "NamedTuple" or b.endswith(".NamedTuple") for b in bases)
+def is_namedtuple_by_heuristic(cls: ast.ClassDef) -> bool:
+    return any(b == "NamedTuple" or b.endswith(".NamedTuple") for b in base_names(cls))
 
 
 class ClassAnalyser(NodeVisitor):
@@ -81,14 +74,13 @@ class ClassAnalyser(NodeVisitor):
             raise TypeError("ClassAnalyser expects `_ast` to be a class")
 
         self._ast = _ast
-        self.class_name = _ast.name
+        self.name = _ast.name
 
-        self.class_ir: ClassIR = dict()
+        self.class_ir: ClassIr = {}
 
-        # NOTE Managed by `new_context` contextmanager -- do not manually set
         self.context = context
 
-    def analyse(self) -> ClassIR:
+    def analyse(self) -> ClassIr:
         """Entry point, return the IR produced from analysis.
 
         Algorithm:
@@ -110,81 +102,76 @@ class ClassAnalyser(NodeVisitor):
         #   methods, initialisers, should be present in the parent context
         #   just with transformed names
 
-        statements = get_statements(self._ast.body)
-        methods = get_methods(self._ast.body)
+        statements = [stmt for stmt in self._ast.body if not is_method(stmt)]
+        methods = [stmt for stmt in self._ast.body if is_method(stmt)]
 
-        # Visit statements
         for stmt in statements:
             self.visit(stmt)
 
-        # Visit initialiser
-        init = get_initialiser(methods)
+        init = init_method_or_none(methods)
 
         if init is not None:
             self.visit_initialiser(init)
 
-        # NOTE TODO Handle with proper inheritance
-        if init is None and is_enum(self._ast):
-            self.visit_enum_initialiser()
+        # HACK Default initialisers for special cases
+        if init is None:
+            if is_enum_by_heuristic(self._ast):
+                self.visit_enum_initialiser()
 
-        if init is None and is_namedtuple(self._ast):
-            self.visit_named_tuple_initialiser()
+            if is_namedtuple_by_heuristic(self._ast):
+                self.visit_named_tuple_initialiser()
 
-        # Visit static methods
-        for method in get_static_methods(methods):
+        for method in iter_static_methods(methods):
             self.visit_static_method(method)
 
         return self.class_ir
 
     # ----------------------------------------------------------------------- #
-    # Non-method statements
+    # Special class helpers
     # ----------------------------------------------------------------------- #
 
-    def visit_initialiser(self, init: AnyFunctionDef) -> None:
-        # NOTE
-        #   Class already in context (as Class("ClassName"))
-        #   Add initialiser as Func("ClassName.__init__")
-        #   On resolving call with target Class("ClassName") look for
-        #   Func("ClassName.__init__", ...)
-        cls: Class = self.context.get(self.class_name)
+    def visit_initialiser(self, init: ast.FunctionDef) -> None:
+        if has_annotation("rattr_ignore", self._ast):
+            return
 
-        # Update the class symbol with __init__'s arguments
-        # See: context/symbol.py::Class
-        # See: context/context.py::RootContext.register_ClassDef
-        cls.args, cls.vararg, cls.kwarg = get_function_def_args(init)
+        new_symbol = self.symbol.with_init(init)
+        self.update_symbol(new_symbol)
 
-        self.class_ir[cls] = FunctionAnalyser(init, self.context).analyse()
+        if has_annotation("rattr_results", self._ast):
+            self.class_ir[new_symbol] = parse_rattr_results_from_annotation(
+                self._ast,
+                context=self.context,
+            )
+            return
+
+        init_analyser = FunctionAnalyser(init, self.context)
+        self.class_ir[new_symbol] = init_analyser.analyse()
 
     def visit_enum_initialiser(self) -> None:
-        cls: Class = self.context.get(self.class_name)
-        cls.args, cls.vararg, cls.kwarg = ["self", "_id"], None, None
+        new_symbol = self.symbol.with_init_arguments(args=["self", "_id"])
+        self.update_symbol(new_symbol)
 
-        # NOTE Can't determine result at compile-time, thus give every option
-        symbols = self.context.symbol_table.symbols()
-        names: List[Symbol] = list(filter(lambda s: isinstance(s, Name), symbols))
-        enum_values = filter(lambda n: n.name.startswith(f"{self.class_name}."), names)
-
-        ir: FunctionIR = {
+        self.class_ir[new_symbol] = {
             "sets": set(),
-            "gets": set(enum_values),
+            "gets": {
+                symbol
+                for symbol in self.context.symbol_table.symbols
+                if isinstance(symbol, Name)
+                if symbol.name.startswith(self.prefix)
+            },
             "calls": set(),
             "dels": set(),
         }
 
-        self.class_ir[cls] = ir
-
     def visit_named_tuple_initialiser(self) -> None:
-        prefix = f"{self.class_name}."
-        tuple_items = [
-            symbol.name[len(prefix) :]
-            for symbol in self.context.symbol_table.symbols()
+        items = [
+            symbol.name[len(self.prefix) :]
+            for symbol in self.context.symbol_table.symbols
             if isinstance(symbol, Name)
-            if symbol.name.startswith(prefix)
+            if symbol.name.startswith(self.prefix)
         ]
 
-        cls: Class = self.context.get(self.class_name)
-        cls.args, cls.vararg, cls.kwarg = ["self", *tuple_items], None, None
-
+        cls = self.update_symbol(self.symbol.with_init_arguments(args=["self", *items]))
         self.class_ir[cls] = {
             "sets": set(),
             "gets": set(),
@@ -192,17 +179,30 @@ class ClassAnalyser(NodeVisitor):
             "dels": set(),
         }
 
-    def visit_static_method(self, method: AnyFunctionDef) -> None:
-        qualified_name = f"{self.class_name}.{method.name}"
-        fn = Func(qualified_name, *get_function_def_args(method))
+    def visit_static_method(
+        self,
+        method: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> None:
+        qualified_name = f"{self.name}.{method.name}"
 
-        self.class_ir[fn] = FunctionAnalyser(method, self.context).analyse()
+        fn = Func(
+            name=qualified_name,
+            token=method,
+            interface=CallInterface.from_fn_def(method),
+        )
+        self.context.add(fn)
+
+        method_analyser = FunctionAnalyser(method, self.context)
+        self.class_ir[fn] = method_analyser.analyse()
 
     # ----------------------------------------------------------------------- #
     # Non-method statements
     # ----------------------------------------------------------------------- #
 
-    def visit_AnyAssign(self, node: AnyAssign) -> None:
+    def visit_AnyAssign(
+        self,
+        node: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
+    ) -> None:
         """Helper method for assignments.
 
         Visit ast.Assign(targets, value, type_comment)\\
@@ -210,12 +210,14 @@ class ClassAnalyser(NodeVisitor):
         Visit ast.AugAssign(target, op, value)
 
         """
-        targets = get_assignment_targets(node)
-        names = [name for target in targets for name in unravel_names(target)]
+        names = [
+            name
+            for target in assignment_targets(node)
+            for name in unravel_names(target)
+        ]
 
         for name in names:
-            name = Name(f"{self.class_name}.{name}", self.class_name)
-            self.context.add(name)
+            self.context.add(Name(f"{self.name}.{name}", self.name, token=node))
 
         self.generic_visit(node)
 
@@ -230,3 +232,25 @@ class ClassAnalyser(NodeVisitor):
 
     def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
         self.visit_AnyAssign(node)
+
+    # ----------------------------------------------------------------------- #
+    # Helpers
+    # ----------------------------------------------------------------------- #
+
+    @property
+    def prefix(self) -> str:
+        return f"{self.name}."
+
+    @property
+    def symbol(self) -> Class:
+        cls = self.context.get(self.name)
+
+        if not isinstance(cls, Class):
+            raise ValueError(f"class {self.name} is not in the current context")
+
+        return cls
+
+    def update_symbol(self, new_class_symbol: Class) -> Class:
+        _ = self.context.pop(new_class_symbol.id)
+        self.context[new_class_symbol.id] = new_class_symbol
+        return new_class_symbol

@@ -1,0 +1,8 @@
+[tool.rattr]
+exclude=[
+    'fn_i_dont_like_1',
+    'fn_i_dont_like_2',
+    'fn_i_really_dont_like',
+]
+warning-level="default"
+strict=true
