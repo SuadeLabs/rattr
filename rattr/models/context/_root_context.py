@@ -12,7 +12,6 @@ from rattr.ast.util import (
     fullname_of,
     has_lambda_in_rhs,
     has_namedtuple_declaration_in_rhs,
-    is_in_import_blacklist,
     is_relative_import,
     is_starred_import,
     namedtuple_init_signature_from_declaration,
@@ -36,6 +35,7 @@ from rattr.module_locator.util import (
     derive_absolute_module_name,
     derive_module_name_from_path,
     find_module_name_and_spec,
+    is_in_import_blacklist,
 )
 
 if TYPE_CHECKING:
