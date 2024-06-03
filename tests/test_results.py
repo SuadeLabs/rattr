@@ -7,7 +7,6 @@ from unittest import mock
 
 import pytest
 
-from rattr.analyser.results import generate_results_from_ir
 from rattr.models.ir import FileIr
 from rattr.models.results.file import FileResults
 from rattr.models.symbol import (
@@ -19,6 +18,7 @@ from rattr.models.symbol import (
     Name,
 )
 from rattr.models.util import serialise
+from rattr.results import generate_results_from_ir
 from tests.shared import Import_
 
 if TYPE_CHECKING:
@@ -62,7 +62,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
     def test_generate_results_from_ir_simple(
         self,
@@ -110,7 +110,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
     def test_generate_results_from_ir_direct_recursion(
         self,
@@ -140,7 +140,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
     def test_generate_results_from_ir_indirect_recursion(
         self,
@@ -190,7 +190,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
     def test_generate_results_from_ir_child_has_direct_recursion(
         self,
@@ -239,7 +239,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
     def test_generate_results_from_ir_child_has_indirect_recursion(
         self,
@@ -316,7 +316,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
     def test_generate_results_from_ir_repeated_calls_should_be_ignored(
         self,
@@ -364,7 +364,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
     def test_generate_results_from_ir_repeated_calls_should_not_be_ignored(
         self,
@@ -421,7 +421,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
     def test_import_irs(
         self,
@@ -473,7 +473,10 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, import_irs) == expected
+        assert (
+            generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
+            == expected
+        )
 
     def test_import_irs_chained_import(
         self,
@@ -552,7 +555,10 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, import_irs) == expected
+        assert (
+            generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
+            == expected
+        )
 
     def test_class(self, make_root_context: MakeRootContextFn):
         cls_inst = Class("SomeClass", interface=CallInterface(args=("self", "arg")))
@@ -641,7 +647,7 @@ class TestResults:
             },
         )
 
-        assert generate_results_from_ir(file_ir, {}) == expected
+        assert generate_results_from_ir(target_ir=file_ir, import_irs={}) == expected
 
 
 class TestResultsEncoder:

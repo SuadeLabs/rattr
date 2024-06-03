@@ -29,7 +29,10 @@ from rattr.models.symbol.util import (
     with_call_brackets,
     without_call_brackets,
 )
-from rattr.module_locator.util import derive_module_names_right
+from rattr.module_locator.util import (
+    derive_module_name_from_path,
+    derive_module_names_right,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Iterator
@@ -79,6 +82,10 @@ class Context(MutableMapping[Identifier, Symbol]):
     @property
     def is_init_file(self) -> bool:
         return self.file.name == "__init__.py"
+
+    @property
+    def modulename(self) -> str:
+        return derive_module_name_from_path(self.file)
 
     @property
     def declared_symbols(self) -> set[Symbol]:

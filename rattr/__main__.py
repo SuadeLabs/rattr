@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 
 from rattr import error
 from rattr.analyser.file import RattrStats, parse_and_analyse_file
-from rattr.analyser.results import generate_results_from_ir
 from rattr.analyser.types import ImportIrs
 from rattr.cli import parse_arguments
 from rattr.config import Config, Output, State
 from rattr.models.ir import FileIr
 from rattr.models.results import FileResults, make_cacheable_results
 from rattr.models.util import serialise, serialise_irs
+from rattr.results import generate_results_from_ir
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -28,8 +28,7 @@ def _init_rattr_config() -> Config:
 def main(config: Config) -> None:
     """Rattr entry point."""
     file_ir, import_irs, stats = parse_and_analyse_file()
-
-    results = generate_results_from_ir(file_ir, import_irs)
+    results = generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
 
     if not config.is_within_badness_threshold:
         badness, threshold = config.state.badness, config.arguments.threshold

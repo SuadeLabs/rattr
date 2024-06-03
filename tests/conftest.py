@@ -13,9 +13,8 @@ from unittest import mock
 
 import pytest
 
-from rattr.analyser.base import CustomFunctionAnalyser, CustomFunctionHandler
+from rattr.analyser.base import Assertor, CustomFunctionAnalyser
 from rattr.analyser.file import FileAnalyser
-from rattr.analyser.results import generate_results_from_ir
 from rattr.ast.types import Identifier
 from rattr.config import Arguments, Config, Output, State
 from rattr.models.context import Context, SymbolTable, compile_root_context
@@ -29,6 +28,7 @@ from rattr.models.symbol import (
     Symbol,
     UserDefinedCallableSymbol,
 )
+from rattr.results import generate_results_from_ir
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
@@ -41,6 +41,7 @@ if TYPE_CHECKING:
         MakeSymbolTableFn,
         OsDependentPathFn,
         ParseFn,
+        ParseWithContextFn,
         SetTestingConfigFn,
         StateFn,
     )
@@ -246,8 +247,8 @@ def parse() -> ParseFn:
 
 
 @pytest.fixture
-def parse_with_context(parse: Callable[[str], ast.AST]):
-    def _inner(source: str) -> tuple[ast.AST, Context]:
+def parse_with_context(parse: ParseFn):
+    def _inner(source: str) -> ParseWithContextFn:
         ast_module = parse(source)
         context = compile_root_context(ast_module)
         return ast_module, context
@@ -270,7 +271,7 @@ def analyse_single_file(
     def _inner(source: str) -> tuple[ast.AST, Context]:
         ast_module, context = parse_with_context(source)
         file_ir = FileAnalyser(ast_module, context).analyse()
-        file_results = generate_results_from_ir(file_ir, {})
+        file_results = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         return file_ir, file_results
 
@@ -690,15 +691,9 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
         ctx: Context,
     ) -> FunctionIr:
         return {
-            "sets": {
-                Name(name="set_in_print_def"),
-            },
-            "gets": {
-                Name(name="get_in_print_def"),
-            },
-            "dels": {
-                Name(name="del_in_print_def"),
-            },
+            "sets": {Name(name="set_in_print_def")},
+            "gets": {Name(name="get_in_print_def")},
+            "dels": {Name(name="del_in_print_def")},
             "calls": {
                 Call(
                     name="call_in_print_def",
@@ -710,15 +705,9 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
-            "sets": {
-                Name(name="set_in_print"),
-            },
-            "gets": {
-                Name(name="get_in_print"),
-            },
-            "dels": {
-                Name(name="del_in_print"),
-            },
+            "sets": {Name(name="set_in_print")},
+            "gets": {Name(name="get_in_print")},
+            "dels": {Name(name="del_in_print")},
             "calls": {
                 Call(
                     name="call_in_print",
@@ -730,8 +719,8 @@ class _PrintBuiltinAnalyser(CustomFunctionAnalyser):
 
 
 @pytest.fixture
-def PrintBuiltinAnalyser():
-    return _PrintBuiltinAnalyser
+def builtin_print_analyser() -> _PrintBuiltinAnalyser:
+    return _PrintBuiltinAnalyser()
 
 
 class _ExampleFuncAnalyser(CustomFunctionAnalyser):
@@ -750,15 +739,9 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
         ctx: Context,
     ) -> FunctionIr:
         return {
-            "sets": {
-                Name(name="set_in_example_def"),
-            },
-            "gets": {
-                Name(name="get_in_example_def"),
-            },
-            "dels": {
-                Name(name="del_in_example_def"),
-            },
+            "sets": {Name(name="set_in_example_def")},
+            "gets": {Name(name="get_in_example_def")},
+            "dels": {Name(name="del_in_example_def")},
             "calls": {
                 Call(
                     name="call_in_example_def",
@@ -770,15 +753,9 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         return {
-            "sets": {
-                Name(name="set_in_example"),
-            },
-            "gets": {
-                Name(name="get_in_example"),
-            },
-            "dels": {
-                Name(name="del_in_example"),
-            },
+            "sets": {Name(name="set_in_example")},
+            "gets": {Name(name="get_in_example")},
+            "dels": {Name(name="del_in_example")},
             "calls": {
                 Call(
                     name="call_in_example",
@@ -790,15 +767,17 @@ class _ExampleFuncAnalyser(CustomFunctionAnalyser):
 
 
 @pytest.fixture
-def ExampleFuncAnalyser():
-    return _ExampleFuncAnalyser
+def example_func_analyser() -> _ExampleFuncAnalyser:
+    return _ExampleFuncAnalyser()
+
+
+class _ExampleAssertor(Assertor):
+    ...
 
 
 @pytest.fixture
-def handler():
-    handler = CustomFunctionHandler([_PrintBuiltinAnalyser()], [_ExampleFuncAnalyser()])
-
-    return handler
+def example_assertor() -> _ExampleAssertor:
+    return _ExampleAssertor()
 
 
 @pytest.fixture

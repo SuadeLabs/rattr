@@ -2,13 +2,43 @@
 from __future__ import annotations
 
 import ast
+from typing import TYPE_CHECKING, NamedTuple
 
 from rattr.analyser.base import CustomFunctionAnalyser
 from rattr.analyser.util import get_dynamic_name
 from rattr.ast.util import fullname_of
 from rattr.models.context import Context
-from rattr.models.ir import FunctionIr
 from rattr.models.symbol import Name
+from rattr.results import unbind_ir_with_call_swaps
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from rattr.ast.types import Identifier
+    from rattr.models.ir import FunctionIr
+
+
+class AccessedAttributes(NamedTuple):
+    full: Name
+    lhs_names: list[Name]
+
+
+def iter_lhs_names(target: Name) -> Iterator[Identifier]:
+    parts = target.name.split(".")
+
+    if parts == [target]:
+        yield target
+        return
+
+    for end_offset in range(1, len(parts)):
+        yield ".".join(parts[:-end_offset])
+
+
+def accessed_attributes(name: str, node: ast.Call) -> AccessedAttributes:
+    return AccessedAttributes(
+        full=(full := get_dynamic_name(name, node, "{first}.{second}")),
+        lhs_names=[Name(name) for name in iter_lhs_names(full)],
+    )
 
 
 class GetattrAnalyser(CustomFunctionAnalyser):
@@ -29,11 +59,10 @@ class GetattrAnalyser(CustomFunctionAnalyser):
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
+        full, lhs_names = accessed_attributes(name, node)
         return {
+            "gets": {full, *lhs_names},
             "sets": set(),
-            "gets": {
-                get_dynamic_name(name, node, "{first}.{second}"),
-            },
             "dels": set(),
             "calls": set(),
         }
@@ -57,11 +86,10 @@ class SetattrAnalyser(CustomFunctionAnalyser):
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
+        full, lhs_names = accessed_attributes(name, node)
         return {
-            "sets": {
-                get_dynamic_name(name, node, "{first}.{second}"),
-            },
-            "gets": set(),
+            "gets": {*lhs_names},
+            "sets": {full},
             "dels": set(),
             "calls": set(),
         }
@@ -85,11 +113,10 @@ class HasattrAnalyser(CustomFunctionAnalyser):
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
+        full, lhs_names = accessed_attributes(name, node)
         return {
+            "gets": {full, *lhs_names},
             "sets": set(),
-            "gets": {
-                get_dynamic_name(name, node, "{first}.{second}"),
-            },
             "dels": set(),
             "calls": set(),
         }
@@ -113,12 +140,11 @@ class DelattrAnalyser(CustomFunctionAnalyser):
         return super().on_def(name, node, ctx)
 
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
+        full, lhs_names = accessed_attributes(name, node)
         return {
+            "gets": {*lhs_names},
             "sets": set(),
-            "gets": set(),
-            "dels": {
-                get_dynamic_name(name, node, "{first}.{second}"),
-            },
+            "dels": {full},
             "calls": set(),
         }
 
@@ -143,7 +169,6 @@ class SortedAnalyser(CustomFunctionAnalyser):
     def on_call(self, name: str, node: ast.Call, ctx: Context) -> FunctionIr:
         # HACK Avoid circular import
         from rattr.analyser.function import FunctionAnalyser
-        from rattr.analyser.ir_dag import partially_unbind
 
         if len(node.args) == 0:
             return super().on_call(name, node, ctx)
@@ -183,7 +208,7 @@ class SortedAnalyser(CustomFunctionAnalyser):
             lambda_analyser.visit(key.value.body)
 
             # Substitute
-            lambda_analyser.func_ir = partially_unbind(
+            lambda_analyser.func_ir = unbind_ir_with_call_swaps(
                 lambda_analyser.func_ir,
                 {iterator: iterable},
             )

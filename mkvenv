@@ -1,25 +1,30 @@
 #!/bin/bash
 
+prefix="[\033[34mmkvenv\033[0m]"
 venvdir=".venv"
 
-python3.9 -m pip install --upgrade pip
+echo -e "$prefix updating local pip..."
+/usr/bin/env python3.9 -m pip install --upgrade pip
 
-echo "[mkvenv] deactivating current venv..."
-deactivate 2> /dev/null
+echo -e "$prefix deactivating current venv..."
+if [ -v VENV ]; then
+    deactivate 2> /dev/null
+fi
 
-echo "[mkvenv] releting existing venv..."
+echo -e "$prefix deleting existing venv..."
 rm -rf $venvdir
 
-echo "[mkvenv] creating new venv..."
+echo -e "$prefix creating new venv..."
 python3.9 -m venv $venvdir
 
-echo "[mkvenv] activating venv..."
+echo -e "$prefix activating venv..."
 source $venvdir/bin/activate
 
-echo "[mkvenv] updating .python-version..."
+echo -e "$prefix updating .python-version..."
 python -V | cut -f2 -d" " > .python-version
 
-echo "[mkvenv] installing dependencies..."
+echo -e "$prefix installing dependencies..."
 python -m pip install --upgrade pip
-python -m pip install .[dev]
 python -m pip install -r requirements.txt
+
+echo -e "$prefix done 🎉"

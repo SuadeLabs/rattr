@@ -8,7 +8,6 @@ import pytest
 
 import tests.helpers as helpers
 from rattr.analyser.file import FileAnalyser
-from rattr.analyser.results import generate_results_from_ir
 from rattr.models.context import compile_root_context
 from rattr.models.ir import FileIr
 from rattr.models.results import FileResults
@@ -22,6 +21,7 @@ from rattr.models.symbol import (
     Import,
     Name,
 )
+from rattr.results import generate_results_from_ir
 from tests.shared import match_output
 
 if TYPE_CHECKING:
@@ -240,6 +240,7 @@ class TestRegression:
                 },
                 fn_a: {
                     "gets": {
+                        Name("arg"),
                         Name("arg.attr", "arg"),
                     },
                     "sets": set(),
@@ -907,7 +908,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -975,7 +976,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -1043,7 +1044,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -1111,7 +1112,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -1184,7 +1185,7 @@ class TestNamedTupleFromCall:
         # This failed at analyse, but we should show that simplification also works
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="namedtuple",
@@ -1263,7 +1264,7 @@ class TestNamedTupleFromInheritance:
 
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="NamedTuple",
@@ -1337,7 +1338,7 @@ class TestNamedTupleFromInheritance:
         # Before the fix this failed at the simplification in "generate_results_from_ir"
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="NamedTuple",
@@ -1411,7 +1412,7 @@ class TestNamedTupleFromInheritance:
         # Before the fix this failed at the simplification in "generate_results_from_ir"
         with mock.patch("sys.exit") as _exit:
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         namedtuple_import = Import(
             name="NamedTuple",
@@ -1491,7 +1492,7 @@ class TestRattrConstantInNameableOnCheckForNamedTuple:
 
         with mock.patch("sys.exit") as _exit, arguments(_warning_level="all"):
             file_ir = FileAnalyser(_ast, compile_root_context(_ast)).analyse()
-            _ = generate_results_from_ir(file_ir, import_irs={})
+            _ = generate_results_from_ir(target_ir=file_ir, import_irs={})
 
         my_function = Func(
             name="my_function",
