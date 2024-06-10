@@ -84,12 +84,7 @@ def construct_call_swaps(func: Func, call: Call) -> dict[Identifier, Identifier]
     unexpected_keyword_arguments: list[Identifier] = []
     arguments_given_by_position_and_name: list[Identifier] = []
 
-    while True:
-        if not call_kwargs:
-            break
-
-        (target, replacement) = call_kwargs.popitem()
-
+    for target, replacement in call_kwargs.items():
         if target in swaps:
             arguments_given_by_position_and_name.append(target)
 

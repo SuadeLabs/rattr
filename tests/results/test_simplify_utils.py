@@ -424,7 +424,7 @@ def test_unbind_ir_with_call_swaps_regression():
             CallInterface(args=("a", "b")),
             CallArguments(args=(), kwargs={"c": "no_match", "d": "no_match"}),
             {},
-            ["call to 'fn' received unexpected keyword arguments: ['d', 'c']"],
+            ["call to 'fn' received unexpected keyword arguments: ['c', 'd']"],
         ),
     ],
     ids=[i for i, _ in enumerate(testcases)],
