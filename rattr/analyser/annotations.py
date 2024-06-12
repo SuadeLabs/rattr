@@ -3,18 +3,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rattr.analyser.types import (
-    KeywordArgumentName,
-    LocalIdentifier,
-    PositionalArgumentName,
-    TargetName,
-)
-from rattr.ast.types import Identifier
-
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import TypeVar
 
+    from rattr.analyser.types import (
+        KeywordArgumentName,
+        LocalIdentifier,
+        PositionalArgumentName,
+        TargetName,
+    )
+    from rattr.ast.types import Identifier
     from rattr.versioning.typing import ParamSpec
 
     P = ParamSpec("P")
