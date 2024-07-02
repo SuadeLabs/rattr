@@ -20,6 +20,7 @@ from rattr.models.context._util import (
     is_call_to_literal,
     is_call_to_member_of_module_import,
     is_call_to_method,
+    is_call_to_method_on_imported_member,
     is_call_to_method_on_py_type,
     is_call_to_subscript_item,
 )
@@ -32,6 +33,7 @@ from rattr.models.symbol.util import (
 from rattr.module_locator.util import (
     derive_module_name_from_path,
     derive_module_names_right,
+    module_exists,
 )
 
 if TYPE_CHECKING:
@@ -220,6 +222,8 @@ class Context(MutableMapping[Identifier, Symbol]):
 
         # Give warnings for unresolvable targets
         if target is None:
+            if is_call_to_method_on_imported_member(target, name, lhs_target, lhs_name):
+                return None
             if warn:
                 error.warning(
                     _error.format(reason="target is undefined"),
@@ -390,10 +394,14 @@ class Context(MutableMapping[Identifier, Symbol]):
         if not isinstance(module, Import):
             return None
 
-        local_name = name.replace(f"{module.name}.", "")
+        # We saw `import bar`/`from foo import bar` and then `bar.thing`
+        # If `bar` is a module we want to construct the indirect import but if it is not
+        # a module then bar must be a class/function/variable/constant.
+        if not module_exists(module.qualified_name):
+            return None
 
         return Import(
-            name=local_name,
+            name=(local_name := name.replace(f"{module.name}.", "")),
             qualified_name=f"{module.qualified_name}.{local_name}",
             location=module.location,
             interface=AnyCallInterface(),

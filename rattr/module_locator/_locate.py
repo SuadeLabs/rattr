@@ -74,16 +74,17 @@ def iter_python_path_dirs() -> Iterator[Path]:
     if not sys.path:
         raise RattrSysPathNotPopulated
 
-    # When the sys.paths[0] is the empty string then the interpreter uses the current
-    # directory (see `sys.path` docs)
-    if sys.path[0] == "":
-        first = os.getcwd()
-    else:
-        first = sys.path[0]
-
     yield from (
         python_path_dir
-        for python_path_dirname in (first, rattr_root, *sys.path[1:])
+        for python_path_dirname in (derive_working_dir(), rattr_root, *sys.path[1:])
         if (python_path_dir := Path(python_path_dirname))
         if python_path_dir.exists()
     )
+
+
+def derive_working_dir() -> str:
+    # When the sys.paths[0] is the empty string then the interpreter uses the current
+    # directory (see `sys.path` docs)
+    if sys.path[0] == "":
+        return os.getcwd()
+    return sys.path[0]
