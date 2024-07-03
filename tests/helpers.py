@@ -195,9 +195,9 @@ def find_modules(module: types.ModuleType) -> list[types.ModuleType]:
 
 
 @cache
-def find_memoized_functions_in_module(
+def find_memoised_functions_in_module(
     module: types.ModuleType,
-) -> list[MemoizedFunction]:
+) -> list[MemoisedFunction]:
     return [
         obj
         for _, obj in inspect.getmembers(module)
@@ -207,9 +207,9 @@ def find_memoized_functions_in_module(
     ]
 
 
-def clear_memoization_caches(root: types.ModuleType) -> None:
+def clear_memoisation_caches(root: types.ModuleType) -> None:
     modules = find_modules(root)
-    functions = [fn for m in modules for fn in find_memoized_functions_in_module(m)]
+    functions = [fn for m in modules for fn in find_memoised_functions_in_module(m)]
 
     for fn in functions:
         fn.cache_clear()

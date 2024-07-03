@@ -29,7 +29,7 @@ from rattr.models.symbol import (
     UserDefinedCallableSymbol,
 )
 from rattr.results import generate_results_from_ir
-from tests.helpers import clear_memoization_caches
+from tests.helpers import clear_memoisation_caches
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
@@ -196,16 +196,16 @@ def _init_testing_config() -> None:
 
 
 # NOTE
-# When `find_memoized_functions_in_module` is not cached this increases total test time
+# When `find_memoised_functions_in_module` is not cached this increases total test time
 # from 2.5s to 25s.
-# When `find_memoized_functions_in_module` is cached it increases to about 5.5s.
+# When `find_memoised_functions_in_module` is cached it increases to about 5.5s.
 # When cached and using `module_locator` as the root this decreased to 3.8s, however for
 # correctness sake we should use `rattr` as the root.
 @pytest.fixture(scope="function", autouse=True)
-def _reset_memoization() -> None:
+def _reset_memoisation() -> None:
     import rattr
 
-    clear_memoization_caches(rattr)
+    clear_memoisation_caches(rattr)
 
 
 @pytest.fixture(scope="function")
