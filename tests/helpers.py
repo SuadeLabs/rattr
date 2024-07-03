@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import inspect
 import re
+from collections import deque
 from dataclasses import dataclass
 from enum import Enum
-from functools import partial
+from functools import cache, partial
 from typing import TYPE_CHECKING
 
 import pytest
@@ -11,7 +13,12 @@ import pytest
 from rattr.error.error import Level
 
 if TYPE_CHECKING:
-    from typing import Final, Literal
+    import types
+    from typing import Final, Literal, Protocol
+
+    class MemoisedFunction(Protocol):
+        def cache_clear(self) -> None:
+            ...
 
 
 ERROR_MESSAGE_TEMPLATE: Final = "{level}: {file_info}{line_info}: {message}"
@@ -163,3 +170,46 @@ def output_matches(
         )
 
     return False
+
+
+def find_modules(module: types.ModuleType) -> list[types.ModuleType]:
+    modules: list[types.ModuleType] = []
+
+    seen: set[str] = set()
+    queue: deque[types.ModuleType] = deque([module])
+
+    while queue:
+        current = queue.popleft()
+
+        if current.__name__ in seen:
+            continue
+
+        for _, potential_submodule in inspect.getmembers(current):
+            if inspect.ismodule(potential_submodule):
+                queue.append(potential_submodule)
+
+        seen.add(current.__name__)
+        modules.append(current)
+
+    return modules
+
+
+@cache
+def find_memoized_functions_in_module(
+    module: types.ModuleType,
+) -> list[MemoizedFunction]:
+    return [
+        obj
+        for _, obj in inspect.getmembers(module)
+        if inspect.getmodule(obj) == module  # exclude imported functions
+        and hasattr(obj, "__wrapped__")
+        and hasattr(obj, "cache_clear")
+    ]
+
+
+def clear_memoization_caches(root: types.ModuleType) -> None:
+    modules = find_modules(root)
+    functions = [fn for m in modules for fn in find_memoized_functions_in_module(m)]
+
+    for fn in functions:
+        fn.cache_clear()

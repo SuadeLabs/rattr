@@ -10,7 +10,6 @@ import tests.helpers as helpers
 from rattr.analyser.file import parse_and_analyse_file
 from rattr.cli import parse_arguments
 from rattr.config import Config
-from rattr.module_locator._locate import locate_module_in_python_path
 from rattr.results import generate_results_from_ir
 
 if TYPE_CHECKING:
@@ -23,17 +22,17 @@ here = Path(__file__).resolve().parent
 
 
 @contextmanager
-def switch_cwd(new: Path | str) -> Generator[None]:
-    old = os.getcwd()
-    os.chdir(new)
+def set_cwd(new_working_dir: Path | str) -> Generator[None]:
+    old_working_dir = os.getcwd()
+    os.chdir(new_working_dir)
 
-    locate_module_in_python_path.cache_clear()
-
-    with mock.patch("rattr.module_locator._locate.derive_working_dir", new=lambda: str(new)):
+    with mock.patch(
+        "rattr.module_locator._locate.derive_working_dir",
+        new=lambda: str(new_working_dir),
+    ):
         yield
 
-    locate_module_in_python_path.cache_clear()
-    os.chdir(old)
+    os.chdir(old_working_dir)
 
 
 def test_do_not_give_warning_on_call_to_method_on_imported_member(
@@ -51,10 +50,9 @@ def test_do_not_give_warning_on_call_to_method_on_imported_member(
     )
 
     # Equivalent to main function
-    with switch_cwd(here / "code"):
+    with set_cwd(here / "code"):
         file_ir, import_irs, _ = parse_and_analyse_file()
         _ = generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
-
 
     # This was a two part fix.
     #
