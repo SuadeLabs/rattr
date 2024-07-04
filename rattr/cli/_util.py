@@ -19,7 +19,7 @@ def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
             The text to wrap.
         width (int | None, optional):
             The line width to wrap to. On `None` this will attempt to determine the
-            current terminal width (with a fallback of 80 chars).
+            current terminal width (with a fallback of 80 chars). Minimum is 16.
 
     Raises:
         SyntaxError: Preserved line is missing `">"`.
@@ -44,6 +44,8 @@ def multi_paragraph_wrap(text: str, width: int | None = None) -> str:
             _width = _terminal_width
     else:
         _width = width
+
+    _width = max(_width, 16)  # hard minimum of 16 as zero causes an error
 
     def _preserve(text: str) -> str:
         lines = []
