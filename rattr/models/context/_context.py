@@ -156,7 +156,7 @@ class Context(MutableMapping[Identifier, Symbol]):
     def get_call_target(
         self,
         callee: Identifier,
-        culprit: ast.Call | ast.FunctionDef,
+        culprit: ast.AST,
         *,
         warn: bool = True,
     ) -> CallableSymbol | None:
