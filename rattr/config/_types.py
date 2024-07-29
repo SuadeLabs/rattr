@@ -15,7 +15,7 @@ from rattr.config._util import (
 )
 
 if TYPE_CHECKING:
-    from typing import Final, Literal
+    from typing import Any, Final, Literal, overload
 
 
 @lru_cache(maxsize=None)
@@ -172,7 +172,7 @@ class ConfigMetaclass(type):
 
     _instance: Config | None = None
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any):
         if cls._instance is None:
             _instance: Config = super().__call__(*args, **kwargs)
             cls._instance = _instance
@@ -202,6 +202,29 @@ class Config(metaclass=ConfigMetaclass):
 
     PLUGINS_BLACKLIST_PATTERNS: set[str] = field(default_factory=set)
     """The set of blacklist patterns set by custom plugins."""
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(self) -> None:  # type: ignore[reportNoOverloadImplementation]
+            ...
+
+        @overload
+        def __init__(  # type: ignore[reportNoOverloadImplementation]
+            self,
+            arguments: Arguments,
+            state: State,
+        ) -> None:
+            ...
+
+        @overload
+        def __init__(  # type: ignore[reportNoOverloadImplementation]
+            self,
+            arguments: Arguments,
+            state: State,
+            PLUGINS_BLACKLIST_PATTERNS: set[str],
+        ) -> None:
+            ...
 
     @cached_property
     def project_root(self) -> Path:

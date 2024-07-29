@@ -48,7 +48,7 @@ def find_pyproject_toml() -> Path | None:
 
 def validate_arguments(arguments: Arguments) -> Arguments:
     """Validate and return the given arguments."""
-    if arguments._follow_imports_level == 0:
+    if arguments._follow_imports_level == 0:  # type: ignore[reportPrivateUsage]
         error.rattr("follow imports not set, results likely to be incomplete")
 
     if arguments.is_strict and arguments.threshold != 0:
