@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import TypeVar
+    from typing import Any, TypeVar, overload
 
     from rattr.analyser.types import (
         KeywordArgumentName,
@@ -19,8 +19,25 @@ if TYPE_CHECKING:
     P = ParamSpec("P")
     R = TypeVar("R")
 
+    T = TypeVar("T")
 
-def rattr_ignore(*optional_target: Callable[P, R]) -> Callable[P, R]:
+
+def noop(x: T, /) -> T:
+    return x
+
+
+if TYPE_CHECKING:
+
+    @overload
+    def rattr_ignore() -> Callable[[Callable[P, R]], Callable[P, R]]:
+        ...
+
+    @overload
+    def rattr_ignore(optional_target: Callable[P, R], /) -> Callable[P, R]:
+        ...
+
+
+def rattr_ignore(*optional_target: Callable[P, R]) -> Any:
     """Mark the given function as ignored by rattr."""
     if optional_target:
         if len(optional_target) != 1:
@@ -28,10 +45,7 @@ def rattr_ignore(*optional_target: Callable[P, R]) -> Callable[P, R]:
 
         return optional_target[0]
 
-    def _inner(target: Callable[P, R]) -> Callable[P, R]:
-        return target
-
-    return _inner
+    return noop
 
 
 def rattr_results(
@@ -49,7 +63,7 @@ def rattr_results(
         ]
     ]
     | None = None,
-) -> Callable[P, R]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Explicitly provide the expected rattr results for a function.
 
     Note that when results are explicitly given rattr will take these as true and will
@@ -59,7 +73,4 @@ def rattr_results(
     `KeywordArgumentName`, and `LocalIdentifier` are all type aliases for `str`.
     """
 
-    def _inner(f: Callable[P, R]) -> Callable[P, R]:
-        return f
-
-    return _inner
+    return noop
