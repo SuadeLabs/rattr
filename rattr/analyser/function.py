@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 def custom_analyser_for_target(
     node: ast.Call,
     context: Context,
-) -> CustomFunctionAnalyser:
+) -> CustomFunctionAnalyser | None:
     target_name = without_call_brackets(
         fullname_of(
             node,
@@ -267,6 +267,9 @@ class FunctionAnalyser(NodeVisitor):
         # Create call to class initialiser
         lhs_basename, lhs_name = names_of(target)
 
+        if not isinstance(node.value, ast.Call):
+            raise RuntimeError("class assignment call is missing")  # never
+
         class_name = fullname_of(node.value)
         init_body = self.context.get_call_target(class_name, node)
 
@@ -481,7 +484,7 @@ class FunctionAnalyser(NodeVisitor):
             for elt in (*node.keys, *node.values):
                 handled = self.visit_ReturnValue(elt)
 
-                if not handled:
+                if not handled and elt is not None:
                     self.visit(elt)
 
             return True
@@ -525,11 +528,11 @@ class FunctionAnalyser(NodeVisitor):
         """Visit ast.Return(value)."""
         handled = self.visit_ReturnValue(node.value)
 
-        if not handled:
+        if not handled and node.value is not None:
             self.visit(node.value)
 
     # ----------------------------------------------------------------------- #
-    # THE FORBIDEN ZONE: A zone... that is, yes... FORBIDDEN to you.
+    # THE FORBIDDEN ZONE: A zone... that is, yes... FORBIDDEN to you.
     # ----------------------------------------------------------------------- #
 
     def visit_Global(self, node: ast.Global) -> None:

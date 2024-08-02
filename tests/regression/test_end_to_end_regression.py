@@ -29,6 +29,11 @@ if TYPE_CHECKING:
     from tests.shared import OsDependentPathFn
 
 
+# TODO
+# Ensure Python path CWD is set correctly.
+# See: tests/resolution/test_resolution_regression.py
+
+
 @pytest.mark.parametrize(
     ("code_file,results_file"),
     zip(code_files, results_files),

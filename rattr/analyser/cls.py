@@ -9,12 +9,14 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
+from rattr import error
 from rattr.analyser.base import NodeVisitor
 from rattr.analyser.function import FunctionAnalyser
 from rattr.analyser.types import ClassIr
 from rattr.analyser.util import has_annotation, parse_rattr_results_from_annotation
 from rattr.ast.util import assignment_targets, fullname_of, unravel_names
 from rattr.models.context import Context
+from rattr.models.ir import FunctionIr
 from rattr.models.symbol import CallInterface, Class, Func, Name
 
 if TYPE_CHECKING:
@@ -29,13 +31,22 @@ def is_method(node: ast.stmt) -> bool:
 
 def init_method_or_none(
     methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+    *,
+    culprit: ast.AST,
 ) -> ast.FunctionDef | None:
     init_methods = [method for method in methods if method.name == "__init__"]
 
     if len(init_methods) == 0:
         return None
 
-    return init_methods[0]
+    (init_method, *remainder) = init_methods
+
+    if remainder:
+        error.error("found multiple __init__ methods for class", culprit=culprit)
+    if isinstance(init_method, ast.AsyncFunctionDef):
+        error.fatal("found async __init__ method for class", culprit=culprit)
+
+    return init_method
 
 
 def iter_static_methods(
@@ -70,9 +81,6 @@ class ClassAnalyser(NodeVisitor):
 
     def __init__(self, _ast: ast.ClassDef, context: Context) -> None:
         """Set configuration and initialise IR."""
-        if not isinstance(_ast, ast.ClassDef):
-            raise TypeError("ClassAnalyser expects `_ast` to be a class")
-
         self._ast = _ast
         self.name = _ast.name
 
@@ -108,7 +116,7 @@ class ClassAnalyser(NodeVisitor):
         for stmt in statements:
             self.visit(stmt)
 
-        init = init_method_or_none(methods)
+        init = init_method_or_none(methods, culprit=self._ast)  # type: ignore[reportArgumentType]
 
         if init is not None:
             self.visit_initialiser(init)
@@ -121,7 +129,7 @@ class ClassAnalyser(NodeVisitor):
             if is_namedtuple_by_heuristic(self._ast):
                 self.visit_named_tuple_initialiser()
 
-        for method in iter_static_methods(methods):
+        for method in iter_static_methods(methods):  # type: ignore[reportArgumentType]
             self.visit_static_method(method)
 
         return self.class_ir
@@ -148,7 +156,7 @@ class ClassAnalyser(NodeVisitor):
         self.class_ir[new_symbol] = init_analyser.analyse()
 
     def visit_enum_initialiser(self) -> None:
-        new_symbol = self.symbol.with_init_arguments(args=["self", "_id"])
+        new_symbol = self.symbol.with_init_arguments(args=("self", "_id"))
         self.update_symbol(new_symbol)
 
         self.class_ir[new_symbol] = {
@@ -171,13 +179,8 @@ class ClassAnalyser(NodeVisitor):
             if symbol.name.startswith(self.prefix)
         ]
 
-        cls = self.update_symbol(self.symbol.with_init_arguments(args=["self", *items]))
-        self.class_ir[cls] = {
-            "sets": set(),
-            "gets": set(),
-            "calls": set(),
-            "dels": set(),
-        }
+        cls = self.update_symbol(self.symbol.with_init_arguments(args=("self", *items)))
+        self.class_ir[cls] = FunctionIr.the_empty_ir()
 
     def visit_static_method(
         self,

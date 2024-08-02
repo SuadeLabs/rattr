@@ -6,9 +6,9 @@ from pathlib import Path
 from rattr import error
 from rattr.config._types import Config
 from rattr.config._util import (  # noqa: F401
-    find_project_root,
-    find_pyproject_toml,
-    validate_arguments,
+    find_project_root,  # type: ignore[reportUnusedImport]
+    find_pyproject_toml,  # type: ignore[reportUnusedImport]
+    validate_arguments,  # type: ignore[reportUnusedImport]
 )
 
 

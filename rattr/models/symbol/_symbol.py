@@ -200,6 +200,7 @@ class CallArguments:
                 culprit=call,
             )
             for kw in call.keywords
+            if kw.arg is not None  # TODO Handle null case?
         }
 
         if self is not None:

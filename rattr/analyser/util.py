@@ -388,7 +388,7 @@ def safe_eval(expr: ast.expr, culprit: ast.AST) -> Any | None:
 
 def parse_annotation(
     name: str,
-    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
 ) -> tuple[list[Any], dict[str, Any]]:
     """Return the positional and keyword arguments of the annotation."""
     annotation = get_annotation(name, fn_def)
@@ -491,7 +491,7 @@ def validate_rattr_results(rattr_results: RattrResults) -> None:
 
 
 def parse_rattr_results_from_annotation_args_impl(
-    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
 ) -> RattrResults:
     stderr_stream = io.StringIO()
     has_likely_missing_comma = False
@@ -548,7 +548,7 @@ def parse_rattr_results_from_annotation_args_impl(
 
 
 def parse_rattr_results_from_annotation(
-    fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+    fn_def: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
     *,
     context: Context,
 ) -> FunctionIr:
@@ -659,7 +659,7 @@ class timer:
 class read:
     """Context manager to return file contents and the number of lines."""
 
-    def __init__(self, file: str) -> None:
+    def __init__(self, file: Path | str) -> None:
         self.file = file
 
     def __enter__(self) -> tuple[int, str]:

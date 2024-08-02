@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import ast
-from abc import ABCMeta, abstractmethod, abstractproperty
-from ast import NodeTransformer, NodeVisitor  # noqa: F401
+from abc import ABCMeta, abstractmethod
+from ast import NodeVisitor
 from typing import TYPE_CHECKING
 
 from rattr import error
@@ -28,7 +28,6 @@ class Assertor(NodeVisitor):
 
     def __init__(self, is_strict: bool = True) -> None:
         self.is_strict: bool = is_strict
-        self.context: Context = None
 
     def assert_holds(self, node: ast.AST, context: Context) -> None:
         """Entry point for an Assertor, visit the tree to assert properties."""
@@ -49,12 +48,14 @@ class Assertor(NodeVisitor):
 class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
     """Base class for a custom function visitor."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def name(self) -> Identifier:
         """Return the name of the function handled by this analyser."""
         return ""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def qualified_name(self) -> Identifier:
         """Return the qualified name of the function."""
         return ""
@@ -67,12 +68,7 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
         ctx: Context,
     ) -> FunctionIr:
         """Return the IR of the definition of the handled function."""
-        return {
-            "sets": set(),
-            "gets": set(),
-            "dels": set(),
-            "calls": set(),
-        }
+        return FunctionIr.the_empty_ir()
 
     @abstractmethod
     def on_call(self, name: Identifier, node: ast.Call, ctx: Context) -> FunctionIr:
@@ -83,9 +79,4 @@ class CustomFunctionAnalyser(NodeVisitor, metaclass=ABCMeta):
         Argument `fna` is the FunctionAnalyser instance that the call is from.
 
         """
-        return {
-            "sets": set(),
-            "gets": set(),
-            "dels": set(),
-            "calls": set(),
-        }
+        return FunctionIr.the_empty_ir()

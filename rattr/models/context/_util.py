@@ -10,6 +10,7 @@ from rattr.models.symbol._symbols import (
     PYTHON_NON_PRIMITIVE_RETURNING_BUILTINS,
     Import,
 )
+from rattr.module_locator.util import module_exists
 
 if TYPE_CHECKING:
     from rattr.models.symbol._symbol import Symbol
@@ -33,6 +34,21 @@ def is_call_to_method(
 ) -> bool:
     """Return `True` if this appears to be a call to a method."""
     return name != lhs_name and target is None and not isinstance(lhs_target, Import)
+
+
+def is_call_to_method_on_imported_member(
+    target: Symbol | None,
+    name: Identifier,
+    lhs_target: Symbol | None,
+    lhs_name: Identifier,
+) -> bool:
+    """Return `True` if this appears to be a call to a method on an imported symbol."""
+    return (
+        name != lhs_name
+        and target is None
+        and isinstance(lhs_target, Import)
+        and not module_exists(lhs_target.qualified_name)
+    )
 
 
 def is_call_to_member_of_module_import(
@@ -109,6 +125,6 @@ def is_call_to_method_on_py_type(name: str) -> bool:
     return False
 
 
-def is_call_to_call_result(call: ast.expr) -> bool:
+def is_call_to_call_result(call: ast.AST) -> bool:
     """Return `True` if the given call is a call to another call's result."""
     return isinstance(call, ast.Call) and isinstance(call.func, ast.Call)

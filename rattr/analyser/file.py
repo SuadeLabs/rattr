@@ -150,7 +150,7 @@ def parse_and_analyse_imports(
         if spec.origin is None:
             # HACK Can't use isinstance
             # TODO Resolve BuiltinImporter modules
-            if "BuiltinImporter" in str(spec.loader):
+            if "BuiltinImporter" in str(getattr(spec, "loader", None)):
                 error.error(f"unable to resolve builtin module {name!r}", badness=0)
             else:
                 error.error(f"unable to resolve import {import_.qualified_name!r}")
@@ -247,6 +247,8 @@ class FileAnalyser(NodeVisitor):
         fn: Func,
     ) -> None:
         custom_analyser = plugins.get_analyser(fn, modulename=self.context.modulename)
+        if custom_analyser is None:
+            raise RuntimeError(f"{fn.name} has no custom analyser")  # never
         self.file_ir[fn] = custom_analyser.on_def(fn.id, node, self.context)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
@@ -285,6 +287,9 @@ class FileAnalyser(NodeVisitor):
             fn = self.context.get_func_or_error(name)
         except KeyError as exc:
             return error.error(str(exc.args[0]), culprit=node)
+
+        if node.value is None:
+            raise RuntimeError("lambda has no body")  # never
 
         self.file_ir[fn] = FunctionAnalyser(node.value, self.context).analyse()
 

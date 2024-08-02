@@ -4,9 +4,9 @@ import ast
 from typing import TYPE_CHECKING
 
 from rattr.ast._util import (  # noqa: F401
-    get_python_attr_access_fn_obj_attr_pair,
-    is_call_to_fn,
-    is_string_literal,
+    get_python_attr_access_fn_obj_attr_pair,  # type: ignore[reportUnusedImport]
+    is_call_to_fn,  # type: ignore[reportUnusedImport]
+    is_string_literal,  # type: ignore[reportUnusedImport]
     names_of,
 )
 from rattr.ast.types import AstNodeWithName
@@ -228,7 +228,7 @@ def has_namedtuple_declaration_in_rhs(
 
 def namedtuple_init_signature_from_declaration(
     assignment: ast.Assign | ast.AnnAssign | ast.AugAssign | ast.NamedExpr,
-) -> tuple[list[str], dict[str, str]]:
+) -> list[str]:
     """Return the args/attrs of the namedtuple constructed by this assignment by call.
 
     Note:
