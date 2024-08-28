@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import ast
 import builtins
-import hashlib
 import io
-import json
 import re
 import sys
 from contextlib import redirect_stderr
@@ -19,11 +17,18 @@ from typing import TYPE_CHECKING
 from isort.api import place_module
 
 from rattr import error
+from rattr._version import version
 from rattr.analyser.exc import RattrResultsError
 from rattr.ast.types import AstComprehensions, AstLiterals, AstNodeWithName
 from rattr.config import Config
 from rattr.extra import DictChanges  # noqa: F401
 from rattr.models.ir import FunctionIr
+from rattr.models.results.cacheable import (
+    CacheableResults,
+    make_arguments_hash,
+    make_md5_hash_of_file,
+    make_plugins_hash,
+)
 from rattr.models.symbol import (
     PYTHON_ATTR_ACCESS_BUILTINS,
     PYTHON_BUILTINS,
@@ -33,6 +38,7 @@ from rattr.models.symbol import (
     Import,
     Name,
 )
+from rattr.models.util.serialise import deserialise
 from rattr.module_locator.util import find_module_spec_fast
 
 if TYPE_CHECKING:
@@ -1143,49 +1149,27 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
     )
 
 
-def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:
-    """Return the hash of the given file, with a default blocksize of 1MiB."""
-    _hash = hashlib.md5()
-
-    if not isfile(filepath):
-        return _hash
-
-    with open(filepath, "rb") as f:
-        while True:
-            buffer = f.read(blocksize)
-
-            if not buffer:
-                break
-
-            _hash.update(buffer)
-
-    return _hash.hexdigest()
-
-
-def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
+def cache_is_valid(
+    target_filepath: str | Path,
+    cache_filepath: str | Path,
+) -> bool:
     """Return `True` if the cache has the correct hash."""
-    if not isfile(filepath):
+    if not isfile(target_filepath):
         return False
 
-    if isfile(cache_filepath):
-        with open(cache_filepath, "r") as f:
-            cache: dict[str, Any] = json.load(f)
-    else:
+    if not isfile(cache_filepath):
         return False
 
-    received_hash = cache.get("filehash", None)
-    expected_hash = get_file_hash(filepath)
+    cache = deserialise(Path(cache_filepath).read_text(), type=CacheableResults)
 
-    if filepath != cache.get("filepath", None):
-        return False
-
-    if received_hash != expected_hash:
-        return False
-
-    # Check imports
-    for _import in cache.get("imports", {}):
-        file, hash = _import["filepath"], _import["filehash"]
-        if hash != get_file_hash(file):
-            return False
-
-    return True
+    return (
+        cache.version == version
+        and cache.arguments_hash == make_arguments_hash()
+        and cache.plugins_hash == make_plugins_hash()
+        and cache.filepath == target_filepath
+        and cache.filehash == make_md5_hash_of_file(target_filepath)
+        and all(
+            import_info.filehash == make_md5_hash_of_file(import_info.filepath)
+            for import_info in cache.imports
+        )
+    )
