@@ -8,7 +8,6 @@ import re
 import sys
 from contextlib import redirect_stderr
 from itertools import accumulate, chain, filterfalse
-from os.path import isfile
 from pathlib import Path
 from string import ascii_lowercase
 from time import perf_counter
@@ -17,18 +16,11 @@ from typing import TYPE_CHECKING
 from isort.api import place_module
 
 from rattr import error
-from rattr._version import version
 from rattr.analyser.exc import RattrResultsError
 from rattr.ast.types import AstComprehensions, AstLiterals, AstNodeWithName
 from rattr.config import Config
 from rattr.extra import DictChanges  # noqa: F401
 from rattr.models.ir import FunctionIr
-from rattr.models.results.cacheable import (
-    CacheableResults,
-    make_arguments_hash,
-    make_md5_hash_of_file,
-    make_plugins_hash,
-)
 from rattr.models.symbol import (
     PYTHON_ATTR_ACCESS_BUILTINS,
     PYTHON_BUILTINS,
@@ -38,7 +30,6 @@ from rattr.models.symbol import (
     Import,
     Name,
 )
-from rattr.models.util.serialise import deserialise
 from rattr.module_locator.util import find_module_spec_fast
 
 if TYPE_CHECKING:
@@ -1146,30 +1137,4 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
         name=pattern.format(first=first, second=second),
         basename=basename,
         token=node,
-    )
-
-
-def cache_is_valid(
-    target_filepath: str | Path,
-    cache_filepath: str | Path,
-) -> bool:
-    """Return `True` if the cache has the correct hash."""
-    if not isfile(target_filepath):
-        return False
-
-    if not isfile(cache_filepath):
-        return False
-
-    cache = deserialise(Path(cache_filepath).read_text(), type=CacheableResults)
-
-    return (
-        cache.version == version
-        and cache.arguments_hash == make_arguments_hash()
-        and cache.plugins_hash == make_plugins_hash()
-        and cache.filepath == target_filepath
-        and cache.filehash == make_md5_hash_of_file(target_filepath)
-        and all(
-            import_info.filehash == make_md5_hash_of_file(import_info.filepath)
-            for import_info in cache.imports
-        )
     )

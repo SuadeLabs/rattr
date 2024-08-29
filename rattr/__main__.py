@@ -11,7 +11,8 @@ from rattr.analyser.types import ImportIrs
 from rattr.cli import parse_arguments
 from rattr.config import Config, Output, State
 from rattr.models.ir import FileIr
-from rattr.models.results import FileResults, make_cacheable_results
+from rattr.models.results import FileResults
+from rattr.models.results.util import make_cacheable_results
 from rattr.models.util import serialise, serialise_irs
 from rattr.results import generate_results_from_ir
 
