@@ -7,17 +7,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from typing import TypeVar
 
     T = TypeVar("T")
 
 
-def hash_python_objects_and_source_files(
-    objects: list[T],
+def hash_python_objects_type_and_source_files(
+    objects: Sequence[T],
     /,
     *,
-    name_of_object: Callable[[T], str],
+    name_of_object: Callable[[T], str] = lambda o: getattr(o, "__name__", str(o)),
 ) -> str:
     """Return the hash of the list of objects and their source file definitions.
 

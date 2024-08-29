@@ -15,12 +15,12 @@ from rattr.models.results.cacheable import (
 )
 from rattr.models.symbol import Import
 from rattr.models.symbol._util import PYTHON_BUILTINS_LOCATION
-from rattr.models.util import (
-    deserialise,
+from rattr.models.util.hash import (
     hash_file_content,
-    hash_python_objects_and_source_files,
+    hash_python_objects_type_and_source_files,
     hash_string,
 )
+from rattr.models.util.serialise import deserialise
 from rattr.module_locator.util import is_in_import_blacklist
 from rattr.plugins import plugins
 
@@ -63,11 +63,11 @@ def make_arguments_hash() -> str:
 def make_plugins_hash() -> str:
     config = Config()
     hashable_plugins = HashablePlugins(
-        assertors_hash=hash_python_objects_and_source_files(
+        assertors_hash=hash_python_objects_type_and_source_files(
             plugins.assertors,
             name_of_object=lambda p: p.__class__.__name__,
         ),
-        analysers_hash=hash_python_objects_and_source_files(
+        analysers_hash=hash_python_objects_type_and_source_files(
             plugins.analysers,
             name_of_object=lambda p: p.qualified_name,
         ),
