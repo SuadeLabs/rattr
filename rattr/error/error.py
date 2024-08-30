@@ -1,13 +1,16 @@
 """Rattr error/logging functions."""
+
 from __future__ import annotations
 
 import ast
 import sys
 from enum import Enum
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
 from rattr.config import Config, ShowWarnings
-from rattr.models.symbol import Symbol
+
+if TYPE_CHECKING:
+    from rattr.models.symbol import Symbol
 
 __ERROR = "{prefix}: {optional_file_info}{optional_line_info}: {message}"
 __FILE_INFO = "\033[1m{}\033[0m"
@@ -126,8 +129,9 @@ def get_file_and_line_info(culprit: ast.AST | Symbol | None) -> tuple[str, str]:
 
 
 def __file_info(culprit: ast.AST | Symbol | None) -> str:
-    config = Config()
+    from rattr.models.symbol import Symbol
 
+    config = Config()
     current_file = config.formatted_current_file_path
 
     if isinstance(culprit, Symbol) and (location := culprit.location) is not None:
@@ -144,6 +148,8 @@ def __file_info(culprit: ast.AST | Symbol | None) -> str:
 
 
 def __line_info(culprit: ast.AST | Symbol | None) -> str:
+    from rattr.models.symbol import Symbol
+
     if isinstance(culprit, Symbol):
         if (location := culprit.location) is not None:
             line_info = __LINE_INFO.format(location.lineno, location.col_offset)

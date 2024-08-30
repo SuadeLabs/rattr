@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rattr import error
-
 if TYPE_CHECKING:
     from rattr.config._types import Arguments
 
@@ -48,6 +46,8 @@ def find_pyproject_toml() -> Path | None:
 
 def validate_arguments(arguments: Arguments) -> Arguments:
     """Validate and return the given arguments."""
+    from rattr import error  # circular import as error.info(...) etc use config
+
     if arguments._follow_imports_level == 0:  # type: ignore[reportPrivateUsage]
         error.rattr("follow imports not set, results likely to be incomplete")
 
