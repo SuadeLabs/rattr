@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from contextlib import contextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest import mock
 
@@ -9,7 +12,7 @@ import pytest
 from rattr.analyser.types import ImportIrs
 from rattr.config._types import FollowImports
 from rattr.models.ir import FileIr
-from rattr.models.results import FileResults
+from rattr.models.results import CacheableResults, FileResults
 from rattr.models.results.util import (
     cache_is_valid,
     make_arguments_hash,
@@ -17,9 +20,12 @@ from rattr.models.results.util import (
     make_cacheable_results,
     make_plugins_hash,
 )
+from rattr.models.symbol import Import, Location
+from rattr.models.util import serialise
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
+    from contextlib import AbstractContextManager
     from typing import Any, Protocol
 
     from tests.shared import MakeRootContextFn
@@ -41,6 +47,14 @@ if TYPE_CHECKING:
             excluded_imports: Iterable[str] = (),
             excluded_names: Iterable[str] = (),
         ) -> Mocked:
+            ...
+
+    class WriteTempCacheFileFn(Protocol):
+        def __call__(
+            self,
+            cache: CacheableResults,
+            /,
+        ) -> AbstractContextManager[Path]:
             ...
 
 
@@ -66,6 +80,21 @@ def mock_config():
                 ),
             )
             yield
+
+    return factory
+
+
+@pytest.fixture()
+def write_temp_cache_file():
+    @contextmanager
+    def factory(cache: CacheableResults, /) -> Generator[Path, None, None]:
+        with tempfile.NamedTemporaryFile("w", delete=False) as fp:
+            filepath = fp.name
+            fp.write(serialise(cache, indent=4))
+
+        yield Path(fp.name)
+
+        os.unlink(filepath)
 
     return factory
 
@@ -345,5 +374,181 @@ def test_make_cacheable_import_info_basic_coverage(
         )
 
 
-def test_cache_is_valid():
-    raise NotImplementedError()
+@mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
+def test_cache_is_valid_basic_coverage(
+    mock_config: MakeConfigFn,
+    make_root_context: MakeRootContextFn,
+    write_temp_cache_file: WriteTempCacheFileFn,
+):
+    with mock_config():
+        cache = make_cacheable_results(
+            FileResults(),
+            FileIr(context=make_root_context((), include_root_symbols=True)),
+            ImportIrs(),
+        )
+
+        with write_temp_cache_file(cache) as file:
+            assert cache_is_valid(cache.filepath, file)
+
+
+@mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
+def test_cache_is_valid_basic_coverage_with_import(
+    mock_config: MakeConfigFn,
+    make_root_context: MakeRootContextFn,
+    write_temp_cache_file: WriteTempCacheFileFn,
+):
+    with mock_config(), tempfile.NamedTemporaryFile(mode="w", delete=True) as fp:
+        fake_import_filepath = fp.name
+        fp.write("blah")
+
+        # Create fake imported file
+        import_symbol = Import(
+            "thing",
+            "thing",
+            location=Location(1, 1, 1, 1, file=Path(fake_import_filepath)),
+        )
+        import_name_and_spec = ("thing", mock.Mock(origin=fake_import_filepath))
+
+        with mock.patch(
+            "rattr.models.symbol._symbols.find_module_name_and_spec",
+            lambda _: import_name_and_spec,  # type: ignore[reportUnknownArgumentType]
+        ):
+            cache = make_cacheable_results(
+                FileResults(),
+                FileIr(context=make_root_context([import_symbol])),
+                ImportIrs(),  # Only needed for imports in import
+            )
+
+            with write_temp_cache_file(cache) as file:
+                assert cache_is_valid(cache.filepath, file)
+
+
+@mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
+def test_cache_is_valid_changed_version(
+    mock_config: MakeConfigFn,
+    make_root_context: MakeRootContextFn,
+    write_temp_cache_file: WriteTempCacheFileFn,
+):
+    with mock_config():
+        with mock.patch("rattr.models.results.util.version", "0.1.8"):
+            cache = make_cacheable_results(
+                FileResults(),
+                FileIr(context=make_root_context((), include_root_symbols=True)),
+                ImportIrs(),
+            )
+
+        with mock.patch("rattr.models.results.util.version", "0.2.0"):
+            with write_temp_cache_file(cache) as file:
+                assert not cache_is_valid(cache.filepath, file)
+
+
+@mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
+def test_cache_is_valid_changed_target_file(
+    mock_config: MakeConfigFn,
+    make_root_context: MakeRootContextFn,
+    write_temp_cache_file: WriteTempCacheFileFn,
+):
+    with mock_config():
+        cache = make_cacheable_results(
+            FileResults(),
+            FileIr(context=make_root_context((), include_root_symbols=True)),
+            ImportIrs(),
+        )
+
+        with write_temp_cache_file(cache) as file:
+            assert not cache_is_valid(Path("not_test.py"), file)
+
+
+@mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
+def test_cache_is_valid_changed_target_filehash(
+    mock_config: MakeConfigFn,
+    make_root_context: MakeRootContextFn,
+    write_temp_cache_file: WriteTempCacheFileFn,
+):
+    with mock_config():
+        with tempfile.NamedTemporaryFile(mode="w", delete=True) as fp:
+            filepath = fp.name
+
+            # Initial file content and cache
+            fp.write("blah")
+            target = FileIr(context=make_root_context((), include_root_symbols=True))
+            target.context._file = Path(filepath)  # type: ignore[reportPrivateUsage]
+            cache = make_cacheable_results(FileResults(), target, ImportIrs())
+
+            # File content updated and thus cache is invalid
+            fp.seek(0)
+            fp.write("blah\nblah")
+            with write_temp_cache_file(cache) as file:
+                assert not cache_is_valid(cache.filepath, file)
+
+
+@mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
+def test_cache_is_valid_changed_arguments(
+    mock_config: MakeConfigFn,
+    make_root_context: MakeRootContextFn,
+    write_temp_cache_file: WriteTempCacheFileFn,
+):
+    with mock_config(follow_imports=FollowImports.local):
+        cache = make_cacheable_results(
+            FileResults(),
+            FileIr(context=make_root_context((), include_root_symbols=True)),
+            ImportIrs(),
+        )
+
+    with mock_config(follow_imports=FollowImports.local | FollowImports.pip):
+        with write_temp_cache_file(cache) as file:
+            assert not cache_is_valid(cache.filepath, file)
+
+
+@mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
+def test_cache_is_valid_changed_plugins(
+    mock_config: MakeConfigFn,
+    make_root_context: MakeRootContextFn,
+    write_temp_cache_file: WriteTempCacheFileFn,
+):
+    with mock_config(plugins_blacklist_patterns=("foo",)):
+        cache = make_cacheable_results(
+            FileResults(),
+            FileIr(context=make_root_context((), include_root_symbols=True)),
+            ImportIrs(),
+        )
+
+    with mock_config(plugins_blacklist_patterns=("foo", "bar")):
+        with write_temp_cache_file(cache) as file:
+            assert not cache_is_valid(cache.filepath, file)
+
+
+@mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
+def test_cache_is_valid_changed_import_hash(
+    mock_config: MakeConfigFn,
+    make_root_context: MakeRootContextFn,
+    write_temp_cache_file: WriteTempCacheFileFn,
+):
+    with mock_config(), tempfile.NamedTemporaryFile(mode="w", delete=True) as fp:
+        fake_import_filepath = fp.name
+
+        # Create fake imported file
+        import_symbol = Import(
+            "thing",
+            "thing",
+            location=Location(1, 1, 1, 1, file=Path(fake_import_filepath)),
+        )
+        import_name_and_spec = ("thing", mock.Mock(origin=fake_import_filepath))
+
+        with mock.patch(
+            "rattr.models.symbol._symbols.find_module_name_and_spec",
+            lambda _: import_name_and_spec,  # type: ignore[reportUnknownArgumentType]
+        ):
+            # Initial file content and cache
+            fp.write("blah")
+            cache = make_cacheable_results(
+                FileResults(),
+                FileIr(context=make_root_context([import_symbol])),
+                ImportIrs(),
+            )
+
+            # File content updated and thus cache is invalid
+            fp.seek(0)
+            fp.write("blah\nblah")
+            with write_temp_cache_file(cache) as file:
+                assert not cache_is_valid(cache.filepath, file)
