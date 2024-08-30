@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from os.path import isfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rattr import error
 from rattr._version import version
 from rattr.config import Config
 from rattr.models.results import FileResults
@@ -101,25 +103,31 @@ def make_cacheable_import_info(
     )
 
 
-def cache_is_valid(
-    target_filepath: str | Path,
+def target_cache_file_is_up_to_date(
+    target: str | Path,
     cache_filepath: str | Path,
 ) -> bool:
     """Return `True` if the cache has the correct hash."""
-    if not isfile(target_filepath):
+    if not isfile(target):
+        error.info(f"cache target {str(target)} does not exist")
         return False
 
     if not isfile(cache_filepath):
+        error.info(f"cache file {str(cache_filepath)} does not exist")
         return False
 
-    cache = deserialise(Path(cache_filepath).read_text(), type=CacheableResults)
+    try:
+        cache = deserialise(Path(cache_filepath).read_text(), type=CacheableResults)
+    except json.decoder.JSONDecodeError:
+        error.info(f"cache file {str(cache_filepath)} is malformed")
+        return False
 
     return (
         cache.version == version
         and cache.arguments_hash == make_arguments_hash()
         and cache.plugins_hash == make_plugins_hash()
-        and cache.filepath == target_filepath
-        and cache.filehash == hash_file_content(target_filepath)
+        and cache.filepath == target
+        and cache.filehash == hash_file_content(target)
         and all(
             import_info.filehash == hash_file_content(import_info.filepath)
             for import_info in cache.imports
