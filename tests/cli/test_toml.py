@@ -42,6 +42,8 @@ class TestToml:
             truncate_deep_paths=False,
             is_strict=False,
             stdout=Output.results,
+            force_refresh_cache=False,
+            cache_file=None,
         )
 
     def test_valid_toml_without_sys_args(self, toml_well_formed):
@@ -89,6 +91,8 @@ class TestToml:
             collapse_home=False,
             truncate_deep_paths=False,
             stdout=Output.results,
+            force_refresh_cache=False,
+            cache_file=None,
             # Sys args
             _follow_imports_level=3,
             _excluded_names=["fn_excluded_1", "fn_excluded_2", "fn_excluded_3"],
@@ -111,6 +115,8 @@ class TestToml:
             truncate_deep_paths=False,
             is_strict=False,
             stdout=Output.results,
+            force_refresh_cache=False,
+            cache_file=None,
             # Toml
             _excluded_names=["fn_excluded_4", "fn_excluded_5"],
             threshold=500,
@@ -134,6 +140,8 @@ class TestToml:
             truncate_deep_paths=False,
             is_strict=False,
             stdout=Output.results,
+            force_refresh_cache=False,
+            cache_file=None,
             # From toml and sys args
             _excluded_names=[
                 "fn_excluded_4",
