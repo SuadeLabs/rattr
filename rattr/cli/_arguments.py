@@ -19,6 +19,7 @@ def add_common_arguments(parser: ArgumentParser) -> ArgumentParser:
     parser = add_warning_level_argument(parser)
     parser = add_format_path_arguments(parser)
     parser = add_permissiveness_arguments(parser)
+    parser = add_force_cache_refresh_argument(parser)
     parser = add_stdout_arguments(parser)
 
     return parser
@@ -233,6 +234,25 @@ def add_permissiveness_arguments(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
+def add_force_cache_refresh_argument(parser: ArgumentParser) -> ArgumentParser:
+    stdout_group = parser.add_argument_group()
+    stdout_group.add_argument(
+        "-r",
+        "--force-refresh-cache",
+        action="store_true",
+        help=multi_paragraph_wrap(
+            """\
+            >when given delete the existing cache file, if it exists, before running
+
+            >TOML example: force_refresh_cache=true
+            """
+        ),
+        dest="force_refresh_cache",
+    )
+
+    return parser
+
+
 def add_stdout_arguments(parser: ArgumentParser) -> ArgumentParser:
     stdout_group = parser.add_argument_group()
     stdout_group.add_argument(
@@ -252,6 +272,25 @@ def add_stdout_arguments(parser: ArgumentParser) -> ArgumentParser:
             """
         ),
         dest="stdout",
+    )
+
+    return parser
+
+
+def add_cache_file_file_argument(parser: ArgumentParser) -> ArgumentParser:
+    target_file_group = parser.add_argument_group()
+    target_file_group.add_argument(
+        "-C",
+        "--cache-file",
+        type=Path,
+        required=False,
+        help=multi_paragraph_wrap(
+            """\
+            >the target's existing cache file
+            """
+        ),
+        metavar="<file>",
+        dest="cache_file",
     )
 
     return parser

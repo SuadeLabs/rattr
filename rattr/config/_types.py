@@ -71,6 +71,9 @@ class Arguments(argparse.Namespace):
 
     stdout: Output
 
+    force_refresh_cache: bool
+    cache_file: Path | None
+
     target: Path
 
     @property

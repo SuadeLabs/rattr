@@ -103,6 +103,7 @@ def make_cli_parser(exit_on_error: bool = True) -> ArgumentParser:
     parser = _arguments.add_version_argument(parser)
     parser = _arguments.add_toml_config_override_argument(parser)
     parser = _arguments.add_common_arguments(parser)
+    parser = _arguments.add_cache_file_file_argument(parser)
     parser = _arguments.add_target_file_argument(parser)
 
     return parser
@@ -195,7 +196,7 @@ def _translate_toml_conf_to_sys_args(toml_conf: dict[str, Any]) -> list[str]:
     ... )
     ["--threshold", "0", "--warning-level", "all", "--exclude", "a", "--exclude", "b"]
     """
-    toml_sys_args = []
+    toml_sys_args: list[str] = []
 
     for k, v in toml_conf.items():
         if len(k) > 1:
