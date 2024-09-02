@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import NamedTuple
 
 import attrs
@@ -11,11 +12,11 @@ from rattr.models.util.hash import hash_file_content
 
 @attrs.frozen
 class CacheableImportInfo:
-    filepath: str = field(converter=str, default="")
+    filepath: Path = field(converter=Path, factory=Path)
     filehash: str = field(default="")
 
     @classmethod
-    def from_file(cls, filepath: str) -> CacheableImportInfo:
+    def from_file(cls, filepath: str | Path) -> CacheableImportInfo:
         return CacheableImportInfo(
             filepath=filepath,
             filehash=hash_file_content(filepath),
@@ -29,7 +30,7 @@ class CacheableResults:
     arguments_hash: str = field(default="")
     plugins_hash: str = field(default="")
 
-    filepath: str = field(converter=str, default="")
+    filepath: Path = field(converter=Path, factory=Path)
     filehash: str = field(default="")
 
     imports: list[CacheableImportInfo] = field(factory=list)
