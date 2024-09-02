@@ -99,11 +99,13 @@ def write_temp_cache_file():
     return factory
 
 
+@pytest.mark.posix
 def test_make_arguments_hash_on_basic_config(mock_config: MakeConfigFn):
     with mock_config(follow_imports=FollowImports(0)):
         assert make_arguments_hash() == "f2fbe32ff21f2a3109277cbdd548466c"
 
 
+@pytest.mark.posix
 @pytest.mark.parametrize(
     "initial_kwargs, initial_hash, changed_kwargs, changed_hash",
     [
@@ -199,6 +201,7 @@ def test_make_arguments_hash_changes_on_arguments_change(
     assert initial != changed
 
 
+@pytest.mark.posix
 @pytest.mark.parametrize(
     "initial_kwargs, changed_kwargs, expected_hash",
     [
@@ -230,11 +233,13 @@ def test_make_arguments_hash_changes_on_semantic_equivalence(
     assert initial == changed
 
 
+@pytest.mark.posix
 def test_make_plugins_hash_on_basic_config(mock_config: MakeConfigFn):
     with mock_config(plugins_blacklist_patterns=()):
         assert make_plugins_hash() == "21bcd105e76db40d7ac76e36900c98b8"
 
 
+@pytest.mark.posix
 @pytest.mark.parametrize(
     "initial_kwargs, initial_hash, changed_kwargs, changed_hash",
     [
@@ -279,6 +284,7 @@ def test_make_plugins_hash_changes_on_arguments_change(
     assert initial != changed
 
 
+@pytest.mark.posix
 @pytest.mark.parametrize(
     "initial_kwargs, changed_kwargs, expected_hash",
     [
@@ -310,6 +316,7 @@ def test_make_plugins_hash_changes_on_semantic_equivalence(
     assert initial == changed
 
 
+@pytest.mark.posix
 def test_make_cacheable_results_basic_coverage(
     mock_config: MakeConfigFn,
     make_root_context: MakeRootContextFn,
@@ -323,6 +330,7 @@ def test_make_cacheable_results_basic_coverage(
         )
 
 
+@pytest.mark.posix
 def test_make_cacheable_results_equality(
     mock_config: MakeConfigFn,
     make_root_context: MakeRootContextFn,
@@ -342,6 +350,7 @@ def test_make_cacheable_results_equality(
     assert lhs == rhs
 
 
+@pytest.mark.posix
 def test_make_cacheable_results_inequality(
     mock_config: MakeConfigFn,
     make_root_context: MakeRootContextFn,
@@ -362,6 +371,7 @@ def test_make_cacheable_results_inequality(
     assert lhs != rhs
 
 
+@pytest.mark.posix
 def test_make_cacheable_import_info_basic_coverage(
     mock_config: MakeConfigFn,
     make_root_context: MakeRootContextFn,
@@ -374,6 +384,7 @@ def test_make_cacheable_import_info_basic_coverage(
         )
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_basic_coverage(
     mock_config: MakeConfigFn,
@@ -391,6 +402,7 @@ def test_target_cache_file_is_up_to_date_basic_coverage(
             assert target_cache_file_is_up_to_date(cache.filepath, file)
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_basic_coverage_with_import(
     mock_config: MakeConfigFn,
@@ -423,6 +435,7 @@ def test_target_cache_file_is_up_to_date_basic_coverage_with_import(
                 assert target_cache_file_is_up_to_date(cache.filepath, file)
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_changed_version(
     mock_config: MakeConfigFn,
@@ -442,6 +455,7 @@ def test_target_cache_file_is_up_to_date_changed_version(
                 assert not target_cache_file_is_up_to_date(cache.filepath, file)
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_changed_target_file(
     mock_config: MakeConfigFn,
@@ -459,6 +473,7 @@ def test_target_cache_file_is_up_to_date_changed_target_file(
             assert not target_cache_file_is_up_to_date(Path("not_test.py"), file)
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_changed_target_filehash(
     mock_config: MakeConfigFn,
@@ -482,6 +497,7 @@ def test_target_cache_file_is_up_to_date_changed_target_filehash(
                 assert not target_cache_file_is_up_to_date(cache.filepath, file)
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_changed_arguments(
     mock_config: MakeConfigFn,
@@ -500,6 +516,7 @@ def test_target_cache_file_is_up_to_date_changed_arguments(
             assert not target_cache_file_is_up_to_date(cache.filepath, file)
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_changed_plugins(
     mock_config: MakeConfigFn,
@@ -518,6 +535,7 @@ def test_target_cache_file_is_up_to_date_changed_plugins(
             assert not target_cache_file_is_up_to_date(cache.filepath, file)
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_changed_import_hash(
     mock_config: MakeConfigFn,
@@ -554,14 +572,17 @@ def test_target_cache_file_is_up_to_date_changed_import_hash(
                 assert not target_cache_file_is_up_to_date(cache.filepath, file)
 
 
+@pytest.mark.posix
 def test_target_cache_file_is_up_to_date_non_existant_target():
     assert not target_cache_file_is_up_to_date(Path("test.py"), __file__)
 
 
+@pytest.mark.posix
 def test_target_cache_file_is_up_to_date_non_existant_cache_file():
     assert not target_cache_file_is_up_to_date(__file__, Path("no_such_file.json"))
 
 
+@pytest.mark.posix
 @mock.patch("rattr.models.results.util.isfile", lambda _: True)  # type: ignore[reportUnknownArgumentType]
 def test_target_cache_file_is_up_to_date_deserialisation_error():
     with tempfile.NamedTemporaryFile(mode="w") as fp:

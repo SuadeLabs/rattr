@@ -47,17 +47,15 @@ class TestToml:
         )
 
     def test_valid_toml_without_sys_args(self, toml_well_formed):
-        with pytest.raises(argparse.ArgumentError) as argument_error:
+        with pytest.raises(
+            argparse.ArgumentError,
+            match="the following arguments are required: <file>",
+        ):
             parse_arguments(
                 sys_args=[],
                 project_toml_conf=toml_well_formed,
                 exit_on_error=False,
             )
-
-        assert (
-            argument_error.value.message
-            == "rattr: error: the following arguments are required: <file>\n"
-        )
 
     def test_toml_is_overwritten_by_sys_args(self, required_sys_args):
         sys_args = [

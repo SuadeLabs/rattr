@@ -48,6 +48,7 @@ def test_hash_string(s: str, expected: str):
     assert hash_string(s) == expected
 
 
+@pytest.mark.posix
 @pytest.mark.parametrize(
     "file_content, expected",
     [
