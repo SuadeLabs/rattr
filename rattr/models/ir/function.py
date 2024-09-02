@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
+from rattr.models.symbol import Call, Name
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
-    from rattr.models.symbol import Call, Name
 
 
 class FunctionIr(TypedDict):
