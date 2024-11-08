@@ -9,7 +9,7 @@ README = HERE / "README.md"
 REQUIREMENTS = HERE / "requirements.txt"
 
 
-setup(
+_ = setup(
     name="rattr",
     use_scm_version={
         "write_to": "rattr/_version.py",
