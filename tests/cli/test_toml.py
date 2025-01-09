@@ -8,6 +8,7 @@ import pytest
 
 from rattr.cli.parser import _parse_project_config, parse_arguments
 from rattr.config import Arguments, Output
+from rattr.versioning import is_python_version
 
 
 class TestToml:
@@ -202,10 +203,21 @@ class TestTomlValidation:
     @pytest.mark.parametrize(
         ("toml,error"),
         [
-            ({"follow-imports": 100}, "invalid choice: 100 (choose from 0, 1, 2, 3)"),
+            (
+                {"follow-imports": 100},
+                (
+                    "invalid choice: 100 (choose from 0, 1, 2, 3)"
+                    if is_python_version("<=3.11")
+                    else "invalid choice: '100' (choose from 0, 1, 2, 3)"
+                ),
+            ),
             (
                 {"warning-level": "this-is-nonsense-but-well-typed"},
-                "invalid choice: 'this-is-nonsense-but-well-typed' (choose from 'none', 'local', 'default', 'all')",
+                (
+                    "invalid choice: 'this-is-nonsense-but-well-typed' (choose from 'none', 'local', 'default', 'all')"
+                    if is_python_version("<=3.11")
+                    else "invalid choice: 'this-is-nonsense-but-well-typed' (choose from none, local, default, all)"
+                ),
             ),
             (
                 {"stdout": "this-is-nonsense-but-well-typed"},
