@@ -277,7 +277,7 @@ def add_stdout_arguments(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
-def add_cache_file_file_argument(parser: ArgumentParser) -> ArgumentParser:
+def add_cache_file_argument(parser: ArgumentParser) -> ArgumentParser:
     target_file_group = parser.add_argument_group()
     target_file_group.add_argument(
         "-C",

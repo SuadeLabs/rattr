@@ -34,7 +34,8 @@ def hash_python_objects_type_and_source_files(
         hash.update(name_of_object(obj).encode("utf-8"))
 
         # ... and definition (source file content)
-        with Path(inspect.getfile(type(obj))).resolve().open("rb") as f:
+        obj_source_file = Path(inspect.getfile(type(obj))).resolve()
+        with obj_source_file.open("rb") as f:
             while True:
                 buffer = f.read(2**20)
 

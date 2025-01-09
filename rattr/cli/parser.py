@@ -103,7 +103,7 @@ def make_cli_parser(exit_on_error: bool = True) -> ArgumentParser:
     parser = _arguments.add_version_argument(parser)
     parser = _arguments.add_toml_config_override_argument(parser)
     parser = _arguments.add_common_arguments(parser)
-    parser = _arguments.add_cache_file_file_argument(parser)
+    parser = _arguments.add_cache_file_argument(parser)
     parser = _arguments.add_target_file_argument(parser)
 
     return parser

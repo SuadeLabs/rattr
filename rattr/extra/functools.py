@@ -8,19 +8,19 @@ if TYPE_CHECKING:
 
     from rattr.versioning.typing import ParamSpec
 
-    P = ParamSpec("P")
-    R = TypeVar("R")
+    _P = ParamSpec("_P")
+    _R = TypeVar("_R")
 
 
 def deferred_execute_once(
-    op: Callable[P, R],
+    op: Callable[_P, _R],
     /,
-    *args: P.args,
-    **kwargs: P.kwargs,
-) -> Callable[[], R]:
+    *args: _P.args,
+    **kwargs: _P.kwargs,
+) -> Callable[[], _R]:
     result = None
 
-    def factory() -> R:
+    def factory() -> _R:
         nonlocal result
 
         if result is None:
