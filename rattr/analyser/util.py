@@ -3,14 +3,11 @@ from __future__ import annotations
 
 import ast
 import builtins
-import hashlib
 import io
-import json
 import re
 import sys
 from contextlib import redirect_stderr
 from itertools import accumulate, chain, filterfalse
-from os.path import isfile
 from pathlib import Path
 from string import ascii_lowercase
 from time import perf_counter
@@ -1141,51 +1138,3 @@ def get_dynamic_name(fn_name: str, node: ast.Call, pattern: str) -> Name:
         basename=basename,
         token=node,
     )
-
-
-def get_file_hash(filepath: str, blocksize: int = 2**20) -> str:
-    """Return the hash of the given file, with a default blocksize of 1MiB."""
-    _hash = hashlib.md5()
-
-    if not isfile(filepath):
-        return _hash
-
-    with open(filepath, "rb") as f:
-        while True:
-            buffer = f.read(blocksize)
-
-            if not buffer:
-                break
-
-            _hash.update(buffer)
-
-    return _hash.hexdigest()
-
-
-def cache_is_valid(filepath: str, cache_filepath: str) -> bool:
-    """Return `True` if the cache has the correct hash."""
-    if not isfile(filepath):
-        return False
-
-    if isfile(cache_filepath):
-        with open(cache_filepath, "r") as f:
-            cache: dict[str, Any] = json.load(f)
-    else:
-        return False
-
-    received_hash = cache.get("filehash", None)
-    expected_hash = get_file_hash(filepath)
-
-    if filepath != cache.get("filepath", None):
-        return False
-
-    if received_hash != expected_hash:
-        return False
-
-    # Check imports
-    for _import in cache.get("imports", {}):
-        file, hash = _import["filepath"], _import["filehash"]
-        if hash != get_file_hash(file):
-            return False
-
-    return True

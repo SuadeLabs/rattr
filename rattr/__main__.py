@@ -9,14 +9,21 @@ from rattr import error
 from rattr.analyser.file import RattrStats, parse_and_analyse_file
 from rattr.analyser.types import ImportIrs
 from rattr.cli import parse_arguments
+from rattr.cli.exit_codes import EXIT_SUCCESS
 from rattr.config import Config, Output, State
+from rattr.extra.functools import deferred_execute_once
 from rattr.models.ir import FileIr
-from rattr.models.results import FileResults, make_cacheable_results
+from rattr.models.results import FileResults
+from rattr.models.results.util import (
+    make_cacheable_results,
+    target_cache_file_is_up_to_date,
+)
 from rattr.models.util import serialise, serialise_irs
 from rattr.results import generate_results_from_ir
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import NoReturn
 
     from rattr.models.results import CacheableResults
 
@@ -25,10 +32,23 @@ def _init_rattr_config() -> Config:
     return Config(arguments=parse_arguments(), state=State())
 
 
-def main(config: Config) -> None:
+def main(config: Config) -> int:
     """Rattr entry point."""
+    if (cached := config.arguments.cache_file) is not None:
+        if config.arguments.force_refresh_cache:
+            cached.unlink(missing_ok=True)
+        elif target_cache_file_is_up_to_date(config.arguments.target, cached):
+            error.info("cache is up-to-date, doing nothing")
+            return EXIT_SUCCESS
+
     file_ir, import_irs, stats = parse_and_analyse_file()
     results = generate_results_from_ir(target_ir=file_ir, import_irs=import_irs)
+    deferred_cacheable_results = deferred_execute_once(
+        make_cacheable_results,
+        results=results,
+        target_ir=file_ir,
+        import_irs=import_irs,
+    )
 
     if not config.is_within_badness_threshold:
         badness, threshold = config.state.badness, config.arguments.threshold
@@ -41,10 +61,15 @@ def main(config: Config) -> None:
         show_results(results)
 
     if config.arguments.stdout == Output.cacheable:
-        show_cacheable_results(make_cacheable_results(results, file_ir, import_irs))
+        show_cacheable_results(deferred_cacheable_results())
 
     if config.arguments.stdout == Output.stats:
         show_stats(stats)
+
+    if config.arguments.cache_file is not None:
+        write_cache_file(config.arguments.cache_file, deferred_cacheable_results())
+
+    return EXIT_SUCCESS
 
 
 def show_ir(file: Path, file_ir: FileIr, import_irs: ImportIrs) -> None:
@@ -175,9 +200,14 @@ def show_stats(stats: RattrStats) -> None:
     print(end="\n\n")
 
 
-def entry_point():
+def write_cache_file(cache_file: Path, results: CacheableResults) -> None:
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    cache_file.write_text(serialise(results, indent=4))
+
+
+def entry_point() -> NoReturn:
     """Entry point for command line app."""
-    main(_init_rattr_config())
+    exit(main(_init_rattr_config()))
 
 
 if __name__ == "__main__":

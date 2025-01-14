@@ -82,7 +82,7 @@ def _current_version() -> tuple[int, int, int]:
     return sys.version_info.major, sys.version_info.minor, sys.version_info.micro
 
 
-def _current_version_string(*, include_micro: bool = False) -> bool:
+def _current_version_string(*, include_micro: bool = False) -> str:
     major, minor, micro = _current_version()
 
     if include_micro:
@@ -94,9 +94,9 @@ def _current_version_string(*, include_micro: bool = False) -> bool:
 def is_python_version(version: str) -> bool:
     opcode, target_version = _parse_version_string(version)
 
-    _include_micro = len(target_version.split(".")) == 3
+    include_micro = len(target_version.split(".")) == 3
 
-    _operator = _OPERATORS[opcode]
-    interpreter_version = _current_version_string(include_micro=_include_micro)
+    operator = _OPERATORS[opcode]
+    interpreter_version = _current_version_string(include_micro=include_micro)
 
-    return _version_cmp(_operator, interpreter_version, target_version)
+    return _version_cmp(operator, interpreter_version, target_version)

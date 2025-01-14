@@ -1,3 +1,14 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
+write_to = "rattr/_version.py"
+
+
 [tool.black]
 line-length = 88
 
@@ -37,7 +48,6 @@ ignore = [
   'N806',  # Variable in function should be lowercase (MyClass = type(...))
   'N818',  # Error suffix in exception names
 ]
-
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

@@ -8,6 +8,7 @@ import pytest
 
 from rattr.cli.parser import _parse_project_config, parse_arguments
 from rattr.config import Arguments, Output
+from rattr.versioning import is_python_version
 
 
 class TestToml:
@@ -42,20 +43,20 @@ class TestToml:
             truncate_deep_paths=False,
             is_strict=False,
             stdout=Output.results,
+            force_refresh_cache=False,
+            cache_file=None,
         )
 
     def test_valid_toml_without_sys_args(self, toml_well_formed):
-        with pytest.raises(argparse.ArgumentError) as argument_error:
+        with pytest.raises(
+            argparse.ArgumentError,
+            match="the following arguments are required: <file>",
+        ):
             parse_arguments(
                 sys_args=[],
                 project_toml_conf=toml_well_formed,
                 exit_on_error=False,
             )
-
-        assert (
-            argument_error.value.message
-            == "rattr: error: the following arguments are required: <file>\n"
-        )
 
     def test_toml_is_overwritten_by_sys_args(self, required_sys_args):
         sys_args = [
@@ -89,6 +90,8 @@ class TestToml:
             collapse_home=False,
             truncate_deep_paths=False,
             stdout=Output.results,
+            force_refresh_cache=False,
+            cache_file=None,
             # Sys args
             _follow_imports_level=3,
             _excluded_names=["fn_excluded_1", "fn_excluded_2", "fn_excluded_3"],
@@ -111,6 +114,8 @@ class TestToml:
             truncate_deep_paths=False,
             is_strict=False,
             stdout=Output.results,
+            force_refresh_cache=False,
+            cache_file=None,
             # Toml
             _excluded_names=["fn_excluded_4", "fn_excluded_5"],
             threshold=500,
@@ -134,6 +139,8 @@ class TestToml:
             truncate_deep_paths=False,
             is_strict=False,
             stdout=Output.results,
+            force_refresh_cache=False,
+            cache_file=None,
             # From toml and sys args
             _excluded_names=[
                 "fn_excluded_4",
@@ -196,10 +203,21 @@ class TestTomlValidation:
     @pytest.mark.parametrize(
         ("toml,error"),
         [
-            ({"follow-imports": 100}, "invalid choice: 100 (choose from 0, 1, 2, 3)"),
+            (
+                {"follow-imports": 100},
+                (
+                    "invalid choice: 100 (choose from 0, 1, 2, 3)"
+                    if is_python_version("<=3.11")
+                    else "invalid choice: '100' (choose from 0, 1, 2, 3)"
+                ),
+            ),
             (
                 {"warning-level": "this-is-nonsense-but-well-typed"},
-                "invalid choice: 'this-is-nonsense-but-well-typed' (choose from 'none', 'local', 'default', 'all')",
+                (
+                    "invalid choice: 'this-is-nonsense-but-well-typed' (choose from 'none', 'local', 'default', 'all')"
+                    if is_python_version("<=3.11")
+                    else "invalid choice: 'this-is-nonsense-but-well-typed' (choose from none, local, default, all)"
+                ),
             ),
             (
                 {"stdout": "this-is-nonsense-but-well-typed"},

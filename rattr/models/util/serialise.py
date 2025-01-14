@@ -15,12 +15,12 @@ if TYPE_CHECKING:
 __json_converter = make_json_converter()
 
 
-def serialise(model: Any, **kwargs) -> str:
-    return __json_converter.dumps(model, **kwargs)
+def serialise(model: Any, **kwargs: Any) -> str:
+    return __json_converter.dumps(model, **kwargs)  # type: ignore[reportUnknownMemberType]
 
 
-def deserialise(json: str, *, type: type[T], **kwargs) -> T:
-    return __json_converter.loads(json, cl=type, **kwargs)
+def deserialise(json: str, *, type: type[T], **kwargs: Any) -> T:
+    return __json_converter.loads(json, cl=type, **kwargs)  # type: ignore[reportUnknownMemberType]
 
 
 def serialise_irs(
