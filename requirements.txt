@@ -1,5 +1,5 @@
-isort==5.13.2
-tomli==2.0.1; python_version < '3.11'
-attrs==23.2.0
-cattrs==23.2.3
-frozendict==2.4.0
+isort>=5.13.2
+tomli>=1.2.3; python_version < '3.11'
+attrs>=21,<=24
+cattrs>=21,<=24
+frozendict>=2.4.0
