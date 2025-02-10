@@ -1,4 +1,5 @@
 """Rattr function analyser."""
+
 from __future__ import annotations
 
 import ast
@@ -156,11 +157,14 @@ class FunctionAnalyser(NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         """Visit ast.Call(func, args, keywords)."""
         config = Config()
+        _, fullname = self.get_and_verify_name(node, ast.Load())
+
+        if _ == "product_attr_is_defined":
+            breakpoint()
 
         if (analyser := custom_analyser_for_target(node, self.context)) is not None:
             return self.visit_call_to_target_with_custom_analyser(node, analyser)
 
-        _, fullname = self.get_and_verify_name(node, ast.Load())
         target = self.context.get_call_target(fullname, node, warn=True)
 
         # NOTE
