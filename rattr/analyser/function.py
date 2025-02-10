@@ -1,4 +1,5 @@
 """Rattr function analyser."""
+
 from __future__ import annotations
 
 import ast
@@ -162,6 +163,15 @@ class FunctionAnalyser(NodeVisitor):
 
         _, fullname = self.get_and_verify_name(node, ast.Load())
         target = self.context.get_call_target(fullname, node, warn=True)
+
+        if (
+            getattr(self.ast, "name", None)
+            == "healthcare_utilities_prof_technical_sector"
+            and _ == "primary_exp_cls"
+        ):
+            print(f">>> {fullname}")
+            print(f">>> {target}")
+            breakpoint()
 
         # NOTE
         # Add the call to the IR and manually visit the arguments, but not `node.func`
