@@ -4,6 +4,7 @@ Rattr is designed to be a function analyser and thus the class-based features
 are rather limited.
 
 """
+
 from __future__ import annotations
 
 import ast
@@ -57,6 +58,14 @@ def iter_static_methods(
 
 def base_names(cls: ast.ClassDef) -> list[Identifier]:
     return [fullname_of(b, safe=True) for b in cls.bases]
+
+
+def is_dataclass_by_heuristic(cls: ast.ClassDef) -> bool:
+    return (
+        has_annotation("dataclass", cls)
+        or has_annotation("dataclasses.dataclass", cls)
+        or has_annotation("pydantic.dataclasses.dataclass", cls)
+    )
 
 
 def is_enum_by_heuristic(cls: ast.ClassDef) -> bool:
@@ -123,6 +132,9 @@ class ClassAnalyser(NodeVisitor):
 
         # HACK Default initialisers for special cases
         if init is None:
+            if is_dataclass_by_heuristic(self._ast):
+                self.visit_dataclass_initialiser()
+
             if is_enum_by_heuristic(self._ast):
                 self.visit_enum_initialiser()
 
@@ -154,6 +166,17 @@ class ClassAnalyser(NodeVisitor):
 
         init_analyser = FunctionAnalyser(init, self.context)
         self.class_ir[new_symbol] = init_analyser.analyse()
+
+    def visit_dataclass_initialiser(self) -> None:
+        items = [
+            symbol.name.removeprefix(self.prefix)
+            for symbol in self.context.symbol_table.symbols
+            if isinstance(symbol, Name)
+            if symbol.name.startswith(self.prefix)
+        ]
+
+        cls = self.update_symbol(self.symbol.with_init_arguments(args=("self", *items)))
+        self.class_ir[cls] = FunctionIr.the_empty_ir()
 
     def visit_enum_initialiser(self) -> None:
         new_symbol = self.symbol.with_init_arguments(args=("self", "_id"))

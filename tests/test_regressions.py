@@ -1984,3 +1984,436 @@ class TestGeneratorAndComprehensionsAreDeeplyVisitedPermissive:
 
         assert file_ir == expected_file_ir
         assert file_results == expected_file_results
+
+
+def test_dataclass_init_is_resolved(
+    analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+    make_root_context: MakeRootContextFn,
+    capfd: pytest.CaptureFixture[str],
+    constant: str,
+):
+    file_ir, file_results = analyse_single_file(
+        r"""
+            from dataclasses import dataclass
+
+            @dataclass
+            class Thing:
+                a: int
+
+            def foo():
+                a = Thing()
+                return a.attr
+
+            def bar():
+                return Thing().attr
+
+            def baz():
+                a = Thing(1)
+                return a.attr
+
+            def qux():
+                t = Thing(a=1)
+                return t.attr
+            """
+    )
+
+    # We should not see any "failed to resolve initialiser" errors here
+    _, stderr = capfd.readouterr()
+    assert not stderr
+
+    symbols = {
+        "dataclass": Import(name="dataclass", qualified_name="dataclasses.dataclass"),
+        "Thing": Class("Thing", interface=CallInterface(args=("self", "a"))),
+        "Thing.a": Name("Thing.a", "Thing"),
+        "foo": Func("foo", interface=CallInterface()),
+        "bar": Func("bar", interface=CallInterface()),
+        "baz": Func("baz", interface=CallInterface()),
+        "qux": Func("qux", interface=CallInterface()),
+    }
+    expected_file_ir = FileIr(
+        context=make_root_context(symbols.values(), include_root_symbols=True),
+        file_ir={
+            symbols["Thing"]: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            symbols["foo"]: {
+                "gets": {Name("a.attr", "a")},
+                "sets": {Name("a")},
+                "dels": set(),
+                "calls": {
+                    Call(
+                        "Thing",
+                        args=CallArguments(args=("a",)),
+                        target=symbols["Thing"],
+                    ),
+                },
+            },
+            symbols["bar"]: {
+                "gets": {Name("Thing().attr", "Thing")},
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            symbols["baz"]: {
+                "gets": {Name("a.attr", "a")},
+                "sets": {Name("a")},
+                "dels": set(),
+                "calls": {
+                    Call(
+                        "Thing",
+                        args=CallArguments(args=("a", constant)),
+                        target=symbols["Thing"],
+                    ),
+                },
+            },
+            symbols["qux"]: {
+                "gets": {Name("t.attr", "t")},
+                "sets": {Name("t")},
+                "dels": set(),
+                "calls": {
+                    Call(
+                        "Thing",
+                        args=CallArguments(args=("t",), kwargs={"a": constant}),
+                        target=symbols["Thing"],
+                    ),
+                },
+            },
+        },
+    )
+    expected_file_results = FileResults(
+        {
+            "Thing": {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            "foo": {
+                "gets": {"a.attr"},
+                "sets": {"a"},
+                "dels": set(),
+                "calls": {"Thing()"},
+            },
+            "bar": {
+                "gets": {"Thing().attr"},
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            "baz": {
+                "gets": {"a.attr"},
+                "sets": {"a"},
+                "dels": set(),
+                "calls": {"Thing()"},
+            },
+            "qux": {
+                "gets": {"t.attr"},
+                "sets": {"t"},
+                "dels": set(),
+                "calls": {"Thing()"},
+            },
+        }
+    )
+
+    assert file_ir == expected_file_ir
+    assert file_results == expected_file_results
+
+
+def test_dataclass_init_is_resolved_with_multiple_annotations(
+    analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+    make_root_context: MakeRootContextFn,
+    capfd: pytest.CaptureFixture[str],
+):
+    file_ir, file_results = analyse_single_file(
+        r"""
+            from dataclasses import dataclass
+
+            @irrelevant
+            @dataclass
+            @red_herring()
+            class Thing:
+                a: int
+
+            def foo():
+                a = Thing()
+                return a.attr
+            """
+    )
+
+    # We should not see any "failed to resolve initialiser" errors here
+    _, stderr = capfd.readouterr()
+    assert not stderr
+
+    symbols = {
+        "dataclass": Import(name="dataclass", qualified_name="dataclasses.dataclass"),
+        "Thing": Class("Thing", interface=CallInterface(args=("self", "a"))),
+        "Thing.a": Name("Thing.a", "Thing"),
+        "foo": Func("foo", interface=CallInterface()),
+    }
+    expected_file_ir = FileIr(
+        context=make_root_context(symbols.values(), include_root_symbols=True),
+        file_ir={
+            symbols["Thing"]: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            symbols["foo"]: {
+                "gets": {Name("a.attr", "a")},
+                "sets": {Name("a")},
+                "dels": set(),
+                "calls": {
+                    Call(
+                        "Thing",
+                        args=CallArguments(args=("a",)),
+                        target=symbols["Thing"],
+                    ),
+                },
+            },
+        },
+    )
+    expected_file_results = FileResults(
+        {
+            "Thing": {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            "foo": {
+                "gets": {"a.attr"},
+                "sets": {"a"},
+                "dels": set(),
+                "calls": {"Thing()"},
+            },
+        }
+    )
+
+    assert file_ir == expected_file_ir
+    assert file_results == expected_file_results
+
+
+def test_dataclass_init_is_resolved_with_dotted_annotation(
+    analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+    make_root_context: MakeRootContextFn,
+    capfd: pytest.CaptureFixture[str],
+):
+    file_ir, file_results = analyse_single_file(
+        r"""
+            import dataclasses
+
+            @irrelevant
+            @dataclasses.dataclass
+            class Thing:
+                a: int
+
+            def foo():
+                a = Thing()
+                return a.attr
+            """
+    )
+
+    # We should not see any "failed to resolve initialiser" errors here
+    _, stderr = capfd.readouterr()
+    assert not stderr
+
+    symbols = {
+        "dataclass": Import(name="dataclasses"),
+        "Thing": Class("Thing", interface=CallInterface(args=("self", "a"))),
+        "Thing.a": Name("Thing.a", "Thing"),
+        "foo": Func("foo", interface=CallInterface()),
+    }
+    expected_file_ir = FileIr(
+        context=make_root_context(symbols.values(), include_root_symbols=True),
+        file_ir={
+            symbols["Thing"]: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            symbols["foo"]: {
+                "gets": {Name("a.attr", "a")},
+                "sets": {Name("a")},
+                "dels": set(),
+                "calls": {
+                    Call(
+                        "Thing",
+                        args=CallArguments(args=("a",)),
+                        target=symbols["Thing"],
+                    ),
+                },
+            },
+        },
+    )
+    expected_file_results = FileResults(
+        {
+            "Thing": {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            "foo": {
+                "gets": {"a.attr"},
+                "sets": {"a"},
+                "dels": set(),
+                "calls": {"Thing()"},
+            },
+        }
+    )
+
+    assert file_ir == expected_file_ir
+    assert file_results == expected_file_results
+
+
+def test_dataclass_init_is_resolved_with_pydantic_dotted_annotation(
+    analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+    make_root_context: MakeRootContextFn,
+    capfd: pytest.CaptureFixture[str],
+):
+    file_ir, file_results = analyse_single_file(
+        r"""
+            # This import would require pydantic as a dev dependency and is not easily
+            # mockable. We don't care about the actual import just the symbols so it is
+            # simplest to not have the import.
+            # import pydantic
+
+            @pydantic.dataclasses.dataclass
+            class Thing:
+                a: int
+
+            def foo():
+                a = Thing()
+                return a.attr
+            """
+    )
+
+    # We should not see any "failed to resolve initialiser" errors here
+    _, stderr = capfd.readouterr()
+    assert not stderr
+
+    symbols = {
+        "Thing": Class("Thing", interface=CallInterface(args=("self", "a"))),
+        "Thing.a": Name("Thing.a", "Thing"),
+        "foo": Func("foo", interface=CallInterface()),
+    }
+    expected_file_ir = FileIr(
+        context=make_root_context(symbols.values(), include_root_symbols=True),
+        file_ir={
+            symbols["Thing"]: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            symbols["foo"]: {
+                "gets": {Name("a.attr", "a")},
+                "sets": {Name("a")},
+                "dels": set(),
+                "calls": {
+                    Call(
+                        "Thing",
+                        args=CallArguments(args=("a",)),
+                        target=symbols["Thing"],
+                    ),
+                },
+            },
+        },
+    )
+    expected_file_results = FileResults(
+        {
+            "Thing": {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            "foo": {
+                "gets": {"a.attr"},
+                "sets": {"a"},
+                "dels": set(),
+                "calls": {"Thing()"},
+            },
+        }
+    )
+
+    assert file_ir == expected_file_ir
+    assert file_results == expected_file_results
+
+
+def test_dataclass_init_is_resolved_with_dataclass_args(
+    analyse_single_file: Callable[[str], tuple[FileIr, FileResults]],
+    make_root_context: MakeRootContextFn,
+    capfd: pytest.CaptureFixture[str],
+):
+    file_ir, file_results = analyse_single_file(
+        r"""
+            from dataclasses import dataclass
+
+            @dataclass(frozen=True, slots=True)
+            class Thing:
+                a: int
+
+            def foo():
+                a = Thing()
+                return a.attr
+            """
+    )
+
+    # We should not see any "failed to resolve initialiser" errors here
+    _, stderr = capfd.readouterr()
+    assert not stderr
+
+    symbols = {
+        "dataclass": Import(name="dataclass", qualified_name="dataclasses.dataclass"),
+        "Thing": Class("Thing", interface=CallInterface(args=("self", "a"))),
+        "Thing.a": Name("Thing.a", "Thing"),
+        "foo": Func("foo", interface=CallInterface()),
+    }
+    expected_file_ir = FileIr(
+        context=make_root_context(symbols.values(), include_root_symbols=True),
+        file_ir={
+            symbols["Thing"]: {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            symbols["foo"]: {
+                "gets": {Name("a.attr", "a")},
+                "sets": {Name("a")},
+                "dels": set(),
+                "calls": {
+                    Call(
+                        "Thing",
+                        args=CallArguments(args=("a",)),
+                        target=symbols["Thing"],
+                    ),
+                },
+            },
+        },
+    )
+    expected_file_results = FileResults(
+        {
+            "Thing": {
+                "gets": set(),
+                "sets": set(),
+                "dels": set(),
+                "calls": set(),
+            },
+            "foo": {
+                "gets": {"a.attr"},
+                "sets": {"a"},
+                "dels": set(),
+                "calls": {"Thing()"},
+            },
+        }
+    )
+
+    assert file_ir == expected_file_ir
+    assert file_results == expected_file_results
